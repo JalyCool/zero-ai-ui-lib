@@ -116,6 +116,8 @@ watch(() => props.modelValue, value => { if (value) open.value = true })
 <style scoped>
 .ui-search {
   --field-w: min(320px, calc(100vw - 64px));
+  /* 图标旅行时长：略慢于外壳变长（view 的 1.2 倍）。 */
+  --icon-travel: calc(var(--spring-view-dur) * 1.2);
   position: relative;
   display: inline-block;
   width: 40px;
@@ -135,7 +137,8 @@ watch(() => props.modelValue, value => { if (value) open.value = true })
 .ui-search.is-disabled { opacity: .42; }
 
 /* 图标：同一个元素，贴着外壳右边框平移；位移量与宽度同源，
-   所以展开时它和右边框一起走，收起时原路返回。 */
+   所以展开时它和右边框一起走，收起时原路返回。
+   旅行比外壳慢 20%：宽度先到、图标后落位，动效有前后层次。 */
 .ui-search__icon {
   position: absolute;
   top: 0;
@@ -145,25 +148,42 @@ watch(() => props.modelValue, value => { if (value) open.value = true })
   width: 40px;
   height: 40px;
   border: 0;
-  border-radius: calc(12px * var(--radius-scale));
   background: transparent;
   color: var(--on-surface);
   cursor: pointer;
-  transition: transform var(--t-view), background var(--t-fade), color var(--t-fade), filter var(--t-feedback);
+  transition: transform var(--icon-travel) var(--spring-view), color var(--t-fade);
 }
+/* 背景单独一层：hover / 按压 / 压缩动画都只作用于它，图标本体不动。 */
+.ui-search__icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: calc(12px * var(--radius-scale));
+  background: transparent;
+  transition: background var(--t-fade);
+}
+.ui-search__icon:hover::before { background: color-mix(in oklab, var(--primary) 12%, transparent); }
+.ui-search__icon:active::before { background: color-mix(in oklab, var(--primary) 18%, transparent); }
 .ui-search.is-open .ui-search__icon {
   transform: translateX(calc(var(--field-w) - 40px));
   color: var(--primary);
 }
-.ui-search__icon:hover { background: color-mix(in oklab, var(--primary) 12%, transparent); }
-.ui-search__icon:active { transform: translateX(var(--travel, 0)) scale(var(--press-scale)); }
-.ui-search.is-open .ui-search__icon:active { --travel: calc(var(--field-w) - 40px); }
-.ui-search__icon svg { width: 17px; height: 17px; }
+/* 展开旅行的前三分之一：背景框压缩到 94%，随后回弹到 100%。 */
+.ui-search.is-open .ui-search__icon::before {
+  animation: uiSearchSqueeze var(--icon-travel) var(--spring-view) 1;
+}
+@keyframes uiSearchSqueeze {
+  0% { transform: scale(1); }
+  33% { transform: scale(.94); }
+  100% { transform: scale(1); }
+}
+.ui-search__icon svg { position: relative; z-index: 1; width: 17px; height: 17px; }
 
 /* 输入区：占据外壳中间，展开时按内容替换语言浮现。 */
 .ui-search__inner {
   position: absolute;
   top: 0;
+  /* 收起时让位给图标；展开时随图标离开向左扩展，不留空白。 */
   left: 40px;
   right: 40px;
   height: 100%;
@@ -174,8 +194,10 @@ watch(() => props.modelValue, value => { if (value) open.value = true })
   filter: blur(10px);
   transform: translateX(-6px);
   pointer-events: none;
-  transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-panel);
+  transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-panel),
+              left var(--t-view);
 }
+.ui-search.is-open .ui-search__inner { left: 11px; }
 .ui-search.is-open .ui-search__inner {
   opacity: 1;
   filter: blur(0);

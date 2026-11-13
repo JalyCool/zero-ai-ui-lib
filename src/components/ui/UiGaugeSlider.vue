@@ -79,39 +79,72 @@ function commit() {
 }
 
 /* ---------- 指针 -> 角度 -> 弧上位置 ---------- */
-function pointerToFrac(event) {
+/* 圆心附近的数字区：角度在这里没有意义（微小位移 -> 角度剧变），
+   指针进入该区域时冻结当前值，离开后继续。 */
+const CENTER_DEAD = 26
+
+/* 屏幕角折算进 [160, 540) 的连续数轴；弧占 [160, 380]，开口占 (380, 540)。 */
+function pointerTheta(event) {
   const rect = dialEl.value?.getBoundingClientRect()
-  if (!rect || !rect.width) return fraction.value
-  /* viewBox 200x140：指针坐标按宽度比例映射回 viewBox。 */
-  const scaleX = 200 / rect.width
-  const scaleY = 140 / rect.height
-  const dx = (event.clientX - rect.left) * scaleX - 100
-  const dy = (event.clientY - rect.top) * scaleY - 100
-  /* atan2 给的是 -180..180 的屏幕角。弧从 160° 顺时针扫到 380°（= 20°），
-     先把屏幕角折算进 [160, 540) 这条连续数轴上。 */
-  const phi = (Math.atan2(dy, dx) * 180) / Math.PI
-  let theta = phi < START_ANGLE ? phi + 360 : phi
-  /* theta ∈ (380, 540) 是底部开口（屏幕角 20°..160°），不属于弧：
-     按离哪端更近夹到 0 或 1（450° = 正下方是分界）。 */
+  if (!rect || !rect.width) return null
+  const vx = (event.clientX - rect.left) * (200 / rect.width) - 100
+  const vy = (event.clientY - rect.top) * (140 / rect.height) - 100
+  if (Math.hypot(vx, vy) < CENTER_DEAD) return null
+  let phi = (Math.atan2(vy, vx) * 180) / Math.PI
+  if (phi < START_ANGLE) phi += 360
+  return phi
+}
+
+/* 绝对角度 -> 弧上比例：开口区按离哪端更近就近夹（450° = 正下方是分界）。
+   只用于按下时的跳位。 */
+function thetaToFrac(theta) {
   if (theta > 380) theta = theta <= 450 ? 380 : 160
-  const f = (theta - START_ANGLE) / SWEEP
-  return Math.min(1, Math.max(0, f))
+  return Math.min(1, Math.max(0, (theta - START_ANGLE) / SWEEP))
+}
+
+/* 拖拽用累积角：每帧只累加指针的最短角位移并夹在弧范围内。
+   这样从弧上往圆心方向或横穿底盘拖拽都不会把值甩到 100% ——
+   只有真正沿弧走的角位移才改变数值。 */
+let dragTheta = START_ANGLE
+let dragLast = START_ANGLE
+
+function beginGaugeDrag(event) {
+  const theta = pointerTheta(event)
+  dragTheta = START_ANGLE + fraction.value * SWEEP
+  if (theta === null) {
+    dragLast = dragTheta
+    return
+  }
+  shown.value = props.min + thetaToFrac(theta) * range.value
+  dragTheta = START_ANGLE + ((shown.value - props.min) / range.value) * SWEEP
+  dragLast = theta
+  commit()
+}
+
+function moveGaugeDrag(event) {
+  const theta = pointerTheta(event)
+  if (theta === null) return
+  let delta = theta - dragLast
+  if (delta > 180) delta -= 360
+  if (delta < -180) delta += 360
+  dragLast = theta
+  dragTheta = Math.min(380, Math.max(160, dragTheta + delta))
+  shown.value = props.min + ((dragTheta - START_ANGLE) / SWEEP) * range.value
+  commit()
 }
 
 function onPointerDown(event) {
   if (event.button !== undefined && event.button !== 0 && event.pointerType === 'mouse') return
   dragging.value = true
   try { dialEl.value?.setPointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
-  shown.value = props.min + pointerToFrac(event) * range.value
-  commit()
+  beginGaugeDrag(event)
   emit('drag-start')
   event.preventDefault()
 }
 
 function onPointerMove(event) {
   if (!dragging.value) return
-  shown.value = props.min + pointerToFrac(event) * range.value
-  commit()
+  moveGaugeDrag(event)
   event.preventDefault()
 }
 
