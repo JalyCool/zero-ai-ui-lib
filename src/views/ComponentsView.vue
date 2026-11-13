@@ -4,7 +4,7 @@ import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiChip, UiCodeEditor, UiDataTable, UiDatePicker, UiEmptyState,
   UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap, UiImageViewer,
-  UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiProgress, UiRadioGroup,
+  UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
   UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
   UiRingSlider, UiSchemaForm, UiSearchField, UiSegmented, UiSelect, UiSkeleton,
   UiSlider, UiSparkline, UiSpinner, UiStepper, UiSwitch, UiTagInput,
@@ -49,6 +49,11 @@ const planOptions = [
   { label: '专业版', value: 'pro' },
   { label: '团队版', value: 'team' }
 ]
+
+/* ---------- 形变面板 ---------- */
+const panelMode = ref('filter')
+const panelQuery = ref('')
+const panelRange = ref([18, 30])
 
 /* ---------- 表单 ---------- */
 const nickname = ref('Alex')
@@ -270,6 +275,26 @@ onMounted(() => showToast('info'))
       <h3 class="lib-sec__title">表单</h3>
       <div class="lib-cells">
         <div class="lib-cell">
+          <span class="lib-cell__label">通用形变面板 <small>UiMorphPanel</small></span>
+          <div class="lib-cell__stage">
+            <UiMorphPanel label="筛选条件">
+              <template #trigger>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4" /></svg>
+                筛选条件
+              </template>
+              <template #default="{ close }">
+                <div class="lib-cell__stage lib-cell__stage--col" style="width: min(280px, 72vw)">
+                  <UiSegmented v-model="panelMode" layout="one-line" label="模式" :options="[{ label: '关键词', value: 'filter' }, { label: '区间', value: 'range' }]" />
+                  <UiInput v-if="panelMode === 'filter'" v-model="panelQuery" placeholder="输入关键词" />
+                  <UiRangeSlider v-else v-model="panelRange" :min="0" :max="60" />
+                  <UiButton size="sm" block @click="close">完成</UiButton>
+                </div>
+              </template>
+            </UiMorphPanel>
+          </div>
+          <span class="lib-cell__note">按钮 ⇄ 任意组件的泛用形变：外壳只动几何，内容从模糊中浮现，点外部 / Esc 收起。</span>
+        </div>
+        <div class="lib-cell">
           <span class="lib-cell__label">输入三段式 <small>label + 控件 + hint/error</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiInput v-model="nickname" label="昵称" hint="展示在个人主页" />
@@ -374,7 +399,7 @@ onMounted(() => showToast('info'))
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiFileDropzone label="拖入附件，或点击选择" hint="演示：accept / 大小过滤" @files="onDropFiles" />
             <span v-if="dropped.length" class="lib-muted">已接收：{{ dropped.join('、') }}</span>
-            <UiSearchField v-model="search" placeholder="搜索会话…" />
+            <UiSearchField v-model="search" placeholder="搜索会话…" @search="toast?.show('执行搜索：' + (search || '空'), 'info')" />
             <span class="lib-muted">当前关键词：{{ search || '空' }}</span>
           </div>
         </div>

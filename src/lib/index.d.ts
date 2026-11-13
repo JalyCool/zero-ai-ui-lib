@@ -54,6 +54,7 @@ declare const UiKeyValueEditor: DefineComponent<{
 }, AnyProps, unknown>
 declare const UiLineChart: DefineComponent<{ series?: number[][]; labels?: string[]; height?: number }, AnyProps, unknown>
 declare const UiModal: DefineComponent<{ modelValue?: boolean; title?: string; width?: string }, AnyProps, unknown>
+declare const UiMorphPanel: DefineComponent<{ open?: boolean; label?: string; disabled?: boolean; minWidth?: number; minHeight?: number; closeOnOutside?: boolean }, AnyProps, unknown>
 declare const UiProgress: DefineComponent<{ value?: number; label?: string }, AnyProps, unknown>
 declare const UiRadioGroup: DefineComponent<{ modelValue?: string | number; options?: { label: string; value: string | number }[]; name?: string }, AnyProps, unknown>
 declare const UiRangeDatePicker: DefineComponent<{ modelValue?: { start?: string; end?: string } | null; label?: string; presets?: number[] }, AnyProps, unknown>
@@ -170,7 +171,7 @@ export {
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
   UiRating, UiRingProgress, UiRingSlider, UiRollNumber, UiSchemaForm,
-  UiSearchField, UiSelect, UiSkeleton, UiSlider, UiSparkline, UiSpinner,
+  UiSearchField, UiSelect, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,
   UiStepper, UiSwitch, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,
   UiToastHost, UiToolMenu, UiTooltip, UiTreeView, UiVirtualList, UiWheelColumn,
   UiWheelDatePicker,
