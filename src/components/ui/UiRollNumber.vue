@@ -125,10 +125,11 @@ onBeforeUnmount(() => {
 .ui-roll__stage {
   position: relative;
   display: inline-block;
-  height: 1.15em;
+  /* 与文字行盒等高：数字垂直居中、底部留出行距，不被 mask 削尾。 */
+  height: 1.35em;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 82%, transparent 100%);
 }
 .ui-roll__box {
   position: relative;
@@ -141,7 +142,7 @@ onBeforeUnmount(() => {
   font: inherit;
   color: inherit;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1.35;
   text-align: center;
   white-space: nowrap;
   will-change: transform, opacity, filter;

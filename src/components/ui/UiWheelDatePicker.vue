@@ -1,7 +1,7 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useMorphWindow } from '../../core/morphWindow'
-import UiWheelColumn from './UiWheelColumn.vue'
+import UiWheel from './UiWheel.vue'
 
 const props = defineProps({
   /* 'YYYY-MM-DD'，默认今天 */
@@ -14,20 +14,16 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 /* ============================================================
-   波轮日期选择器
-   交互与时间选择器的滚轮完全一致：高亮块固定在中间不动，
-   点击和滑动移动的是背后的数字层，停止后吸附居中。
-   年 / 月 / 日三列来自共享的 <UiWheelColumn>；
-   日列随所选年月动态生成，切换月/年时把日夹进当月。
+   波轮日期选择器：与时间波轮共用同一基座 <UiWheel>，
+   展开界面样式完全一致（浅底圆角框 + 主色高亮块 + 年/月/日分隔符）。
+   日列随所选年月动态生成，切月/年时把日夹进当月。
    ============================================================ */
 
 const surfaceEl = ref(null)
 const fieldEl = ref(null)
 const panelEl = ref(null)
 const panelContentEl = ref(null)
-const yearColumn = ref(null)
-const monthColumn = ref(null)
-const dayColumn = ref(null)
+const wheelEl = ref(null)
 
 const current = ref(normalizeDate(props.modelValue || formatInput(todayDate())))
 const draftYear = ref(current.value.getFullYear())
@@ -40,7 +36,7 @@ const { open, closing, floating, compressed, style, viewStyle, openWindow, close
   content: () => panelContentEl.value,
   width: () => Math.min(320, window.innerWidth - 32),
   onOpened: () => {
-    requestAnimationFrame(() => scrollAllColumns('auto'))
+    requestAnimationFrame(() => wheelEl.value?.scrollAll('auto'))
   },
   onClosed: () => {
     fieldEl.value?.focus({ preventScroll: true })
@@ -51,7 +47,7 @@ const displayParts = computed(() => splitDisplay(current.value))
 
 const yearItems = computed(() => {
   const out = []
-  for (let year = props.startYear; year <= props.endYear; year += 1) out.push(year)
+  for (let year = props.startYear; year <= props.endYear; year += 1) out.push({ value: year, label: String(year) })
   return out
 })
 const monthItems = computed(() => {
@@ -66,19 +62,23 @@ const dayItems = computed(() => {
   return out
 })
 
+/* 三列 + 年/月/日分隔符（最后一列也带分隔符，与时间波轮的冒号同位）。 */
+const columns = computed(() => [
+  { items: yearItems.value, value: draftYear.value, label: '年', separator: '年' },
+  { items: monthItems.value, value: draftMonth.value, label: '月', separator: '月' },
+  { items: dayItems.value, value: draftDay.value, label: '日', separator: '日' }
+])
+
 function pad(value) {
   return String(value).padStart(2, '0')
 }
-
 function todayDate() {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
-
 function daysInMonth(year, month) {
   return new Date(year, month, 0).getDate()
 }
-
 function normalizeDate(value) {
   if (typeof value !== 'string') return todayDate()
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
@@ -86,28 +86,14 @@ function normalizeDate(value) {
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
   return Number.isNaN(date.getTime()) ? todayDate() : date
 }
-
 function formatInput(date) {
   return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate())
 }
 
-/* 显示规范与日期选择器一致：
-   ±3 天内只显示称呼；同年省年份；年与月日两个 nowrap 段。 */
-const RELATIVE_LABELS = {
-  '-3': '大前天',
-  '-2': '前天',
-  '-1': '昨天',
-  0: '今天',
-  1: '明天',
-  2: '后天',
-  3: '大后天'
-}
-
+const RELATIVE_LABELS = { '-3': '大前天', '-2': '前天', '-1': '昨天', 0: '今天', 1: '明天', 2: '后天', 3: '大后天' }
 function dayOffsetFromToday(date) {
-  const base = todayDate()
-  return Math.round((date.getTime() - base.getTime()) / 86400000)
+  return Math.round((date.getTime() - todayDate().getTime()) / 86400000)
 }
-
 function splitDisplay(date) {
   const label = RELATIVE_LABELS[dayOffsetFromToday(date)]
   if (label) return { year: '', monthDay: label }
@@ -116,13 +102,6 @@ function splitDisplay(date) {
   return { year: sameYear ? '' : date.getFullYear() + '年', monthDay }
 }
 
-function scrollAllColumns(behavior = 'smooth') {
-  yearColumn.value?.scrollToValue(draftYear.value, behavior)
-  monthColumn.value?.scrollToValue(draftMonth.value, behavior)
-  dayColumn.value?.scrollToValue(draftDay.value, behavior)
-}
-
-/* 切换年/月后，把日夹回当月最后一天。 */
 watch([draftYear, draftMonth], () => {
   const maxDay = daysInMonth(draftYear.value, draftMonth.value)
   if (draftDay.value > maxDay) draftDay.value = maxDay
@@ -134,35 +113,30 @@ function syncDraft() {
   draftDay.value = current.value.getDate()
 }
 
+function onWheelChange({ index, value }) {
+  const num = Number(value)
+  if (index === 0) draftYear.value = num
+  else if (index === 1) draftMonth.value = num
+  else draftDay.value = num
+}
+
 function openPicker() {
   syncDraft()
   openWindow()
 }
-
 function togglePicker() {
-  if (open.value) {
-    closeWindow()
-    return
-  }
-  if (closing.value || compressed.value) {
-    // 收起 / 按压途中再次点击：打断并直接展开。
-    syncDraft()
-    toggleWindow()
-    return
-  }
+  if (open.value) { closeWindow(); return }
+  if (closing.value || compressed.value) { syncDraft(); toggleWindow(); return }
   openPicker()
 }
-
 function draftValue() {
   return formatInput(new Date(draftYear.value, draftMonth.value - 1, draftDay.value))
 }
-
 function confirm() {
   current.value = normalizeDate(draftValue())
   emit('update:modelValue', formatInput(current.value))
   closeWindow()
 }
-
 watch(() => props.modelValue, value => {
   current.value = normalizeDate(value || formatInput(todayDate()))
   if (!floating.value) syncDraft()
@@ -221,40 +195,15 @@ watch(() => props.modelValue, value => {
         <div ref="panelContentEl" class="ui-wheel-date__pop-inner">
           <div class="ui-wheel-date__head">
             <span>选择日期</span>
-            <strong>{{ draftYear }}-{{ pad(draftMonth) }}-{{ pad(draftDay) }}</strong>
+            <strong>{{ draftValue() }}</strong>
           </div>
 
-          <div class="ui-wheel-date__body">
-            <span class="ui-wheel-date__highlight" aria-hidden="true"></span>
-
-            <div class="ui-wheel-date__axis" aria-hidden="true">
-              <span>年</span><span>月</span><span>日</span>
-            </div>
-
-            <div class="ui-wheel-date__columns">
-              <UiWheelColumn
-                ref="yearColumn"
-                :items="yearItems"
-                v-model="draftYear"
-                label="年"
-                :interactive="open"
-              />
-              <UiWheelColumn
-                ref="monthColumn"
-                :items="monthItems"
-                v-model="draftMonth"
-                label="月"
-                :interactive="open"
-              />
-              <UiWheelColumn
-                ref="dayColumn"
-                :items="dayItems"
-                v-model="draftDay"
-                label="日"
-                :interactive="open"
-              />
-            </div>
-          </div>
+          <UiWheel
+            ref="wheelEl"
+            :columns="columns"
+            :interactive="open"
+            @change="onWheelChange"
+          />
 
           <div class="ui-wheel-date__actions">
             <button type="button" class="ui-wheel-date__cancel" @click="closeWindow">取消</button>
@@ -410,52 +359,6 @@ watch(() => props.modelValue, value => {
   font-family: ui-monospace, monospace;
   font-size: var(--fs-body);
   font-variant-numeric: tabular-nums;
-}
-
-/* 滚轮：高亮块固定中间，数字层在背后移动。 */
-.ui-wheel-date__body {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px;
-  border: var(--border-w) solid var(--outline-variant);
-  border-radius: 13px;
-  background: var(--surface-container-low);
-}
-.ui-wheel-date__axis {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  gap: 5px;
-  padding: 2px 2px 0;
-  pointer-events: none;
-}
-.ui-wheel-date__axis span {
-  flex: 1;
-  text-align: center;
-  color: var(--on-surface-variant);
-  font-size: var(--fs-micro);
-}
-.ui-wheel-date__columns {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  gap: 5px;
-  height: 172px;
-}
-/* 高亮块只盖住数字层。 */
-.ui-wheel-date__highlight {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  top: 50%;
-  height: 30px;
-  transform: translateY(-50%);
-  border-radius: 9px;
-  background: var(--primary-container);
-  pointer-events: none;
-  z-index: 0;
 }
 
 .ui-wheel-date__actions {

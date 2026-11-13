@@ -1,10 +1,13 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useMorphWindow } from '../../core/morphWindow'
+import UiWheel from './UiWheel.vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '09:00' },
   label: { type: String, default: '时间' },
+  /* 精度：'h' 只有时；'m' 时分；'s' 时分秒。决定波轮字段数量。 */
+  precision: { type: String, default: 'm', validator: v => ['h', 'm', 's'].includes(v) },
   presets: {
     type: Array,
     default: () => [
@@ -19,22 +22,19 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 /* ============================================================
-   时间选择
-   和日期选择同一套按压式形变：输入框先收缩，再放大成居中的
-   时间窗口；窗口不压暗背景，输入框内容模糊淡出、滚轮内容浮现。
-   高亮块固定在窗口中央不动，点击和滑动移动的是背后的数字层。
+   时间选择：按压式形变外壳 + 通用波轮 <UiWheel>。
+   字段数量随 precision 增删（时 / 时分 / 时分秒），
+   波轮交互（高亮块固定、数字层移动、140ms 吸附）全部在 UiWheel 里。
    ============================================================ */
 
 const surfaceEl = ref(null)
 const fieldEl = ref(null)
 const panelEl = ref(null)
 const panelContentEl = ref(null)
-const hourColumn = ref(null)
-const minuteColumn = ref(null)
+const wheelEl = ref(null)
 
 const current = ref(normalizeTime(props.modelValue))
-const draftHour = ref('09')
-const draftMinute = ref('00')
+const parts = ref(splitParts(current.value))
 
 const { open, closing, floating, compressed, style, viewStyle, openWindow, closeWindow, toggleWindow } = useMorphWindow({
   surface: () => surfaceEl.value,
@@ -42,107 +42,72 @@ const { open, closing, floating, compressed, style, viewStyle, openWindow, close
   content: () => panelContentEl.value,
   width: () => Math.min(300, window.innerWidth - 32),
   onOpened: () => {
-    requestAnimationFrame(() => scrollSelectedIntoView('auto'))
+    requestAnimationFrame(() => wheelEl.value?.scrollAll('auto'))
   },
   onClosed: () => {
     fieldEl.value?.focus({ preventScroll: true })
   }
 })
 
-const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'))
-const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'))
-
-const displayValue = computed(() => current.value)
-const draftValue = computed(() => `${draftHour.value}:${draftMinute.value}`)
-const normalizedPresets = computed(() => (Array.isArray(props.presets) ? props.presets : [])
-  .map(item => {
-    if (typeof item === 'string') {
-      return { label: item, value: normalizeTime(item) }
-    }
-    if (!item || typeof item !== 'object') return null
-
-    const rawValue = item.value
-      ?? (item.hour !== undefined ? `${pad(item.hour)}:${pad(item.minute ?? 0)}` : '')
-    const value = normalizeTime(rawValue)
-    return { label: item.label || value, value }
-  })
-  .filter(Boolean))
-const presetColumns = computed(() => Math.min(Math.max(normalizedPresets.value.length, 1), 4))
-
 function pad(value) {
   return String(value).padStart(2, '0')
 }
 
-function normalizeTime(value) {
-  if (typeof value !== 'string' || !/^\d{1,2}:\d{2}$/.test(value)) return '09:00'
-  const [hour, minute] = value.split(':').map(Number)
-  if (hour > 23 || minute > 59) return '09:00'
-  return `${pad(hour)}:${pad(minute)}`
+function splitParts(value) {
+  const [h, m, s] = value.split(':')
+  return { h: h ?? '00', m: m ?? '00', s: s ?? '00' }
 }
+function normalizeTime(value) {
+  if (typeof value !== 'string') return '09:00'
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value)
+  if (!match) return '09:00'
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  const second = Number(match[3] ?? 0)
+  if (hour > 23 || minute > 59 || second > 59) return '09:00'
+  if (props.precision === 'h') return pad(hour)
+  if (props.precision === 'm') return pad(hour) + ':' + pad(minute)
+  return pad(hour) + ':' + pad(minute) + ':' + pad(second)
+}
+
+const hourItems = Array.from({ length: 24 }, (_, i) => pad(i))
+const minuteItems = Array.from({ length: 60 }, (_, i) => pad(i))
+
+const columns = computed(() => {
+  const list = [{ items: hourItems, value: parts.value.h, label: '小时', separator: props.precision !== 'h' ? ':' : '' }]
+  if (props.precision !== 'h') {
+    list.push({ items: minuteItems, value: parts.value.m, label: '分钟', separator: props.precision === 's' ? ':' : '' })
+  }
+  if (props.precision === 's') {
+    list.push({ items: minuteItems, value: parts.value.s, label: '秒' })
+  }
+  return list
+})
+
+const draftValue = computed(() => columns.value.map(c => c.value).join(':'))
+const displayValue = computed(() => current.value)
+
+const normalizedPresets = computed(() => (Array.isArray(props.presets) ? props.presets : [])
+  .map(item => {
+    if (typeof item === 'string') return { label: item, value: normalizeTime(item) }
+    if (!item || typeof item !== 'object') return null
+    const rawValue = item.value ?? ''
+    return { label: item.label || rawValue, value: normalizeTime(rawValue) }
+  })
+  .filter(Boolean))
+const presetColumns = computed(() => Math.min(Math.max(normalizedPresets.value.length, 1), 4))
 
 function syncDraft() {
-  const [hour, minute] = current.value.split(':')
-  draftHour.value = hour
-  draftMinute.value = minute
+  parts.value = splitParts(current.value)
 }
 
-function scrollColumn(column, value, behavior = 'smooth') {
-  if (!column) return
-  const target = column.querySelector(`[data-value="${value}"]`)
-  if (!target) return
-  const top = target.offsetTop - (column.clientHeight - target.offsetHeight) / 2
-  column.scrollTo({
-    top: Math.max(0, top),
-    behavior
-  })
+function onWheelChange({ index, value }) {
+  const next = { ...parts.value }
+  if (index === 0) next.h = value
+  else if (index === 1) next.m = value
+  else next.s = value
+  parts.value = next
 }
-
-function scrollSelectedIntoView(behavior = 'smooth') {
-  scrollColumn(hourColumn.value, draftHour.value, behavior)
-  scrollColumn(minuteColumn.value, draftMinute.value, behavior)
-}
-
-/* 数字层中心落在高亮块里的那一项，就是当前值。 */
-function centeredValue(column) {
-  if (!column) return ''
-  const center = column.scrollTop + column.clientHeight / 2
-  let best = ''
-  let bestDistance = Infinity
-  column.querySelectorAll('button[data-value]').forEach(button => {
-    const middle = button.offsetTop + button.offsetHeight / 2
-    const distance = Math.abs(middle - center)
-    if (distance < bestDistance) {
-      bestDistance = distance
-      best = button.dataset.value
-    }
-  })
-  return best
-}
-
-function settleColumn(column, apply) {
-  if (!column) return
-  const value = centeredValue(column)
-  if (!value) return
-  apply(value)
-  scrollColumn(column, value)
-}
-
-/* 滑动结束后把数字吸附到高亮块正中，并把当前值同步过去。 */
-function makeSettler(columnRef, apply) {
-  let timer = 0
-  return {
-    onScroll() {
-      clearTimeout(timer)
-      timer = setTimeout(() => {
-        timer = 0
-        settleColumn(columnRef.value, apply)
-      }, 140)
-    }
-  }
-}
-
-const hourSettler = makeSettler(hourColumn, value => { draftHour.value = value })
-const minuteSettler = makeSettler(minuteColumn, value => { draftMinute.value = value })
 
 function openPicker() {
   syncDraft()
@@ -155,7 +120,6 @@ function togglePicker() {
     return
   }
   if (closing.value || compressed.value) {
-    // 收起 / 按压途中再次点击：打断并直接展开。
     syncDraft()
     toggleWindow()
     return
@@ -163,21 +127,9 @@ function togglePicker() {
   openPicker()
 }
 
-function selectHour(value) {
-  draftHour.value = value
-  scrollColumn(hourColumn.value, value)
-}
-
-function selectMinute(value) {
-  draftMinute.value = value
-  scrollColumn(minuteColumn.value, value)
-}
-
 function usePreset(value) {
-  const [hour, minute] = normalizeTime(value).split(':')
-  draftHour.value = hour
-  draftMinute.value = minute
-  requestAnimationFrame(() => scrollSelectedIntoView())
+  parts.value = splitParts(normalizeTime(value))
+  requestAnimationFrame(() => wheelEl.value?.scrollAll())
 }
 
 function confirm() {
@@ -189,6 +141,12 @@ function confirm() {
 watch(() => props.modelValue, value => {
   current.value = normalizeTime(value)
   if (!floating.value) syncDraft()
+})
+
+/* 精度切换时重新归一，避免留下多余字段。 */
+watch(() => props.precision, () => {
+  current.value = normalizeTime(current.value)
+  syncDraft()
 })
 </script>
 
@@ -247,49 +205,13 @@ watch(() => props.modelValue, value => {
             <strong>{{ draftValue }}</strong>
           </div>
 
-          <div class="ui-time__body">
-            <span class="ui-time__highlight" aria-hidden="true"></span>
-
-            <div
-              ref="hourColumn"
-              class="ui-time__column"
-              aria-label="小时"
-              @scroll.passive="hourSettler.onScroll"
-            >
-              <button
-                v-for="hour in hours"
-                :key="hour"
-                type="button"
-                :data-value="hour"
-                :tabindex="open ? 0 : -1"
-                :class="{ 'is-selected': draftHour === hour }"
-                @click="selectHour(hour)"
-              >
-                {{ hour }}
-              </button>
-            </div>
-
-            <span class="ui-time__colon" aria-hidden="true">:</span>
-
-            <div
-              ref="minuteColumn"
-              class="ui-time__column"
-              aria-label="分钟"
-              @scroll.passive="minuteSettler.onScroll"
-            >
-              <button
-                v-for="minute in minutes"
-                :key="minute"
-                type="button"
-                :data-value="minute"
-                :tabindex="open ? 0 : -1"
-                :class="{ 'is-selected': draftMinute === minute }"
-                @click="selectMinute(minute)"
-              >
-                {{ minute }}
-              </button>
-            </div>
-          </div>
+          <UiWheel
+            ref="wheelEl"
+            class="ui-time__wheel"
+            :columns="columns"
+            :interactive="open"
+            @change="onWheelChange"
+          />
 
           <div
             v-if="normalizedPresets.length"
@@ -298,7 +220,7 @@ watch(() => props.modelValue, value => {
           >
             <button
               v-for="preset in normalizedPresets"
-              :key="`${preset.value}-${preset.label}`"
+              :key="preset.value + '-' + preset.label"
               type="button"
               :tabindex="open ? 0 : -1"
               @click="usePreset(preset.value)"
@@ -316,6 +238,11 @@ watch(() => props.modelValue, value => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 波轮与外壳之间留一点间距。 */
+.ui-time__wheel { margin-top: 2px; }
+</style>
 
 <style scoped>
 .ui-time {
@@ -459,77 +386,6 @@ watch(() => props.modelValue, value => {
   font-variant-numeric: tabular-nums;
 }
 
-/* 滚轮：高亮块固定在中间不动，只有数字层在它背后上下移动。 */
-.ui-time__body {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  gap: 5px;
-  height: 172px;
-  padding: 4px;
-  border: var(--border-w) solid var(--outline-variant);
-  border-radius: 13px;
-  background: var(--surface-container-low);
-}
-.ui-time__highlight {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  top: 50%;
-  height: 30px;
-  transform: translateY(-50%);
-  border-radius: 9px;
-  background: var(--primary-container);
-  pointer-events: none;
-  z-index: 0;
-}
-.ui-time__column {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-  padding: 66px 2px;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 82%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 82%, transparent 100%);
-}
-.ui-time__column::-webkit-scrollbar { display: none; }
-.ui-time__column button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 30px;
-  padding: 0 4px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--on-surface-variant);
-  font: inherit;
-  font-size: var(--fs-small);
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: color var(--t-fade), background var(--t-fade), transform var(--t-feedback);
-}
-.ui-time__column button:hover { background: color-mix(in oklab, var(--surface) 46%, transparent); color: var(--on-surface); }
-.ui-time__column button:active { transform: scale(.96); }
-/* 落在高亮块里的那一项：数字本身不带底色，只换颜色和字重。 */
-.ui-time__column button.is-selected {
-  background: transparent;
-  color: var(--on-primary-container);
-  font-weight: var(--w-strong);
-}
-.ui-time__colon {
-  align-self: center;
-  position: relative;
-  z-index: 1;
-  color: var(--on-surface-variant);
-  font-size: var(--fs-body);
-  font-weight: var(--w-strong);
-}
 .ui-time__presets {
   display: grid;
   grid-template-columns: repeat(var(--preset-cols, 4), minmax(0, 1fr));

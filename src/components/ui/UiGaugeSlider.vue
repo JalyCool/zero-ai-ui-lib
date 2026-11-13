@@ -87,13 +87,13 @@ function pointerToFrac(event) {
   const scaleY = 140 / rect.height
   const dx = (event.clientX - rect.left) * scaleX - 100
   const dy = (event.clientY - rect.top) * scaleY - 100
-  const phi = (Math.atan2(dy, dx) * 180) / Math.PI /* 0..360，屏幕角 */
-  /* 弧从 160° 顺时针到 380°（= 20°）。屏幕角 >=160 直接用；
-     0..159 属于 360..519 区间；底部开口（20°..160°）就近夹到两端。 */
-  let theta
-  if (phi >= START_ANGLE) theta = phi
-  else if (phi >= (380 - 360)) theta = phi + 360 /* 0..20 -> 360..380 */
-  else theta = phi >= 90 ? START_ANGLE : 380
+  /* atan2 给的是 -180..180 的屏幕角。弧从 160° 顺时针扫到 380°（= 20°），
+     先把屏幕角折算进 [160, 540) 这条连续数轴上。 */
+  const phi = (Math.atan2(dy, dx) * 180) / Math.PI
+  let theta = phi < START_ANGLE ? phi + 360 : phi
+  /* theta ∈ (380, 540) 是底部开口（屏幕角 20°..160°），不属于弧：
+     按离哪端更近夹到 0 或 1（450° = 正下方是分界）。 */
+  if (theta > 380) theta = theta <= 450 ? 380 : 160
   const f = (theta - START_ANGLE) / SWEEP
   return Math.min(1, Math.max(0, f))
 }

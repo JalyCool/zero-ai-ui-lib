@@ -114,6 +114,7 @@ declare const UiVirtualList: DefineComponent<{
   items?: unknown[]; itemHeight?: number; height?: number; buffer?: number
   swipeSelect?: boolean; modelValue?: number[]; itemKey?: string
 }, AnyProps, unknown>
+declare const UiWheel: DefineComponent<{ columns?: { items?: unknown[]; value?: string | number; separator?: string; label?: string }[]; interactive?: boolean; itemHeight?: number }, AnyProps, unknown>
 declare const UiWheelColumn: DefineComponent<{ items?: unknown[]; modelValue?: string | number; label?: string; interactive?: boolean }, AnyProps, unknown>
 declare const UiWheelDatePicker: DefineComponent<{ modelValue?: string; label?: string; startYear?: number; endYear?: number }, AnyProps, unknown>
 
@@ -174,6 +175,6 @@ export {
   UiSearchField, UiSelect, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,
   UiStepper, UiSwitch, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,
   UiToastHost, UiToolMenu, UiTooltip, UiTreeView, UiVirtualList, UiWheelColumn,
-  UiWheelDatePicker,
+  UiWheel, UiWheelDatePicker,
   ExpandableCard, RouteExpandCard, EmptyRoute
 }

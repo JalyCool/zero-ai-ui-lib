@@ -108,15 +108,15 @@ onBeforeUnmount(() => {
       </button>
 
       <div class="ui-stepper__stage">
+        <!-- 数字是居中基准；单位相对数字绝对悬浮在右侧，不参与居中计算。 -->
         <span class="ui-stepper__flow">
-          <!-- 数字上下渐变/滚动走全库统一的 UiRollNumber。 -->
           <UiRollNumber
             class="ui-stepper__roll"
             :value="value"
             :reverse="roll === 'reverse'"
             :step="step"
           />
-          <span class="ui-stepper__unit">{{ unit }}</span>
+          <span v-if="unit" class="ui-stepper__unit">{{ unit }}</span>
         </span>
       </div>
 
@@ -139,7 +139,7 @@ onBeforeUnmount(() => {
 .ui-stepper {
   /* 四档按约 1.29 倍等比递进：11 / 14.2 / 18.3 / 23.6px；舞台高度用 em 等比。 */
   --stepper-value-size: 0.86rem;
-  --stepper-stage-h: calc(var(--stepper-value-size) * 1.7);
+  --stepper-stage-h: calc(var(--stepper-value-size) * 1.95);
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -218,11 +218,11 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
-/* 数字 + 单位在同一个行内流里，单位跟着数字宽度自然移动。 */
+/* flow 只按数字宽度定尺寸并居中；单位绝对挂在数字右侧，不影响居中。 */
 .ui-stepper__flow {
+  position: relative;
   display: inline-flex;
   align-items: flex-end;
-  gap: 3px;
   max-width: 100%;
 }
 
@@ -237,9 +237,11 @@ onBeforeUnmount(() => {
 }
 
 .ui-stepper__unit {
-  display: inline-block;
+  position: absolute;
+  left: 100%;
+  bottom: 0.08em;
+  margin-left: 3px;
   line-height: 1.05;
-  padding-bottom: 0.06em;
   color: var(--on-surface-variant);
   font-size: max(0.62rem, calc(var(--stepper-value-size) * .52));
   font-weight: 500;

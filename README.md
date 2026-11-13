@@ -62,6 +62,8 @@ const options = [
 
 搜索与状态：`UiSearchField`（图标原地形变）
 
+交互基座：`UiMorphPanel`（泛用「按钮 ⇄ 任意组件」形变容器）、`UiWheel`（通用多列波轮基座，时间 / 日期波轮共用）
+
 布局与卡片：`UiAvatar` `UiEmptyState` `ExpandableCard` `RouteExpandCard`
 
 组合式函数：`usePress`（按压反馈）、`useMorphWindow`（从输入框形变成浮动窗口）

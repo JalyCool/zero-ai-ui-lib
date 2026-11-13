@@ -88,6 +88,12 @@ const gaugeValue = ref(72)
 const visitDate = ref('')
 const visitTime = ref('09:30')
 const timePresets = ['07:00', '09:30', '12:00', '18:00']
+const timePrecision = ref('m')
+const timePrecisionOptions = [
+  { label: '时', value: 'h' },
+  { label: '时分', value: 'm' },
+  { label: '时分秒', value: 's' }
+]
 const visitRange = ref({ start: '', end: '' })
 const wheelDate = ref('')
 const visitRangeTime = ref({ start: '09:00', end: '18:00' })
@@ -359,7 +365,8 @@ onMounted(() => showToast('info'))
           <span class="lib-cell__label">日历 / 时间滚轮</span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiDatePicker v-model="visitDate" label="回访日期" />
-            <UiTimePicker v-model="visitTime" label="回访时间" :presets="timePresets" />
+            <UiSegmented v-model="timePrecision" layout="one-line" label="时间精度" :options="timePrecisionOptions" />
+            <UiTimePicker v-model="visitTime" label="回访时间" :precision="timePrecision" :presets="timePresets" />
           </div>
           <span class="lib-cell__note">±3 天显示称呼；滚轮高亮块固定在中间，移动的是数字层。</span>
         </div>

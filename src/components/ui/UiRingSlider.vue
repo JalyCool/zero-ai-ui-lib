@@ -80,31 +80,57 @@ function angleToFraction(angle) {
   return normalized / 360
 }
 
-function pointerToValue(event) {
+/* 屏幕角度（atan2，0 = 右侧，顺时针为正，y 向下）转成「从顶部起顺时针 0..360」。 */
+function angleFromTop(event) {
   const rect = ringEl.value?.getBoundingClientRect()
-  if (!rect || !rect.width) return shown.value
+  if (!rect || !rect.width) return null
   const dx = event.clientX - (rect.left + rect.width / 2)
   const dy = event.clientY - (rect.top + rect.height / 2)
-  /* 屏幕角度（atan2，0 = 右侧，顺时针为正，y 向下）转成「从顶部起顺时针」。 */
   const screen = (Math.atan2(dy, dx) * 180) / Math.PI
-  const fromTop = (screen + 90 + 360) % 360
-  return props.min + angleToFraction(fromTop) * range.value
+  return (screen + 90 + 360) % 360
+}
+
+/* 拖拽用累积角（解绕）：满量程圆环的 0% 与 100% 在接缝同一个位置，
+   按绝对角度取值会在接缝处从 100% 掉回 0%。改成每帧只累加指针的
+   最短角位移（折到 ±180°），总角夹在 [0, 360]：越过上接缝停在 100%，
+   反向拖回才下降 —— 与手在环上走的直觉一致。 */
+let dragAccum = 0
+let dragLastAngle = 0
+
+function beginDrag(event) {
+  const angle = angleFromTop(event)
+  if (angle === null) return
+  /* 按下即跳到指针位置，再以该点为累积原点。 */
+  shown.value = sanitize(props.min + angleToFraction(angle) * range.value)
+  dragAccum = ((shown.value - props.min) / range.value) * 360
+  dragLastAngle = angle
+  commit()
+}
+
+function moveDrag(event) {
+  const angle = angleFromTop(event)
+  if (angle === null) return
+  let delta = angle - dragLastAngle
+  if (delta > 180) delta -= 360
+  if (delta < -180) delta += 360
+  dragAccum = Math.min(360, Math.max(0, dragAccum + delta))
+  dragLastAngle = angle
+  shown.value = sanitize(props.min + (dragAccum / 360) * range.value)
+  commit()
 }
 
 function onPointerDown(event) {
   if (event.button !== undefined && event.button !== 0 && event.pointerType === 'mouse') return
   dragging.value = true
   try { ringEl.value?.setPointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
-  shown.value = sanitize(pointerToValue(event))
-  commit()
+  beginDrag(event)
   emit('drag-start')
   event.preventDefault()
 }
 
 function onPointerMove(event) {
   if (!dragging.value) return
-  shown.value = sanitize(pointerToValue(event))
-  commit()
+  moveDrag(event)
   event.preventDefault()
 }
 
