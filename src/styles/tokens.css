@@ -1,0 +1,166 @@
+/* ============================================================
+   设计变量
+   ============================================================ */
+:root {
+  --radius-scale: 1;
+  --r-card: 22px;
+  --r-metric: 18px;
+  --r-button: 14px;
+  --r-list: 18px;
+  --r-preview: 16px;
+
+  --density: 0.93;
+  --space-gap: 18.6px;
+  --space-card: 14.88px;
+  --space-metric: 13.02px;
+  --space-item: 11.16px;
+
+  --border-w: 0.75px;
+  --focus-w: 2px;
+
+  /* 按钮尺寸档：形变菜单等新按钮类控件统一从这里取高度、内边距与字号 */
+  --btn-h-sm: 28px;
+  --btn-h-md: 34px;
+  --btn-h-lg: 42px;
+  --btn-pad-sm: 5px 8px;
+  --btn-pad-md: 7px 10px;
+  --btn-pad-lg: 10px 14px;
+  --btn-fs-sm: var(--fs-micro);
+  --btn-fs-md: var(--fs-tiny);
+  --btn-fs-lg: var(--fs-small);
+
+  --fs-h1: 1.35rem;
+  --fs-value: 1.2rem;
+  --fs-big: 1.1rem;
+  --fs-body: .86rem;
+  --fs-small: .78rem;
+  --fs-tiny: .68rem;
+  --fs-micro: .62rem;
+
+  --w-heading: 650;
+  --w-label: 600;
+  --w-body: 400;
+  --w-strong: 600;
+
+  --line-height: 1.4;
+  --letter-spacing: 0;
+
+  --elev-card: none;
+  --elev-sheet: none;
+  --elev-tip: none;
+
+  --press-scale: 0.97;
+  --press-card-scale: 0.985;
+
+  --spring-feedback: cubic-bezier(.25,.1,.25,1);
+  --spring-feedback-dur: 0.5s;
+  --spring-view: cubic-bezier(.25,.1,.25,1);
+  --spring-view-dur: 0.55s;
+  --spring-sheet: cubic-bezier(.25,.1,.25,1);
+  --spring-sheet-dur: 0.6s;
+  --spring-expand: cubic-bezier(.25,.1,.25,1);
+  --spring-expand-dur: 0.6s;
+  --spring-fade: cubic-bezier(.25,.1,.25,1);
+  --spring-fade-dur: 0.3s;
+  --spring-exit: cubic-bezier(.25,.1,.25,1);
+  --spring-exit-dur: 0.4s;
+
+  --t-feedback: var(--spring-feedback-dur) var(--spring-feedback);
+  --t-view: var(--spring-view-dur) var(--spring-view);
+  --t-sheet: var(--spring-sheet-dur) var(--spring-sheet);
+  --t-expand: var(--spring-expand-dur) var(--spring-expand);
+  --t-panel: var(--t-view);
+  --t-fade: var(--spring-fade-dur) var(--spring-fade);
+  --t-exit: var(--spring-exit-dur) var(--spring-exit);
+
+  --accent: var(--primary);
+  --accent-container: var(--primary-container);
+  --on-accent-container: var(--on-primary-container);
+
+  --icon-bg: var(--primary-container);
+  --icon-fg: var(--on-primary-container);
+
+  --background: #faf9fd;
+  --surface: #faf9fd;
+  --surface-container-low: #f4f3f7;
+  --surface-container: #eeedf1;
+  --surface-container-high: #e9e7eb;
+  --surface-container-highest: #e3e2e6;
+  --on-surface: #1b1b1f;
+  --on-surface-variant: #46464f;
+  --outline: #777680;
+  --outline-variant: #c7c5d0;
+  --primary: #3f5f90;
+  --on-primary: #ffffff;
+  --primary-container: #d7e2ff;
+  --on-primary-container: #001b3c;
+  --secondary: #545f71;
+  --secondary-container: #d8e3f8;
+  --on-secondary-container: #111c2b;
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+
+  --ui-success: #15803d;
+  --ui-warning: #b45309;
+  /* ANSI 终端调色板（UiTerminalOutput）：随主题双档。 */
+  --ansi-black: #46464f;
+  --ansi-red: #ba1a1a;
+  --ansi-green: #15803d;
+  --ansi-yellow: #b45309;
+  --ansi-blue: #3f5f90;
+  --ansi-magenta: #7b5294;
+  --ansi-cyan: #267585;
+  --ansi-white: #6b6b73;
+  --ansi-bright-black: #777680;
+  --ansi-bright-red: #d3403b;
+  --ansi-bright-green: #2f9e57;
+  --ansi-bright-yellow: #d1861f;
+  --ansi-bright-blue: #5b7fb5;
+  --ansi-bright-magenta: #9a72b5;
+  --ansi-bright-cyan: #3f95a8;
+  --ansi-bright-white: #1b1b1f;
+}
+
+[data-appearance="dark"],
+[data-appearance="black"] {
+  --ui-success: #4ade80;
+  --ui-warning: #fbbf24;
+  --ansi-black: #6b6b73;
+  --ansi-red: #fb7185;
+  --ansi-green: #4ade80;
+  --ansi-yellow: #fbbf24;
+  --ansi-blue: #7da2d8;
+  --ansi-magenta: #c39ad9;
+  --ansi-cyan: #5ecbd8;
+  --ansi-white: #d0d0d8;
+  --ansi-bright-black: #8b8b94;
+  --ansi-bright-red: #ffa3ad;
+  --ansi-bright-green: #86efac;
+  --ansi-bright-yellow: #fde047;
+  --ansi-bright-blue: #a4c2f7;
+  --ansi-bright-magenta: #ddb8f0;
+  --ansi-bright-cyan: #8fe3ee;
+  --ansi-bright-white: #faf9fd;
+}
+
+[data-accent="vivid"] {
+  --accent: var(--primary);
+  --accent-container: var(--primary-container);
+  --on-accent-container: var(--on-primary-container);
+}
+[data-accent="balanced"] {
+  --accent: var(--secondary);
+  --accent-container: var(--secondary-container);
+  --on-accent-container: var(--on-secondary-container);
+  --icon-bg: var(--surface-container);
+  --icon-fg: var(--on-surface-variant);
+}
+[data-accent="minimal"] {
+  --accent: var(--on-surface);
+  --accent-container: var(--surface-container);
+  --on-accent-container: var(--on-surface);
+  --icon-bg: transparent;
+  --icon-fg: var(--on-surface-variant);
+}
+[data-icon="plain"] { --icon-bg: transparent; --icon-fg: var(--on-surface-variant); }
+[data-icon="subtle"] { --icon-bg: var(--surface-container); --icon-fg: var(--on-surface-variant); }

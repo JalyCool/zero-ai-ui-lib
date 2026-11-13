@@ -1,0 +1,14 @@
+/* ============================================================
+   我的：设置行
+   ============================================================ */
+.settings { display: flex; flex-direction: column; gap: 2px; }
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(15px * var(--density)) 4px;
+  border-bottom: var(--border-w) solid var(--outline-variant);
+  font-size: var(--fs-body);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row .val { color: var(--on-surface-variant); font-size: var(--fs-small); }

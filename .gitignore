@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-app/
+.dsh-project-memory/
+zero_ai_ui_flutter/
+*.log
+.t1.txt
+t1.txt

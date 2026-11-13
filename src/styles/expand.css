@@ -1,0 +1,261 @@
+/* ============================================================
+   卡片展开
+   直接复用被点击的卡片元素：卡片表面从原位置生长为全屏。
+   原有内容与展开内容都保留在 DOM 中，只切换透明度和模糊，
+   不会销毁带有出场动画的元素，也不会在结束时让背景/描边跳变。
+   模糊只作用于卡片内部内容，不影响页面背景。
+   ============================================================ */
+.card.is-expanded {
+  cursor: default;
+  transform: none;
+}
+
+.expand-placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* 原有内容：始终保留，只隐藏。list-item 的包装层复刻原来的 flex 布局。 */
+.card-inner {
+  transition:
+    opacity 300ms ease,
+    filter 320ms ease;
+}
+.list-item > .card-inner {
+  display: flex;
+  align-items: center;
+  gap: calc(12px * var(--density));
+  flex: 1;
+  min-width: 0;
+}
+
+.card.is-expanded > .card-inner,
+.metric.is-expanded > .card-inner,
+.list-item.is-expanded > .card-inner {
+  opacity: 0;
+  filter: blur(8px);
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    filter 240ms ease;
+}
+.card.is-closing > .card-inner,
+.metric.is-closing > .card-inner,
+.list-item.is-closing > .card-inner {
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    opacity 280ms ease 60ms,
+    filter 280ms ease 60ms;
+}
+
+/* 展开内容：默认隐藏但保留，展开时显示。 */
+.expand-scroller {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  visibility: hidden;
+  pointer-events: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+[data-expand].is-expanded > .expand-scroller,
+[data-expand].is-closing > .expand-scroller {
+  visibility: visible;
+  pointer-events: auto;
+}
+.expand-scroller::-webkit-scrollbar { display: none; }
+
+/* 展开后的内容：淡入、轻微上移、从模糊到清晰 */
+.expand-content {
+  width: 100%;
+  min-height: 100%;
+  padding: calc(20px * var(--density)) calc(18px * var(--density)) 40px;
+  box-sizing: border-box;
+  color: var(--on-surface);
+  opacity: 0;
+  transform: translate3d(0, 12px, 0) scale(.97);
+  filter: blur(10px);
+  transform-origin: center top;
+  will-change: opacity, transform, filter;
+  transition:
+    opacity 320ms ease 80ms,
+    transform var(--spring-expand-dur) var(--spring-expand) 80ms,
+    filter 360ms ease 80ms;
+}
+[data-expand].is-expanded .expand-content {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+}
+[data-expand].is-closing .expand-content {
+  opacity: 0;
+  transform: translate3d(0, 6px, 0) scale(.985);
+  filter: blur(8px);
+  transition:
+    opacity 220ms ease,
+    transform var(--spring-exit-dur) var(--spring-exit),
+    filter 240ms ease;
+}
+
+.expand-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-top: 4px;
+}
+.expand-close {
+  width: 40px;
+  height: 40px;
+  border-radius: calc(12px * var(--radius-scale));
+  border: none;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background var(--t-fade), transform var(--t-feedback),
+              border-radius var(--t-panel);
+}
+.expand-close:active { transform: scale(var(--press-scale)); }
+.expand-close svg { width: 18px; height: 18px; }
+.expand-topbar .crumb {
+  font-size: var(--fs-tiny);
+  color: var(--on-surface-variant);
+  font-weight: 550;
+  letter-spacing: .02em;
+}
+
+.expand-title {
+  font-size: 1.6rem;
+  font-weight: var(--w-heading);
+  letter-spacing: -.015em;
+  margin-bottom: 6px;
+}
+.expand-subtitle {
+  font-size: var(--fs-small);
+  color: var(--on-surface-variant);
+  margin-bottom: 24px;
+}
+.expand-section { margin-bottom: 28px; }
+.expand-section-title {
+  font-size: var(--fs-small);
+  font-weight: var(--w-label);
+  color: var(--on-surface-variant);
+  letter-spacing: .02em;
+  margin-bottom: 12px;
+}
+.expand-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.expand-hero .num {
+  font-size: 2.8rem;
+  font-weight: var(--w-heading);
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+.expand-hero .unit {
+  font-size: var(--fs-body);
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+.expand-chart-card {
+  background: var(--surface-container-low);
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(var(--r-card) * var(--radius-scale));
+  padding: calc(var(--space-card) * 1.1);
+  margin-bottom: 12px;
+}
+.expand-metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.expand-metric-cell {
+  background: var(--surface-container-low);
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(var(--r-metric) * var(--radius-scale));
+  padding: 14px;
+}
+.expand-metric-cell .lbl {
+  font-size: var(--fs-tiny);
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+.expand-metric-cell .val {
+  font-size: 1.2rem;
+  font-weight: var(--w-heading);
+  margin-top: 4px;
+  letter-spacing: -.01em;
+}
+.expand-metric-cell .val small {
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  margin-left: 2px;
+}
+.expand-desc {
+  font-size: var(--fs-body);
+  color: var(--on-surface-variant);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+.timeline { display: flex; flex-direction: column; gap: 2px; }
+.timeline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: var(--border-w) solid var(--outline-variant);
+  font-size: var(--fs-body);
+}
+.timeline-row:last-child { border-bottom: none; }
+.timeline-row .t {
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-tiny);
+  color: var(--on-surface-variant);
+  min-width: 56px;
+}
+.timeline-row .lbl { flex: 1; margin-left: 12px; }
+.timeline-row .val {
+  font-size: var(--fs-small);
+  font-weight: var(--w-strong);
+  font-family: ui-monospace, monospace;
+}
+.expand-chart {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+.expand-chart .grid-line {
+  stroke: var(--outline-variant);
+  stroke-width: 1;
+  opacity: .5;
+}
+/* ============================================================
+   桌面端：展开卡片变成居中模态
+   卡片不再铺满整页，而是生长成居中的面板；背景压暗并轻微模糊。
+   ============================================================ */
+.expand-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 290;
+  background: rgba(0, 0, 0, .16);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  opacity: 0;
+  transition: opacity var(--t-fade),
+              -webkit-backdrop-filter 420ms ease,
+              backdrop-filter 420ms ease;
+}
+.expand-backdrop.is-open {
+  opacity: 1;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}

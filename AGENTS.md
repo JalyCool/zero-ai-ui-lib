@@ -1,0 +1,286 @@
+# AGENTS.md — 用 zero-ai-ui-lib 从零做一个新项目
+
+这份文档写给「要基于这套 UI 框架新建一个应用」的 AI / 协作者。照着做即可，不需要读组件源码。
+包已发布到 npm：`zero-ai-ui-lib`（作者 Jaly）。
+
+## 0. 这套框架长什么样
+
+- **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 0.75px 细描边 + 圆角分档」，不用阴影。
+- **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
+- **交付形态**：54 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 时长文本）统一走 `UiRollNumber` 的上下渐变滚动；拖拽等连续变化传 `instant` 直接换值。
+
+## 1. 五分钟起步
+
+```bash
+mkdir my-app && cd my-app
+npm init -y
+npm i vue vue-router zero-ai-ui-lib
+npm i -D vite @vitejs/plugin-vue
+```
+
+最小目录：
+
+```text
+my-app/
+├─ index.html
+├─ vite.config.js
+└─ src/
+   ├─ main.js
+   ├─ App.vue          # 外壳：#scrollArea + 底部 tabbar
+   ├─ shell.css        # 应用外壳样式（库不提供）
+   ├─ router/index.js
+   └─ views/*.vue
+```
+
+`index.html`
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>My App</title>
+  <link rel="icon" href="data:," />
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+```
+
+`src/main.js`
+
+```js
+import { createApp } from 'vue'
+import 'zero-ai-ui-lib/style.css'
+import './shell.css'
+import App from './App.vue'
+import router from './router'
+
+createApp(App).use(router).mount('#app')
+```
+
+`vite.config.js`（`host: '0.0.0.0'` 才能被局域网设备访问）
+
+```js
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+export default defineConfig({
+  plugins: [vue()],
+  server: { host: '0.0.0.0', port: 5173, strictPort: true }
+})
+```
+
+`src/shell.css`（直接抄，与库的视觉语言一致）
+
+```css
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--background);
+  color: var(--on-surface);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
+  line-height: var(--line-height);
+  overflow: hidden;
+  transition: background var(--t-fade), color var(--t-fade);
+}
+#app { height: 100dvh; }
+.app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; }
+#scrollArea { flex: 1; overflow-y: auto; padding: 20px clamp(16px, 4vw, 48px) 110px; scrollbar-width: none; }
+#scrollArea::-webkit-scrollbar { display: none; }
+.view { display: flex; flex-direction: column; gap: var(--space-gap); min-width: 0; }
+```
+
+> `#scrollArea` 这个 id 有含义：`UiModal` / `UiBottomSheet` / `ExpandableCard` 打开时锁它的滚动，
+> 关闭时恢复；换名字这些组件就锁不住页面。滚动容器是它，不是 `body`。
+
+## 2. 组件清单
+
+```js
+import {
+  UiButton, UiChip, UiBadge, UiAvatar, UiSegmented, UiStepper, UiRating,
+  UiInput, UiTextarea, UiSelect, UiSwitch, UiCheckbox, UiRadioGroup, UiSlider,
+  UiDatePicker, UiTimePicker, UiModal, UiBottomSheet, UiAccordion,
+  UiAlert, UiTooltip, UiToastHost, UiEmptyState, UiSpinner, UiSkeleton,
+  UiProgress, UiRingProgress, UiGauge, UiSparkline, UiBarChart, UiLineChart,
+  UiHeatmap, UiFloatingMenu, UiToolMenu,
+  UiRangeDatePicker, UiWheelDatePicker, UiRangeTimePicker,
+  UiRangeSlider, UiRingSlider, UiGaugeSlider, UiRollNumber,
+  UiCodeEditor, UiTerminalOutput, UiTagInput, UiKeyValueEditor, UiSchemaForm,
+  UiDataTable, UiTreeView, UiVirtualList, UiImageViewer, UiFileDropzone,
+  ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
+} from 'zero-ai-ui-lib'
+```
+
+| 组件 | 用法 |
+| --- | --- |
+| `UiButton` | `variant`: primary / tonal / outline / text / danger / icon；`size`: sm / md / lg；`block` `loading` `disabled` |
+| `UiChip` / `UiBadge` | chip 可 `selected` `removable` `dot`；badge `tone`: primary / success / warning / danger |
+| `UiSegmented` | `v-model` + `options`；`label` 在左上角，`layout="one-line"` 标签与控件同行 |
+| `UiStepper` | `v-model` 数字 + `unit` `min` `max` `step`；`size`(sm/md/lg/xl)、`controls`(sides/bottom)、`roll`(standard/reverse)、`fieldLabel` |
+| `UiSelect` | 自绘下拉：`v-model` + `:options="[{label,value}]"`；点输入框原地展开成列表 |
+| `UiSlider` | `v-model`；`stops` 数组或 `snapCount` 等分 → 拖动跟手、松手弹簧吸附；`@snap="({index, value}) => …"`；刻度：`show-scale` + `major-ticks`（大刻度区间数）+ `minor-ticks`（大刻度间的小刻度份数）+ `precision`（小数位）。刻度在轨道上方、短浅线，小刻度短大刻度长；数值只在最小值 / 最大值（无刻度时）或大刻度位置显示；`show-bubble` 拖拽时把手上方浮当前值；弹簧参数收进 `spring` 对象（`{ stiffness, dampingRatio, flingTime, rubber, maxOverscroll }`），旧的 5 个独立 props 已废弃仍兼容 |
+| `UiDatePicker` / `UiTimePicker` | `v-model` 字符串（`YYYY-MM-DD` / `HH:mm`）；贴着输入框展开，不压暗背景 |
+| `UiModal` | `v-model`；插槽 `#header` / `#title` / 默认 / `#footer`，作用域都带 `close`；遮罩压暗 + 5px 模糊 |
+| `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽 |
+| `UiFloatingMenu` | `v-model`(当前值) + `:items` + `@select`；按钮原地长成浮动面板 |
+| `UiToolMenu` | 只有 `@select`，**回传整个 item 对象**（不是 value），无 v-model，选中值自己同步到 `label` |
+| `UiGauge` | `:value` 0–100 + `label`；220° 圆弧，大数字居中（数字变化走统一滚动动效） |
+| `UiRingProgress` | `:value` 0–100、`label`、`size`(默认 116)、`stroke`(默认 10) |
+| `UiRangeSlider` | `v-model` 为 `[lo, hi]` 数组 + `min max step precision unit`；点击轨道移动更近的拖拽头，距离相等默认移左侧（lo）；两头互不交叉且至少间隔一个步进（把手不重合）；读数走 `UiRollNumber` |
+| `UiRingSlider` | `v-model` 0–100；圆环从 12 点顺时针 360°，按下即拖拽；中心数字滚动，`size stroke label unit` 同 `UiRingProgress` |
+| `UiGaugeSlider` | `v-model` 0–100；UiGauge 同款 220° 弧 + 拖拽 thumb，中心数字复用仪表盘显示逻辑；`show-scale` 显示底部 0/100 刻度行 |
+| `UiRangeDatePicker` | `v-model` 为 `{ start, end }`（`YYYY-MM-DD`）；第一次点选起点、第二次点选终点，区间铺浅主色底、两端实心；`清除` 回传空对象 |
+| `UiWheelDatePicker` | `v-model` 字符串（`YYYY-MM-DD`）；年 / 月 / 日三列滚轮（高亮块固定中间），`startYear endYear` 控制年范围，日列随年月伸缩 |
+| `UiRangeTimePicker` | `v-model` 为 `{ start, end }`（`HH:mm`）；内部直接拼两个 `UiTimePicker`（`label` 传空即不显示标签行）+ 浅色箭头；时长文本（1h03m03s 规则）显示在箭头正上方，精度由 `precision`（h/m/s，最小显示单位）决定 |
+| `UiRollNumber` | 全库统一数字变化动效：`value`（数字或已格式化字符串）、`directionKey`（参与大小比较）、`instant`（拖拽等连续变化直接换值）、`step`；可复用 `formatDuration / formatDurationBetween / parseClockTime`（`core/duration`） |
+| `UiAlert` | `tone`: warning / danger / success / info；`title`；默认插槽放正文 |
+| `UiEmptyState` | `title` `description` + `#action` 插槽 |
+| `UiToastHost` | `<UiToastHost ref="toast" />` 后 `toast.value.show('文案', 'success' | 'info' | 'danger')` |
+| `RouteExpandCard` | 见第 4 节 |
+| `UiCodeEditor` | `v-model` + `language`(js/json/css/html/md)；行号、Tab 插空格、`format-json` 失焦格式化；`lines` 可视行数 |
+| `UiTerminalOutput` | `:text` 原始日志（自动解析 ANSI 16/256 色）；`follow` 自动贴底，向上翻看自动暂停；`复制全部` |
+| `UiTagInput` | `v-model` 字符串数组；回车 / 逗号 / Tab 生成 chip，退格删末尾，重复自动去重 |
+| `UiKeyValueEditor` | `v-model` 为 `[{ key, value }]`；headers / env 录入用；`secret` 把值列变密码点 |
+| `UiSchemaForm` | `:schema` JSON Schema（properties / required / enum / type）自动生成表单，`@submit` 回传收敛后的值 |
+| `UiDataTable` | `:columns` `{ key, label, width?, align?, sortable? }` + `:rows`；粘性表头、点表头三态排序、`max-height` 内滚动、`#cell-<key>` 插槽 |
+| `UiTreeView` | `:nodes` 递归树（folder / file / md / json / image 图标分色），箭头旋转变形、`default-open` 初始展开 |
+| `UiVirtualList` | 定高虚拟滚动（`item-height` `height`），几百上千行只渲染窗口；`swipe-select` 横向拖过 44px 切换选中（滑动多选），松手回弹 |
+| `UiImageViewer` | `v-model` 开关 + `:src`；滚轮 / 按钮缩放 25–400%、旋转、拖拽平移、下载原图、Esc 关闭 |
+| `UiFileDropzone` | 拖入 / 点击收 `File` 列表，`accept` `max-size`(MB) 过滤，不合格文件走 `@reject` |
+| `UiSearchField` | 图标 ⇄ 输入框原地形变；Enter `@search`，Esc 先清空后收起 |
+| `confirmDialog` | `const ok = await confirmDialog({ title, message, danger })`，Esc=取消 Enter=确认，统一替代 `window.confirm` |
+| `UiToastHost` | 除 `show / dismiss` 外补语义 API：`success / error / warning / info`，`max` 条数外自动排队 |
+
+通用约定：所有浮层都能点外部收起、按 Esc 收起；`items` 形如 `[{ value, label, description?, tone? }]`。
+
+## 3. 交互约定（照抄即可，别自己发明）
+
+- **按下必收缩**：可展开按钮按下时 `scale(.97)`，松手才展开；长按保持收缩态。
+- **内容替换**：旧内容留在原位 `opacity→0 + blur(8px)`，新内容从 `blur(10px)` 浮现；外壳只做几何（宽高/圆角/底色）过渡。
+- **可打断**：`UiToolMenu` / `UiFloatingMenu` / `UiSelect` / `UiDatePicker` / `UiTimePicker` 在收起动画途中再次点击，会直接反向长回展开态。
+- **不占位的形变**：`UiSelect` / 日期 / 时间选择器展开时临时改固定定位并插入占位块，父容器**不要** `overflow: hidden`。
+- **数字滑轨**（`UiStepper`）：旧值按「新旧值大小关系」方向滑出并模糊，新值从反向滑入，位移量随变化量缩放；单位不滚动、与数字底部对齐；到上下限再点有轻微「碰壁」回弹。
+- **滚轮**（`UiTimePicker`）：高亮块固定在中间不动，点击和滑动移动的是背后的数字层。
+- **确认统一走 `confirmDialog`**：应用里不要再调 `window.confirm`，样式断层且阻塞；`await` 拿到布尔结果即可。
+- **动效令牌**：不要写死 duration，用 `--t-fade` / `--t-panel` / `--t-sheet` / `--t-exit`；弹簧曲线是 `--spring-*`。`prefers-reduced-motion` 时库内已自动降级。
+
+## 4. 可展开卡片（列表 → 详情）
+
+路由约定：**父路由 = 页面，子路由 = 某张卡片的展开态**，URL 保持 `父/子` 层级，浏览器后退即收起。
+
+```js
+// router/index.js
+import { EmptyRoute } from 'zero-ai-ui-lib'
+
+{
+  path: '/records',
+  name: 'records',
+  component: RecordsView,
+  children: [
+    // /records/:recordId —— 子路由只需要占位组件
+    { path: ':recordId', name: 'records-record', component: EmptyRoute, meta: { expandKey: 'record' } }
+  ]
+}
+```
+
+```vue
+<RouteExpandCard
+  section="records"
+  :card-key="record.id"
+  route-name="records-record"
+  :params="{ recordId: record.id }"
+  tag="div"
+  variant="list-item"
+  :content="ExpandRecord"
+  :content-props="{ title: record.title, meta: record.date }"
+>
+  <div class="list-body"><b>{{ record.title }}</b></div>
+</RouteExpandCard>
+```
+
+- `variant`：`card`（整卡）/ `metric`（格子）/ `list-item`（列表行）——三者的背景、描边、圆角、内边距都由库样式提供，应用只管往里塞内容。
+- 展开内容里放关闭按钮：`<UiButton data-close>返回</UiButton>`。
+- 卡片内可交互元素（按钮、输入框、图表）默认已被忽略，不会误触发展开；额外元素加 `data-no-expand`。
+- 桌面端（≥900px）展开成居中模态 + 背景压暗模糊；移动端铺满整屏。
+- 更多细节见仓库 `docs/route-expand-card.md`。
+
+## 5. 主题
+
+库自带浅色令牌。换主题只改 CSS 变量（放应用根节点）：
+
+```css
+:root {
+  --primary: #3f5f90;
+  --primary-container: #d7e2ff;
+  --on-primary-container: #001b3c;
+  --background: #faf9fd;
+  --surface-container-low: #f4f3f7;
+  --surface-container-high: #e9e7eb;
+  --on-surface: #1b1b1f;
+  --on-surface-variant: #46464f;
+  --outline-variant: #c7c5d0;
+  --radius-scale: 1;
+  --press-scale: 0.97;
+}
+```
+
+深色：`--background` 取很深的色、`--on-surface` 取浅色、`--surface-container-*` 依次调亮一档，并给 `<html>` 设 `color-scheme: dark`。
+首帧防闪：在 `<head>` 里同步读 localStorage 落 `--background` 与 `data-appearance`，别等模块脚本。
+
+## 6. 响应式 / 桌面端
+
+库内组件本身是响应式的，页面布局自己写：
+
+```css
+@media (min-width: 900px) {
+  .app { max-width: none; }
+  #scrollArea { padding: 24px clamp(24px, 4vw, 64px) 110px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .grid > .feature { grid-column: 1 / -1; }
+}
+```
+
+底部导航：移动端固定底部居中（最大宽 480px）；桌面端可以把**同一套外观**改成贴左侧竖排 —— 只换排列方向，别换视觉参数。
+
+## 7. 日期与数字显示约定
+
+- 相对今天 **±3 天以内**只显示称呼：大前天 / 前天 / 昨天 / 今天 / 明天 / 后天 / 大后天，**不显示具体日期**。
+- 与今天**同一年**不显示年份，只显示「12月17日」。
+- 需要折行时从「年」之后断开，「X月X日」尽量保持在同一行（拆成两个 `white-space: nowrap` 的 inline-block）。
+- 数字一律 `font-variant-numeric: tabular-nums`；大数字用 `--w-heading` + 轻微负字距。
+
+## 8. 常见坑
+
+1. `inert`：库用 `inert` 屏蔽未展开面板的焦点，需要 Chrome 102+ / Safari 15.5+。
+2. 浮层都是 `position: fixed`：祖先元素不要加 `transform` / `filter` / `will-change`，否则会被困住并被裁剪。
+3. 忘写外壳高度（`#app` / `.app` / `#scrollArea`）→ 弹层贴不到底。
+4. 骨架里不带 `<link rel="icon" href="data:," />` 会产生一条 404 console error，和「无报错」验收冲突。
+5. 本机 Vite 的 `localhost` 可能只监听 `::1`：用 `server.host = '0.0.0.0'`，验收走 `http://127.0.0.1:<port>`。
+6. pnpm 用本地 tarball 时先复制进项目（`vendor/*.tgz`）再写 `file:vendor/...`；指向仓库外路径会随文件移动而失效。
+7. `UiToastHost` 在最上层，底部面板打开时可能盖住表单底部，可在打开前 dismiss。
+8. `UiToolMenu` 展开时会在文档流里占位、把下方内容推开；不想位移就换 `UiFloatingMenu`。
+
+## 9. 交付前自查
+
+- `npm run dev` 起得来，控制台 0 error；
+- 至少用 6 个库组件，且没有手写重复的按钮 / 输入框样式；
+- 下拉、日期、时间、两类形变菜单：能展开、能选、能收起，收起途中能打断；
+- 弹窗打开时背景压暗模糊，关闭后页面能滚动；
+- 1200px 宽内容铺满、无横向滚动；375px 宽不溢出；
+- 日期显示符合第 7 节（相对称呼 / 同年省年份 / 折行位置）；
+- TS 项目直接 `import { … } from 'zero-ai-ui-lib'` 有 props 类型（包自带 d.ts），不要再写 `declare module` 兜底。
+
+## 10. 本仓库（库源码）相关
+
+```bash
+npm run build        # 演示应用 -> dist-app/
+npm run preview      # 预览 dist-app
+npm run build:lib    # 库产物 -> dist/
+```
+
+发布新版本需要人工确认（改 `package.json` 的 `version` → `npm publish`），不要自动执行。

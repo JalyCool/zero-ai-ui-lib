@@ -1,0 +1,166 @@
+/* ============================================================
+   卡片
+   ============================================================ */
+.card {
+  background: var(--surface-container-low);
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(var(--r-card) * var(--radius-scale));
+  padding: var(--space-card);
+  box-shadow: var(--elev-card);
+  cursor: default;
+  transition: background var(--t-fade), border-color var(--t-fade),
+              border-radius var(--t-panel), box-shadow var(--t-fade),
+              transform var(--t-feedback);
+}
+.card[data-expand] { cursor: pointer; }
+.card--feature { padding: calc(var(--space-card) * 1.2); }
+
+.card-title {
+  font-size: var(--fs-small);
+  font-weight: var(--w-label);
+  letter-spacing: .02em;
+  color: var(--on-surface-variant);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-title .muted { font-weight: 500; font-size: var(--fs-tiny); }
+
+/* ============================================================
+   指标
+   ============================================================ */
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: calc(12px * var(--density)); }
+.metric {
+  background: var(--surface-container-low);
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(var(--r-metric) * var(--radius-scale));
+  padding: var(--space-metric);
+  box-shadow: var(--elev-card);
+  cursor: default;
+  transition: background var(--t-fade), border-color var(--t-fade),
+              border-radius var(--t-panel), box-shadow var(--t-fade),
+              transform var(--t-feedback);
+}
+.metric[data-expand] { cursor: pointer; }
+.metric .label { font-size: var(--fs-tiny); color: var(--on-surface-variant); font-weight: 500; }
+.metric .value { font-size: var(--fs-value); font-weight: var(--w-heading); margin-top: 4px; letter-spacing: -.01em; }
+.metric .value small { font-size: var(--fs-micro); font-weight: 500; color: var(--on-surface-variant); margin-left: 3px; }
+.metric .trend { font-size: var(--fs-micro); margin-top: 5px; display: inline-flex; align-items: center; gap: 3px; }
+.trend.up { color: var(--accent); }
+.trend.warn { color: var(--error); }
+
+/* ============================================================
+   列表行（ExpandableCard variant="list-item" 的基础外观）
+   背景 / 描边 / 圆角 / 内边距都由库提供，行内放什么内容由应用决定。
+   ============================================================ */
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: calc(12px * var(--density));
+  background: var(--surface-container-low);
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(var(--r-list) * var(--radius-scale));
+  padding: var(--space-item) calc(15px * var(--density));
+  box-shadow: var(--elev-card);
+  cursor: default;
+  transition: background var(--t-fade), border-color var(--t-fade),
+              border-radius var(--t-panel), box-shadow var(--t-fade),
+              transform var(--t-feedback);
+}
+.list-item[data-expand] { cursor: pointer; }
+
+
+/* ============================================================
+   Tab bar
+   ============================================================ */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface-container-low);
+  border-top: var(--border-w) solid var(--outline-variant);
+  display: flex;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  z-index: 20;
+  transition: background var(--t-fade), border-color var(--t-fade);
+}
+.tab {
+  flex: 1;
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 0;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-micro);
+  font-weight: 550;
+  cursor: pointer;
+  border-radius: 14px;
+  transition: color var(--t-fade), transform var(--t-feedback);
+}
+.tab:active { transform: scale(var(--press-scale)); }
+.tab-icon {
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  transition: background var(--t-fade);
+}
+.tab-icon svg { width: 20px; height: 20px; }
+.tab.active { color: var(--accent); }
+.tab.active .tab-icon { background: var(--accent-container); }
+.tab.active .tab-icon svg { color: var(--on-accent-container); }
+
+/* ============================================================
+   可展开卡片的按压反馈
+   仅真正可点击的卡片触发，图表 / 睡眠条等交互区域不触发
+   ============================================================ */
+.card[data-expand].is-pressing,
+.metric[data-expand].is-pressing,
+.list-item[data-expand].is-pressing {
+  transform: scale(var(--press-card-scale));
+}
+
+/* ============================================================
+   Hover（仅鼠标设备，仅可展开内容）
+   ============================================================ */
+@media (hover: hover) and (pointer: fine) {
+  [data-hover="border"] .card[data-expand]:hover,
+  [data-hover="border"] .metric[data-expand]:hover,
+  [data-hover="border"] .list-item[data-expand]:hover {
+    border-color: var(--outline);
+  }
+  [data-hover="surface"] .card[data-expand]:hover,
+  [data-hover="surface"] .metric[data-expand]:hover,
+  [data-hover="surface"] .list-item[data-expand]:hover {
+    background: var(--surface-container);
+  }
+  [data-hover="glow"] .card[data-expand]:hover,
+  [data-hover="glow"] .metric[data-expand]:hover,
+  [data-hover="glow"] .list-item[data-expand]:hover {
+    box-shadow: 0 0 0 3px var(--accent-container);
+  }
+  [data-hover="mix"] .card[data-expand]:hover,
+  [data-hover="mix"] .metric[data-expand]:hover,
+  [data-hover="mix"] .list-item[data-expand]:hover {
+    border-color: var(--outline);
+    background: var(--surface-container);
+  }
+  .bar:hover::after { opacity: 1; transform: translate(-50%, -4px) scale(1); }
+}
+
+/* 收起后的短暂沉降期：避免指针仍停留在卡片上时 hover 背景/描边瞬间接管。 */
+.card.is-settling[data-expand]:hover,
+.metric.is-settling[data-expand]:hover,
+.list-item.is-settling[data-expand]:hover {
+  border-color: var(--outline-variant);
+  background: var(--surface-container-low);
+  box-shadow: var(--elev-card);
+}

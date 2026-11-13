@@ -1,0 +1,6 @@
+/* ============================================================
+   组件库示例页样式已随 ComponentsView.vue 重写迁入 scoped 样式；
+   这里只保留跨页共用的极小工具类，避免全局类名再和示例页打架。
+   ============================================================ */
+.lib-muted { color: var(--on-surface-variant); font-size: var(--fs-tiny); }
+.lib-note { color: var(--on-surface-variant); font-size: var(--fs-micro); line-height: 1.55; }

@@ -1,0 +1,78 @@
+/* ============================================================
+   响应式 & 无障碍降级
+   ============================================================ */
+@media (max-width: 380px) {
+  .swatches { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .expand-content { filter: none; }
+  .card.is-expanded > .card-inner,
+  .metric.is-expanded > .card-inner,
+  .list-item.is-expanded > .card-inner { filter: none; }
+}
+
+/* ============================================================
+   桌面端布局（≥ 900px）
+   内容区铺满窗口宽度；
+   tabbar 还是手机同款（同样的底色、描边、图标胶囊），
+   只是从底部横排改成贴左边的竖排。
+   首页改两列卡片 + 四列指标。
+   ============================================================ */
+@media (min-width: 900px) {
+  .app {
+    max-width: none;
+    width: 100%;
+  }
+
+  /* 竖排 tabbar：位置换成左侧竖条，外观参数全部沿用手机款 */
+  .tabbar {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    transform: none;
+    width: 74px;
+    max-width: none;
+    height: 100dvh;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 10px 8px;
+    border-top: 0;
+    border-right: var(--border-w) solid var(--outline-variant);
+  }
+  .tab { flex: none; width: 100%; }
+
+  #scrollArea {
+    padding: calc(20px * var(--density)) clamp(24px, 4vw, 64px) calc(40px * var(--density))
+             calc(74px + clamp(20px, 3vw, 48px));
+  }
+
+  .view-head { padding: 0; }
+  .view-title { font-size: 1.45rem; }
+
+  /* 首页：两列卡片 + 四列指标 */
+  .view[data-view='home'] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .view[data-view='home'] > .card--feature { grid-column: 1 / -1; }
+  .view[data-view='home'] > .metrics {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* 组件库：可视化两列更紧凑 */
+  .lib-viz-combo { grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); }
+}

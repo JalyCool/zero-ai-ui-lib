@@ -1,0 +1,50 @@
+/* ============================================================
+   活动：列表
+   ============================================================ */
+.list { display: flex; flex-direction: column; gap: calc(10px * var(--density)); }
+/* .list-item 的基础外观已下沉到 components.css（库会打包），这里只保留列表容器。 */
+.list-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: calc(12px * var(--radius-scale));
+  background: var(--icon-bg);
+  color: var(--icon-fg);
+  display: grid;
+  place-items: center;
+  transition: border-radius var(--t-panel), background var(--t-fade), color var(--t-fade);
+}
+.list-icon svg { width: 19px; height: 19px; }
+.list-body { flex: 1; min-width: 0; }
+.list-body b { font-size: var(--fs-body); font-weight: var(--w-strong); display: block; }
+.list-body span { font-size: var(--fs-tiny); color: var(--on-surface-variant); }
+.list-meta { font-size: var(--fs-tiny); font-weight: var(--w-strong); color: var(--on-surface-variant); font-family: ui-monospace, monospace; }
+
+.view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px;
+}
+.view-sub {
+  margin-top: 2px;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-micro);
+  line-height: 1.4;
+}
+.view-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.activity-skeleton .list-item { cursor: default; }
+.skeleton-item { pointer-events: none; }
+.skeleton-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}

@@ -1,0 +1,84 @@
+/* ============================================================
+   新增运动记录
+   ============================================================ */
+.add-sheet-intro {
+  margin: 0 0 12px;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-micro);
+  line-height: 1.55;
+}
+
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-preview {
+  background: var(--surface-container);
+  box-shadow: none;
+}
+.add-preview .list-meta { color: var(--primary); }
+
+.add-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(18px * var(--radius-scale));
+  background: var(--surface-container-low);
+}
+
+.add-panel__title {
+  color: var(--on-surface-variant);
+  font-size: var(--fs-micro);
+  font-weight: var(--w-label);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.add-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.add-field__label {
+  color: var(--on-surface-variant);
+  font-size: var(--fs-tiny);
+  font-weight: var(--w-label);
+}
+
+.add-unit {
+  color: var(--on-surface-variant);
+  font-size: var(--fs-micro);
+  white-space: nowrap;
+}
+
+.add-hint {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-micro);
+  line-height: 1.55;
+}
+
+.add-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+.add-actions .ui-btn--block { flex: 1; }
+
+@media (max-width: 380px) {
+  .add-row { grid-template-columns: 1fr; }
+  .add-panel { padding: 12px; }
+}

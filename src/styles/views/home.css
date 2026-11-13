@@ -1,0 +1,9 @@
+/* ============================================================
+   首页：步数环
+   ============================================================ */
+.steps { display: flex; align-items: center; gap: 20px; }
+.steps-info { flex: 1; }
+.steps-info .big { font-size: var(--fs-big); font-weight: var(--w-strong); }
+.steps-info .sub { font-size: var(--fs-small); color: var(--on-surface-variant); margin-top: 2px; }
+/* 复用组件库的 chip 样式，只补一个间距。 */
+.steps-pill { margin-top: 10px; }

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-appearance="light" data-accent="vivid" data-hover="mix" data-icon="subtle" data-spacing="breathing">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#faf9fd">
+<title>Vital · 健康</title>
+<link rel="icon" href="data:,">
+<style>
+  /* 引导态：首帧颜色由启动脚本直接落定，期间禁止任何过渡，
+     避免「浅色 → 深色」被合成一段可见的渐变动画。 */
+  html.theme-booting,
+  html.theme-booting *,
+  html.theme-booting *::before,
+  html.theme-booting *::after { transition: none !important; }
+</style>
+<script>
+  /* 首帧前就把已保存的外观落地：
+     1. 同步读 localStorage，给 <html> 打上 data-appearance；
+     2. 预置 --background / --surface 与 html 底色，避免深色模式先闪一下白底；
+     3. 同步 color-scheme 与 theme-color，滚动条和浏览器顶栏一起变。
+     脚本放在 <head>，在样式和模块脚本之前执行，首帧渲染前完成。 */
+  (function () {
+    var root = document.documentElement
+    root.classList.add('theme-booting')
+    var appearance = 'light'
+    var background = ''
+    try {
+      var saved = JSON.parse(localStorage.getItem('vital.theme.settings.v1') || 'null')
+      if (saved && typeof saved === 'object' &&
+          ['light', 'dark', 'white', 'black'].indexOf(saved.appearance) > -1) {
+        appearance = saved.appearance
+      }
+      background = localStorage.getItem('vital.theme.background.v1') || ''
+    } catch (error) {
+      /* 隐私模式或存储被禁用时按默认浅色处理。 */
+    }
+
+    if (!/^#[0-9a-f]{3,8}$/i.test(background)) {
+      background = appearance === 'black' ? '#000000'
+        : appearance === 'dark' ? '#0a0a0a'
+          : appearance === 'white' ? '#ffffff'
+            : '#faf9fd'
+    }
+
+    var dark = appearance === 'dark' || appearance === 'black'
+    root.dataset.appearance = appearance
+    root.style.colorScheme = dark ? 'dark' : 'light'
+    root.style.setProperty('--background', background)
+    root.style.setProperty('--surface', background)
+    root.style.backgroundColor = background
+
+    var meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', background)
+  })()
+</script>
+</head>
+<body>
+<div id="app"></div>
+<noscript>
+  <p style="padding:24px;text-align:center;font-family:sans-serif">Vital 需要启用 JavaScript 才能运行。</p>
+</noscript>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+/* ============================================================
+   zero-ai-ui-lib 样式入口
+   设计令牌 + 卡片/指标外壳 + 组件样式 + 展开动画。
+   使用方：import 'zero-ai-ui-lib/style.css'
+   ============================================================ */
+@import '../styles/tokens.css';
+@import '../styles/components.css';
+@import '../styles/ui.css';
+@import '../styles/expand.css';
