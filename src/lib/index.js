@@ -19,3 +19,5 @@ export { confirmDialog, disposeConfirmDialog } from '../core/confirm'
 /* 高亮与 ANSI 解析（UiCodeEditor / UiTerminalOutput 的底层，按需自取）。 */
 export { highlightToHtml, tokenize } from '../core/highlight'
 export { ansiToHtml, ansiLineToHtml } from '../core/ansi'
+/* 码制注册中心：校验 / 参数解析 / 降级候选，供 CodeImage 与业务复用。 */
+export { CODE_FORMATS, supports, resolveOptions, renderMode, fallbackCandidates, familyOf } from '../core/codeFormats'

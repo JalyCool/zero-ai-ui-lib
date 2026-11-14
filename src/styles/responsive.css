@@ -35,11 +35,13 @@
     width: 100%;
   }
 
-  /* 竖排 tabbar：位置换成左侧竖条，外观参数全部沿用手机款 */
+  /* 竖排 tabbar：位置换成左侧竖条，外观参数全部沿用手机款。
+     定位属性在本块内给全，不依赖基础规则。 */
   .tabbar {
     top: 0;
     bottom: 0;
     left: 0;
+    right: auto;
     transform: none;
     width: 74px;
     max-width: none;

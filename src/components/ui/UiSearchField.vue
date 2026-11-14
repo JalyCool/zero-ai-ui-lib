@@ -168,14 +168,15 @@ watch(() => props.modelValue, value => { if (value) open.value = true })
   transform: translateX(calc(var(--field-w) - 40px));
   color: var(--primary);
 }
-/* 展开旅行的前三分之一：背景框压缩到 94%，随后回弹到 100%。 */
+/* 展开旅行的前三分之一：背景框压缩到 94%，之后保持 94% 不回弹。 */
 .ui-search.is-open .ui-search__icon::before {
+  transform: scale(.94);
   animation: uiSearchSqueeze var(--icon-travel) var(--spring-view) 1;
 }
 @keyframes uiSearchSqueeze {
   0% { transform: scale(1); }
   33% { transform: scale(.94); }
-  100% { transform: scale(1); }
+  100% { transform: scale(.94); }
 }
 .ui-search__icon svg { position: relative; z-index: 1; width: 17px; height: 17px; }
 

@@ -74,19 +74,25 @@
 /* ============================================================
    Tab bar
    ============================================================ */
+/* 定位只在互斥的 media 查询里给：移动端底部横条、桌面端左侧竖条，
+   两套规则永不共存，打包顺序再怎么变也不会互相污染。 */
 .tabbar {
   position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
   background: var(--surface-container-low);
-  border-top: var(--border-w) solid var(--outline-variant);
   display: flex;
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   z-index: 20;
   transition: background var(--t-fade), border-color var(--t-fade);
+}
+@media (max-width: 899.98px) {
+  .tabbar {
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    border-top: var(--border-w) solid var(--outline-variant);
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  }
 }
 .tab {
   flex: 1;

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
-  UiCheckbox, UiChip, UiCodeEditor, UiDataTable, UiDatePicker, UiEmptyState,
+  UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
   UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap, UiImageViewer,
   UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
   UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
@@ -165,6 +165,16 @@ function onDropFiles(files) {
 
 /* ---------- 可视化 ---------- */
 const week = [18, 26, 22, 34, 28, 40, 31]
+
+/* CodeImage 演示 */
+const ciSingle = 'https://example.com'
+const ciMixed = ['qrcode', 'ean13', 'code128']
+const ciMixedText = '1234567890128'
+const ciBarGroup = ['ean13', 'ean8', 'upc', 'code128', 'itf14']
+const ciBarText = 'HELLO-CODE'
+const ciFallbackType = ['ean13']
+const ciFallbackText = '任意自由文本，一维码装不下'
+const ciOptions = { qrcode: { errorCorrectionLevel: 'H', margin: 2 }, code128: { showText: true } }
 const heat = Array.from({ length: 42 }, (_, i) => Math.round(Math.abs(Math.sin(i * 0.7) * 3 + Math.cos(i * 0.3) * 1.2)))
 
 /* ---------- 浮层反馈 ---------- */
@@ -461,6 +471,16 @@ onMounted(() => showToast('info'))
             <UiLineChart :data="week" :labels="['一', '二', '三', '四', '五', '六', '日']" />
             <UiHeatmap :values="heat" :weeks="6" />
           </div>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">码图 <small>CodeImage</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiCodeImage type="qrcode" :width="150" :options="ciOptions">{{ ciSingle }}</UiCodeImage>
+            <UiCodeImage :type="ciMixed" :width="150" :options="ciOptions">{{ ciMixedText }}</UiCodeImage>
+            <UiCodeImage :type="ciBarGroup" :width="150">{{ ciBarText }}</UiCodeImage>
+            <UiCodeImage :type="ciFallbackType" :width="150">{{ ciFallbackText }}</UiCodeImage>
+          </div>
+          <span class="lib-cell__note">单码 / 跨族图标切换 / 同族文字切换（&gt;3 下拉）/ 全不可用自动降级；不合规选项可见但禁用。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">骨架 / 加载 / 头像</span>

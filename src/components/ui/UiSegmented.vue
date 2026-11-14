@@ -39,9 +39,11 @@ const indicatorStyle = computed(() => {
         v-for="option in options"
         :key="option.value"
         type="button"
-        :class="{ 'is-active': modelValue === option.value }"
+        :class="{ 'is-active': modelValue === option.value, 'is-disabled': !!option.disabled }"
         :aria-pressed="modelValue === option.value"
-        @click="emit('update:modelValue', option.value)"
+        :aria-disabled="option.disabled ? 'true' : undefined"
+        :disabled="!!option.disabled"
+        @click="option.disabled || emit('update:modelValue', option.value)"
       >
         {{ option.label }}
       </button>

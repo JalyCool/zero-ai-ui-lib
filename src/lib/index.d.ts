@@ -19,6 +19,7 @@ declare const UiButton: DefineComponent<{
   block?: boolean; loading?: boolean; disabled?: boolean; type?: string
 }, AnyProps, unknown>
 declare const UiCheckbox: DefineComponent<{ modelValue?: boolean; label?: string; disabled?: boolean }, AnyProps, unknown>
+declare const UiCodeImage: DefineComponent<{ type: string | string[]; options?: Record<string, Record<string, unknown>>; width?: number }, AnyProps, unknown>
 declare const UiChip: DefineComponent<{ variant?: string; selected?: boolean; removable?: boolean; dot?: boolean }, AnyProps, unknown>
 declare const UiCodeEditor: DefineComponent<{
   modelValue?: string
@@ -164,11 +165,18 @@ export declare function tokenize(text: string, lang: string): { type: string; te
 export declare function highlightToHtml(text: string, lang: string): string
 export declare function ansiLineToHtml(line: string): string
 export declare function ansiToHtml(text: string): string
+export interface CodeFormatMeta { family: 'qr' | 'bar'; label: string; render?: string; validate: (text: string) => boolean; defaults: Record<string, unknown>; normalize: (options: AnyProps) => AnyProps }
+export declare const CODE_FORMATS: Record<string, CodeFormatMeta>
+export declare function supports(format: string, text: string): boolean
+export declare function resolveOptions(format: string, options?: Record<string, AnyProps>, isDev?: boolean): AnyProps
+export declare function renderMode(formats: string[]): 'icon' | 'text'
+export declare function fallbackCandidates(formats: string[], text: string): string[]
+export declare function familyOf(format: string): 'qr' | 'bar' | null
 
 /* ---------- components ---------- */
 export {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
-  UiCheckbox, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
+  UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
   UiRating, UiRingProgress, UiRingSlider, UiRollNumber, UiSchemaForm,
