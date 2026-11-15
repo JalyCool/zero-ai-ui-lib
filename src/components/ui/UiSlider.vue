@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import UiRollNumber from './UiRollNumber.vue'
 
 const props = defineProps({
   modelValue: { type: Number, default: 50 },
@@ -350,7 +351,9 @@ onBeforeUnmount(() => {
   <div class="ui-slider" :class="{ 'is-dragging': dragging, 'is-stepped': hasStops }">
     <div class="ui-slider__head">
       <span v-if="label" class="ui-slider__label">{{ label }}</span>
-      <span v-if="showValue" class="ui-slider__value">{{ displayValue }}{{ unit }}</span>
+      <span v-if="showValue" class="ui-slider__value">
+        <UiRollNumber class="ui-slider__num" :value="displayValue" :direction-key="quantize(shown)" :step="step" :instant="dragging" /><template v-if="unit">{{ unit }}</template>
+      </span>
     </div>
 
     <!-- 刻度数值行：只放文字，刻度线本身贴进轨道容器里。 -->
@@ -399,7 +402,7 @@ onBeforeUnmount(() => {
         @keydown="onKeyDown"
       >
         <span class="ui-slider__thumb-dot" aria-hidden="true"></span>
-        <span v-if="showBubble" class="ui-slider__bubble" aria-hidden="true">{{ displayValue }}{{ unit }}</span>
+        <span v-if="showBubble" class="ui-slider__bubble" aria-hidden="true"><UiRollNumber :value="displayValue" :direction-key="quantize(shown)" :step="step" :instant="true" />{{ unit }}</span>
       </button>
     </div>
   </div>

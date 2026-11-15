@@ -1,10 +1,13 @@
 <script setup>
 import { computed } from 'vue'
 import UiRollNumber from './UiRollNumber.vue'
+import { arcStroke } from '../../core/arcStroke'
 
 const props = defineProps({
   value: { type: Number, default: 72 },
-  label: { type: String, default: '今日达成' }
+  label: { type: String, default: '今日达成' },
+  /* 弧线宽度档位：'thin'(10) / 'bold'(12) / 具体数值 */
+  stroke: { type: [String, Number], default: 'bold' }
 })
 
 const safeValue = computed(() => {
@@ -14,6 +17,7 @@ const safeValue = computed(() => {
 })
 
 const offset = computed(() => 100 - safeValue.value)
+const strokeWidth = computed(() => arcStroke(props.stroke, 'bold'))
 
 /* ============================================================
    仪表盘
@@ -30,12 +34,14 @@ const ARC_PATH = 'M 26.7 126.68 A 78 78 0 1 1 173.3 126.68'
   <div class="ui-gauge" role="img" :aria-label="`${label} ${safeValue}%`">
     <div class="ui-gauge__dial">
       <svg viewBox="0 0 200 140" aria-hidden="true">
-        <path class="ui-gauge__track" :d="ARC_PATH" pathLength="100" fill="none" />
+        <path class="ui-gauge__track" :d="ARC_PATH" pathLength="100" fill="none" :stroke-width="strokeWidth" vector-effect="non-scaling-stroke" />
         <path
           class="ui-gauge__progress"
           :d="ARC_PATH"
           pathLength="100"
           fill="none"
+          vector-effect="non-scaling-stroke"
+          :stroke-width="strokeWidth"
           :style="{ strokeDashoffset: offset }"
         />
       </svg>
@@ -68,25 +74,24 @@ const ARC_PATH = 'M 26.7 126.68 A 78 78 0 1 1 173.3 126.68'
   height: auto;
   overflow: visible;
 }
+/* 宽度由 stroke 档位决定（non-scaling-stroke -> 恒定 CSS 像素）。 */
 .ui-gauge__track {
   stroke: var(--surface-container-high);
-  stroke-width: 12;
   stroke-linecap: round;
 }
 .ui-gauge__progress {
   stroke: var(--primary);
-  stroke-width: 12;
   stroke-linecap: round;
   stroke-dasharray: 100;
   transition: stroke-dashoffset var(--t-view);
 }
 
-/* 数值放在圆心稍偏上的位置（viewBox 高 140、圆心 y=100 → 71.43%），
-   视觉上更靠近圆弧围出的那块空间中心。 */
+/* 数值放在圆心明显偏上：圆弧围出的可视空间中心偏上，
+   数字与下方 caption 一起看才居中。 */
 .ui-gauge__center {
   position: absolute;
   left: 50%;
-  top: 65.5%;
+  top: 58%;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }

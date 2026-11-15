@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import UiRollNumber from './UiRollNumber.vue'
+import { arcStroke } from '../../core/arcStroke'
 
 const props = defineProps({
   modelValue: { type: Number, default: 72 },
@@ -11,7 +12,9 @@ const props = defineProps({
   label: { type: String, default: '' },
   unit: { type: String, default: '%' },
   showValue: { type: Boolean, default: true },
-  showScale: { type: Boolean, default: true }
+  showScale: { type: Boolean, default: true },
+  /* 弧线宽度档位：'thin'(10) / 'bold'(12) / 具体数值 */
+  stroke: { type: [String, Number], default: 'bold' }
 })
 
 const emit = defineEmits(['update:modelValue', 'drag-start', 'drag-end'])
@@ -36,6 +39,7 @@ const dragging = ref(false)
 const shown = ref(sanitize(props.modelValue))
 
 const range = computed(() => props.max - props.min || 1)
+const strokeWidth = computed(() => arcStroke(props.stroke, 'bold'))
 const fraction = computed(() => (shown.value - props.min) / range.value)
 /* UiGauge 同款：pathLength=100 + strokeDasharray 100 + dashoffset。 */
 const dashOffset = computed(() => 100 - Math.min(1, Math.max(0, fraction.value)) * 100)
@@ -136,7 +140,7 @@ function moveGaugeDrag(event) {
 function onPointerDown(event) {
   if (event.button !== undefined && event.button !== 0 && event.pointerType === 'mouse') return
   dragging.value = true
-  try { dialEl.value?.setPointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
+  try { event.currentTarget?.setPointerCapture?.(event.pointerId) } catch (error) { /* 忽略 */ }
   beginGaugeDrag(event)
   emit('drag-start')
   event.preventDefault()
@@ -151,7 +155,7 @@ function onPointerMove(event) {
 function onPointerUp(event) {
   if (!dragging.value) return
   dragging.value = false
-  try { dialEl.value?.releasePointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
+  try { event.currentTarget?.releasePointerCapture?.(event.pointerId) } catch (error) { /* 忽略 */ }
   shown.value = quantize(shown.value)
   commit()
   emit('drag-end')
@@ -193,19 +197,30 @@ watch(() => props.modelValue, value => {
       :aria-valuenow="displayValue"
       tabindex="0"
       :class="{ 'is-dragging': dragging }"
-      @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointercancel="onPointerUp"
       @keydown="onKeyDown"
     >
       <svg viewBox="0 0 200 140" aria-hidden="true">
-        <path class="ui-gauge-slider__track" :d="ARC_PATH" pathLength="100" fill="none" />
+        <!-- 命中弧带：只有这条透明粗描边接受指针（pointer-events: stroke），
+             弧内 / 弧外的大片矩形区域不再捕获触控与滚动。 -->
+        <path
+          class="ui-gauge-slider__hit"
+          :d="ARC_PATH"
+          fill="none"
+          :stroke-width="strokeWidth + 26"
+          vector-effect="non-scaling-stroke"
+          @pointerdown="onPointerDown"
+          @pointermove="onPointerMove"
+          @pointerup="onPointerUp"
+          @pointercancel="onPointerUp"
+        />
+        <path class="ui-gauge-slider__track" :d="ARC_PATH" pathLength="100" fill="none" :stroke-width="strokeWidth" vector-effect="non-scaling-stroke" />
         <path
           class="ui-gauge-slider__progress"
           :d="ARC_PATH"
           pathLength="100"
           fill="none"
+          :stroke-width="strokeWidth"
+          vector-effect="non-scaling-stroke"
           :style="{ strokeDashoffset: dashOffset }"
         />
       </svg>
@@ -239,11 +254,22 @@ watch(() => props.modelValue, value => {
 }
 .ui-gauge-slider__dial {
   position: relative;
-  touch-action: none;
-  cursor: pointer;
+  /* 只有弧带可命中：根不再 touch-action:none / 不再吞整块矩形。 */
+  touch-action: auto;
+  cursor: default;
   outline: none;
   border-radius: 12px;
 }
+.ui-gauge-slider svg {
+  pointer-events: none;
+}
+.ui-gauge-slider__hit {
+  stroke: transparent;
+  pointer-events: stroke;
+  touch-action: none;
+  cursor: grab;
+}
+.ui-gauge-slider__dial.is-dragging .ui-gauge-slider__hit { cursor: grabbing; }
 .ui-gauge-slider__dial:focus-visible {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 22%, transparent);
 }
@@ -255,14 +281,13 @@ watch(() => props.modelValue, value => {
   overflow: visible;
   pointer-events: none;
 }
+/* 宽度由 stroke 档位决定（non-scaling-stroke -> 恒定 CSS 像素）。 */
 .ui-gauge-slider__track {
   stroke: var(--surface-container-high);
-  stroke-width: 12;
   stroke-linecap: round;
 }
 .ui-gauge-slider__progress {
   stroke: var(--primary);
-  stroke-width: 12;
   stroke-linecap: round;
   stroke-dasharray: 100;
   transition: stroke var(--t-fade);
@@ -282,11 +307,11 @@ watch(() => props.modelValue, value => {
 }
 .ui-gauge-slider__dial.is-dragging .ui-gauge-slider__thumb { transform: translate(-50%, -50%) scale(1.12); }
 
-/* 数字显示逻辑与 UiGauge 相同：数字在圆心稍偏上（top 65.5%）。 */
+/* 数字显示逻辑与 UiGauge 相同：圆心明显偏上（top 58%）。 */
 .ui-gauge-slider__center {
   position: absolute;
   left: 50%;
-  top: 65.5%;
+  top: 58%;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }

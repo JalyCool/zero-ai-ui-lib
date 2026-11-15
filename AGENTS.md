@@ -8,7 +8,7 @@
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 0.75px 细描边 + 圆角分档」，不用阴影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
 - **交付形态**：57 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
-- **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 时长文本）统一走 `UiRollNumber` 的上下渐变滚动；拖拽等连续变化传 `instant` 直接换值。
+- **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
 
@@ -130,18 +130,18 @@ import {
 | `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；时间 / 日期波轮都基于它 |
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起 |
 | `UiModal` | `v-model`；插槽 `#header` / `#title` / 默认 / `#footer`，作用域都带 `close`；遮罩压暗 + 5px 模糊 |
-| `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽；**把手可拖拽**：拖把手实时改高度（跟手、禁 transition），松手按位移 + 速度吸附锚点；`anchors`（默认 `[0.2, 0.6]`）+ 自动追加「全内容」档，全内容不足 60% 时 60% 档不出现；拖到最低锚点之下直接关闭；`scrim=false` 为无背景版（不压暗不模糊，但透明拦截层 + Esc + 锁滚动 + aria-modal 的模态性质保持） |
+| `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽；**把手可拖拽**：拖把手实时改高度（跟手、禁 transition），松手按位移 + 速度吸附锚点；`anchors` 默认随 `scrim`：无背景版 `[0.2, 0.6]`、有背景版 `[0.6]`（压暗背景不放 20% 档）+ 自动追加「全内容」档，全内容不足 60% 时 60% 档不出现；拖到最低锚点之下直接关闭；`scrim=false` 为无背景版（不压暗不模糊，但透明拦截层 + Esc + 锁滚动 + aria-modal 的模态性质保持） |
 | `UiFloatingMenu` | `v-model`(当前值) + `:items` + `@select`；按钮原地长成浮动面板 |
 | `UiToolMenu` | 只有 `@select`，**回传整个 item 对象**（不是 value），无 v-model，选中值自己同步到 `label` |
-| `UiGauge` | `:value` 0–100 + `label`；220° 圆弧，大数字居中（数字变化走统一滚动动效） |
-| `UiRingProgress` | `:value` 0–100、`label`、`size`(默认 116)、`stroke`(默认 10) |
+| `UiGauge` | `:value` 0–100 + `label` + `stroke` 档位；220° 圆弧，大数字居中偏上（数字变化走统一滚动动效）。弧线宽度全库只有两档：`'thin'`(10px) / `'bold'`(12px)，也可传具体数值；一律 `vector-effect="non-scaling-stroke"`，宽度是 CSS 像素，不随组件尺寸缩放 |
+| `UiRingProgress` | `:value` 0–100、`label`、`size`(默认 116)、`stroke` 档位（默认 `'thin'`）；中心数字走滚动动效 |
 | `UiRangeSlider` | `v-model` 为 `[lo, hi]` 数组 + `min max step precision unit`；点击轨道移动更近的拖拽头，距离相等默认移左侧（lo）；两头互不交叉且至少间隔一个步进（把手不重合）；读数走 `UiRollNumber` |
-| `UiRingSlider` | `v-model` 0–100；圆环从 12 点顺时针 360°，按下即拖拽；中心数字滚动，`size stroke label unit` 同 `UiRingProgress` |
-| `UiGaugeSlider` | `v-model` 0–100；UiGauge 同款 220° 弧 + 拖拽 thumb，中心数字复用仪表盘显示逻辑；`show-scale` 显示底部 0/100 刻度行 |
+| `UiRingSlider` | `v-model` 0–100；圆环从 12 点顺时针 360°；`stroke` 档位同圆环族；只有环带（描边 ±13px）接受指针，环内环外不捕获触控与滚动；中心数字滚动 |
+| `UiGaugeSlider` | `v-model` 0–100；UiGauge 同款 220° 弧 + 拖拽 thumb，中心数字复用仪表盘显示逻辑；`stroke` 档位；只有弧带接受指针（弧内大片区域不再吞触控）；`show-scale` 显示底部 0/100 刻度行 |
 | `UiRangeDatePicker` | `v-model` 为 `{ start, end }`（`YYYY-MM-DD`）；第一次点选起点、第二次点选终点，区间铺浅主色底、两端实心；`清除` 回传空对象 |
 | `UiWheelDatePicker` | `v-model` 字符串（`YYYY-MM-DD`）；年 / 月 / 日三列滚轮（高亮块固定中间），`startYear endYear` 控制年范围，日列随年月伸缩 |
 | `UiRangeTimePicker` | `v-model` 为 `{ start, end }`（`HH:mm`）；内部直接拼两个 `UiTimePicker`（`label` 传空即不显示标签行）+ 浅色箭头；时长文本（1h03m03s 规则）显示在箭头正上方，精度由 `precision`（h/m/s，最小显示单位）决定 |
-| `UiRollNumber` | 全库统一数字变化动效：`value`（数字或已格式化字符串）、`directionKey`（参与大小比较）、`instant`（拖拽等连续变化直接换值）、`step`；可复用 `formatDuration / formatDurationBetween / parseClockTime`（`core/duration`） |
+| `UiRollNumber` | 全库统一数字变化动效，可暴露属性：`value`（数字或已格式化字符串）、`directionKey`（参与大小比较）、`size`（字号，任意 CSS 长度）、`reverse`（大小方向是否反向）、`distance`（滚动位移 CSS 长度，缺省按变化量自动缩放）、`step`（换算步数用）、`instant`（拖拽等高频连续变化：只缩短时长与位移，**不跳过动画**）。任何值变化都必须播放上下位移 + 模糊渐变；数字一律等宽（tabular-nums） |
 | `UiAlert` | `tone`: warning / danger / success / info；`title`；默认插槽放正文 |
 | `UiEmptyState` | `title` `description` + `#action` 插槽 |
 | `UiToastHost` | `<UiToastHost ref="toast" />` 后 `toast.value.show('文案', 'success' | 'info' | 'danger')` |
@@ -157,7 +157,7 @@ import {
 | `UiImageViewer` | `v-model` 开关 + `:src`；滚轮 / 按钮缩放 25–400%、旋转、拖拽平移、下载原图、Esc 关闭 |
 | `UiFileDropzone` | 拖入 / 点击收 `File` 列表，`accept` `max-size`(MB) 过滤，不合格文件走 `@reject` |
 | `UiSearchField` | 图标 ⇄ 输入框原地形变：外壳宽度走 view 弹簧，同一个搜索图标平移到尾部成为搜索按钮；Enter / 点图标 `@search`，Esc 先清空后收起，点外部收起 |
-| `confirmDialog` | `const ok = await confirmDialog({ title, message, danger })`，Esc=取消 Enter=确认，统一替代 `window.confirm` |
+| `confirmDialog` | `const ok = await confirmDialog({ title, message, danger })`，统一替代 `window.confirm`。**有意不接 Esc / Enter**：确认必须显式点击按钮，防键盘误触发危险操作（普通对话框不受此限制） |
 | `UiToastHost` | 除 `show / dismiss` 外补语义 API：`success / error / warning / info`，`max` 条数外自动排队 |
 
 通用约定：所有浮层都能点外部收起、按 Esc 收起；`items` 形如 `[{ value, label, description?, tone? }]`。
@@ -173,6 +173,7 @@ import {
 - **按钮 ⇄ 组件的形变泛用化**：`UiMorphPanel` 把「点一下切换成另一个组件」做成通用容器，不再局限于「按钮变输入框」；`UiSearchField` 也走同一语言（图标平移到尾部作动作按钮）。
 - **确认统一走 `confirmDialog`**：应用里不要再调 `window.confirm`，样式断层且阻塞；`await` 拿到布尔结果即可。
 - **返回只有一种写法**：Tab 用 replace、展开用 push、收起用 back()（动画播完再退），见 4.5。
+- **弧线宽度只有两档**：`--arc-stroke-thin`(10) / `--arc-stroke-bold`(12)，圆环族与仪表盘族共用，配合 `non-scaling-stroke` 保证宽度是 CSS 像素、与组件尺寸无关。
 - **动效令牌**：不要写死 duration，用 `--t-fade` / `--t-panel` / `--t-sheet` / `--t-exit`；弹簧曲线是 `--spring-*`。`prefers-reduced-motion` 时库内已自动降级。
 
 ## 4. 可展开卡片（列表 → 详情）

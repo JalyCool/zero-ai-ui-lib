@@ -12,18 +12,23 @@ const props = defineProps({
   distance: { type: String, default: '' },
   /* 自动距离公式用：把变化量换算成步数 */
   step: { type: Number, default: 0 },
-  /* true 时直接换值、不做滚动动画（拖拽等连续变化场景用） */
-  instant: { type: Boolean, default: false }
+  /* true 时用更短的滚动（拖拽等高频连续变化）；
+     任何值变化都保留上下位移 + 模糊渐变，不再直接换值。 */
+  instant: { type: Boolean, default: false },
+  /* 字号（任意 CSS 长度）；缺省继承父级 */
+  size: { type: String, default: '' }
 })
 
 /* ============================================================
    数字滚动（全库统一数字变化动效）
    从步进器里抽出来的「数字上下渐变/滚动」：
    旧值与新值共用同一个数字盒，只是上下错开进出；
-   方向随新旧值大小关系走，位移量随变化量缩放，
-   变化结束后盒子不残留旧值宽度。
-   所有涉及数字大小变化的场景（步进器 / 仪表盘 / 滑块读数 /
-   时长读数……）都用它，保证动效统一。
+   方向随新旧值大小关系走，位移量随变化量缩放。
+   规则：任何形式的值变化（包括拖拽连续变化）都必须播放
+   上下位移 + 模糊渐变；instant 只是把时长与位移缩短，
+   绝不是跳过动画。
+   可暴露属性：size 字号 / reverse 方向反转 / distance /
+   step / instant。
    ============================================================ */
 
 const display = computed(() => {
@@ -46,7 +51,9 @@ const distance = computed(() => {
   const delta = Math.abs(nextKey - prevKey.value)
   if (!Number.isFinite(delta) || delta === 0) return '0.9em'
   const steps = props.step > 0 ? delta / props.step : delta
-  return Math.max(0.3, Math.min(2.2, 0.35 + steps * 0.2)) + 'em'
+  const base = Math.max(0.3, Math.min(2.2, 0.35 + steps * 0.2))
+  /* 高频连续变化：位移压到 0.45em 以内，滚动仍然清晰可读。 */
+  return (quick.value ? Math.min(0.45, base) : base) + 'em'
 })
 
 const directionClass = computed(() => {
@@ -74,29 +81,22 @@ function animateChange() {
         rollTimer = null
         rolling.value = false
         leaving.value = display.value
-      }, reduceMotion() ? 0 : 430)
+      }, reduceMotion() ? 0 : (quick.value ? 240 : 430))
     })
   })
 }
 
 watch(() => [props.value, props.directionKey, props.instant], ([value, key, instant], [oldValue, oldKey]) => {
   if (value === oldValue) return
-  /* 方向与位移都以上一次的值为基准：这次变化结束后 prevKey 留在旧值上，
-     下一次变化用它参与比较 —— 与步进器原实现一致。 */
+  /* 方向与位移都以上一次的值为基准。 */
   current.value = String(value)
-  if (instant) {
-    /* 连续变化（拖拽）：直接替换，不滚动；旧值基准同步为新值。 */
-    rolling.value = false
-    cancelAnimationFrame(frameA)
-    clearTimeout(rollTimer)
-    leaving.value = String(value)
-    prevKey.value = Number(key ?? value)
-    return
-  }
   leaving.value = String(oldValue)
   prevKey.value = Number(oldKey ?? oldValue)
+  quick.value = !!instant
   animateChange()
 })
+
+const quick = ref(false)
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(frameA)
@@ -105,7 +105,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <span class="ui-roll" :class="[directionClass, { 'is-rolling': rolling }]">
+  <span
+    class="ui-roll"
+    :class="[directionClass, { 'is-rolling': rolling, 'is-quick': quick }]"
+    :style="size ? { fontSize: size } : undefined"
+  >
     <span class="ui-roll__stage" :style="{ '--roll-distance': distance }">
       <!-- 两个值共用这个盒子，滚动时数字不会横向跳动。 -->
       <span class="ui-roll__box">
@@ -161,11 +165,14 @@ onBeforeUnmount(() => {
 .ui-roll--down .ui-roll__value--enter { --enter-sign: -1; }
 
 .ui-roll__value--leave.is-rolling {
-  animation: uiRollOut var(--spring-fade-dur) var(--spring-fade) forwards;
+  animation: uiRollOut var(--roll-out-dur, var(--spring-fade-dur)) var(--spring-fade) forwards;
 }
 .ui-roll__value--enter.is-rolling {
-  animation: uiRollIn var(--spring-view-dur) var(--spring-view) forwards;
+  animation: uiRollIn var(--roll-in-dur, var(--spring-view-dur)) var(--spring-view) forwards;
 }
+/* 高频连续变化：缩短但保留完整的位移 + 模糊渐变。 */
+.ui-roll.is-quick .ui-roll__value--leave.is-rolling { --roll-out-dur: 200ms; }
+.ui-roll.is-quick .ui-roll__value--enter.is-rolling { --roll-in-dur: 220ms; }
 
 @keyframes uiRollOut {
   from { transform: translate3d(0, 0, 0); opacity: 1; filter: blur(0); }

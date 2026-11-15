@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import UiRollNumber from './UiRollNumber.vue'
 
 const props = defineProps({
   value: { type: Number, default: 78 },
@@ -65,7 +66,7 @@ onMounted(() => {
       />
     </svg>
     <div class="ui-ring__center">
-      <strong>{{ safeValue }}%</strong>
+      <strong><UiRollNumber class="ui-ring__num" :value="animatedValue" /><span class="ui-ring__pct">%</span></strong>
       <span>{{ label }}</span>
     </div>
   </div>
@@ -100,6 +101,8 @@ onMounted(() => {
   text-align: center;
   pointer-events: none;
 }
+.ui-ring__num { line-height: 1; }
+.ui-ring__pct { margin-left: 1px; }
 .ui-ring__center strong {
   font-size: 1.45rem;
   font-weight: var(--w-heading);

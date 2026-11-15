@@ -94,7 +94,8 @@ function fullFraction() {
    全内容档不足 60% 时 60% 档不出现（去重 + 就近合并）。 */
 function computeAnchors() {
   const full = fullFraction()
-  const list = props.anchors
+  const base = props.anchors || (props.scrim ? [0.6] : [0.2, 0.6])
+  const list = base
     .map(Number)
     .filter(value => Number.isFinite(value) && value > 0 && value <= full + 0.001)
   list.push(full)

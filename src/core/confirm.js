@@ -21,12 +21,8 @@ function ensureHost() {
         state.open.value = false
         if (state.resolve) { state.resolve(value); state.resolve = null }
       }
-      function onKey(event) {
-        if (!state.open.value) return
-        if (event.key === 'Escape') settle(false)
-        if (event.key === 'Enter') settle(true)
-      }
-      document.addEventListener('keydown', onKey)
+      /* 确认对话框有意不接 Esc / Enter：确认动作必须显式点击按钮，
+         防止键盘事件误触发危险操作。普通对话框不受此限制。 */
       return () => h(UiModal, {
         modelValue: state.open.value,
         'onUpdate:modelValue': value => { if (!value) settle(false) },

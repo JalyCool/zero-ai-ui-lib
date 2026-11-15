@@ -15,6 +15,11 @@
   --space-metric: 13.02px;
   --space-item: 11.16px;
 
+  /* 弧线宽度档位（全库统一）：thin = 圆环族当前宽度，bold = 仪表盘族当前宽度。
+     一律按 CSS 像素生效（SVG 用 non-scaling-stroke），不随组件宽度缩放。 */
+  --arc-stroke-thin: 10;
+  --arc-stroke-bold: 12;
+
   --border-w: 0.75px;
   --focus-w: 2px;
 

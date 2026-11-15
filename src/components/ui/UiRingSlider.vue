@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import UiRollNumber from './UiRollNumber.vue'
+import { arcStroke } from '../../core/arcStroke'
 
 const props = defineProps({
   modelValue: { type: Number, default: 25 },
@@ -9,7 +10,8 @@ const props = defineProps({
   step: { type: Number, default: 1 },
   precision: { type: Number, default: null },
   size: { type: Number, default: 116 },
-  stroke: { type: Number, default: 10 },
+  /* 弧线宽度档位：'thin'(10) / 'bold'(12) / 具体数值 */
+  stroke: { type: [String, Number], default: 'thin' },
   label: { type: String, default: '' },
   unit: { type: String, default: '%' },
   showValue: { type: Boolean, default: true }
@@ -29,7 +31,9 @@ const ringEl = ref(null)
 const dragging = ref(false)
 const shown = ref(sanitize(props.modelValue))
 
-const radius = computed(() => props.size / 2 - props.stroke / 2 - 1)
+/* 档位解析：数值或档名。 */
+const strokeWidth = computed(() => arcStroke(props.stroke, 'thin'))
+const radius = computed(() => props.size / 2 - strokeWidth.value / 2 - 1)
 const center = computed(() => props.size / 2)
 const circumference = computed(() => 2 * Math.PI * radius.value)
 const range = computed(() => props.max - props.min || 1)
@@ -122,7 +126,7 @@ function moveDrag(event) {
 function onPointerDown(event) {
   if (event.button !== undefined && event.button !== 0 && event.pointerType === 'mouse') return
   dragging.value = true
-  try { ringEl.value?.setPointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
+  try { event.currentTarget?.setPointerCapture?.(event.pointerId) } catch (error) { /* 忽略 */ }
   beginDrag(event)
   emit('drag-start')
   event.preventDefault()
@@ -137,7 +141,7 @@ function onPointerMove(event) {
 function onPointerUp(event) {
   if (!dragging.value) return
   dragging.value = false
-  try { ringEl.value?.releasePointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
+  try { event.currentTarget?.releasePointerCapture?.(event.pointerId) } catch (error) { /* 忽略 */ }
   shown.value = quantize(shown.value)
   commit()
   emit('drag-end')
@@ -193,20 +197,32 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
     :aria-valuemax="max"
     :aria-valuenow="displayValue"
     tabindex="0"
-    @pointerdown="onPointerDown"
-    @pointermove="onPointerMove"
-    @pointerup="onPointerUp"
-    @pointercancel="onPointerUp"
     @keydown="onKeyDown"
   >
     <svg :viewBox="'0 0 ' + size + ' ' + size" aria-hidden="true">
+      <!-- 环带命中区：只有这条透明粗描边接受指针（pointer-events: stroke），
+           环内 / 环外不再捕获触控，页面滚动与点击照常穿透。 -->
+      <circle
+        class="ui-ring-slider__hit"
+        :cx="center"
+        :cy="center"
+        :r="radius"
+        fill="none"
+        :stroke-width="strokeWidth + 26"
+        vector-effect="non-scaling-stroke"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerUp"
+        @pointercancel="onPointerUp"
+      />
       <circle
         class="ui-ring-slider__track"
         :cx="center"
         :cy="center"
         :r="radius"
         fill="none"
-        :stroke-width="stroke"
+        :stroke-width="strokeWidth"
+        vector-effect="non-scaling-stroke"
       />
       <circle
         class="ui-ring-slider__progress"
@@ -214,7 +230,8 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
         :cy="center"
         :r="radius"
         fill="none"
-        :stroke-width="stroke"
+        :stroke-width="strokeWidth"
+        vector-effect="non-scaling-stroke"
         :stroke-dasharray="circumference"
         :stroke-dashoffset="dashOffset"
         :transform="'rotate(-90 ' + center + ' ' + center + ')'"
@@ -240,7 +257,8 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
 .ui-ring-slider {
   position: relative;
   flex-shrink: 0;
-  touch-action: none;
+  /* 环外区域不拦触摸：根不再 touch-action:none，只有命中环带禁用手势。 */
+  touch-action: auto;
   cursor: pointer;
   outline: none;
   border-radius: 50%;
@@ -253,8 +271,18 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
   display: block;
   width: 100%;
   height: 100%;
+  overflow: visible;
+  /* svg 本身不命中，只有下面的 __hit 环带命中。 */
   pointer-events: none;
 }
+.ui-ring-slider__hit {
+  stroke: transparent;
+  pointer-events: stroke;
+  /* 命中环带时禁用浏览器手势，拖拽完全跟手。 */
+  touch-action: none;
+  cursor: grab;
+}
+.ui-ring-slider.is-dragging .ui-ring-slider__hit { cursor: grabbing; }
 .ui-ring-slider__track {
   stroke: var(--outline-variant);
 }
