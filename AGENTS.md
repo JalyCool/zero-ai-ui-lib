@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 0.75px 细描边 + 圆角分档」，不用阴影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：98 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：99 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -102,7 +102,7 @@ body {
 
 ```js
 import {
-  UiButton, UiChip, UiBadge, UiAvatar, UiSegmented, UiStepper, UiRating,
+  UiButton, UiCard, UiChip, UiBadge, UiAvatar, UiSegmented, UiStepper, UiRating,
   UiInput, UiTextarea, UiSelect, UiSwitch, UiCheckbox, UiRadioGroup, UiSlider,
   UiDatePicker, UiTimePicker, UiModal, UiBottomSheet, UiAccordion,
   UiAlert, UiTooltip, UiToastHost, UiEmptyState, UiSpinner, UiSkeleton,
@@ -122,6 +122,7 @@ import {
 | 组件 | 用法 |
 | --- | --- |
 | `UiButton` | `variant`: primary / tonal / outline / text / danger / icon；`size`: sm / md / lg；`block` `loading` `disabled` |
+| `UiCard` | 三段卡片：`#header`（也可用 `title` / `description` / `icon` 快速生成，`#actions` 在右侧）/ 默认插槽主体 / `#footer`；`divider` 控制分隔线，`variant` outline / filled / plain，`size` sm / md / lg，`clickable` 只做悬停与按下的表现 |
 | `UiChip` / `UiBadge` | chip 可 `selected` `removable` `dot`；badge `tone`: primary / success / warning / danger |
 | `UiSegmented` | `v-model` + `options`（`{ label, value, disabled?, icon? }`）；`label` 在左上角，`layout="one-line"` 标签与控件同行；`icon-placement="leading\|top"`（图标在文字前端 / 上方卡片式）、`show-labels="false"` 只留图标、`auto-multiline`（默认开）在**真实内容宽度**放不下时切成网格多行——列数用 canvas measureText 量文字宽度算，不靠猜固定最小宽度；控件本身 `width:100%`，避免「量一次→变窄→再量更窄」的收缩循环 |
 | `UiStepper` | `v-model` 数字 + `unit` `min` `max` `step`；`size`(sm/md/lg/xl)、`controls`(sides/bottom)、`roll`(standard/reverse)、`fieldLabel` |

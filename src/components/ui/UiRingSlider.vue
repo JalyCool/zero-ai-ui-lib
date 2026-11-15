@@ -251,10 +251,9 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
 
     <span
       class="ui-ring-slider__thumb"
-      :class="{ 'is-released': released }"
       :style="{ left: thumbPos.x + 'px', top: thumbPos.y + 'px' }"
       aria-hidden="true"
-    ></span>
+    ><span class="ui-ring-slider__thumb-body" :class="{ 'is-released': released }" aria-hidden="true"></span></span>
 
     <div v-if="showValue" class="ui-ring-slider__center">
       <strong>
@@ -310,24 +309,31 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
   height: 18px;
   margin: 0;
   padding: 0;
+  /* 位置只由 left/top + translate 决定。缩放放到内层，中心永远对准弧上的取值点。 */
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.ui-ring-slider__thumb-body {
+  position: absolute;
+  inset: 0;
   border: 3px solid var(--surface);
   border-radius: 50%;
   background: var(--primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
+  transform: scale(1);
   transition: transform var(--t-pop);
+  pointer-events: none;
 }
-.ui-ring-slider.is-dragging .ui-ring-slider__thumb { transform: translate(-50%, -50%) scale(1.16); }
-[data-motion="lively"] .ui-ring-slider.is-dragging .ui-ring-slider__thumb { transform: translate(-50%, -50%) scale(1.28); }
-[data-motion="lively"] .ui-ring-slider__thumb.is-released {
+.ui-ring-slider.is-dragging .ui-ring-slider__thumb-body { transform: scale(1.16); }
+[data-motion="lively"] .ui-ring-slider.is-dragging .ui-ring-slider__thumb-body { transform: scale(1.28); }
+[data-motion="lively"] .ui-ring-slider__thumb-body.is-released {
   animation: uiRingDuang calc(var(--spring-pop-dur) * 1.35) cubic-bezier(.3, .8, .3, 1) both;
 }
 @keyframes uiRingDuang {
-  0% { transform: translate(-50%, -50%) scale(.7); }
-  22% { transform: translate(-50%, -50%) scale(.7); }
-  58% { transform: translate(-50%, -50%) scale(1.18); }
-  100% { transform: translate(-50%, -50%) scale(1); }
+  0% { transform: scale(.7); }
+  22% { transform: scale(.7); }
+  58% { transform: scale(1.18); }
+  100% { transform: scale(1); }
 }
 
 .ui-ring-slider__center {

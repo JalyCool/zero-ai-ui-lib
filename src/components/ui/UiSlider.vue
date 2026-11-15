@@ -473,6 +473,7 @@ onBeforeUnmount(() => {
 .ui-slider__thumb-body {
   position: absolute;
   inset: 0;
+  pointer-events: none;
   border: 3px solid var(--surface);
   border-radius: 50%;
   background: var(--primary);

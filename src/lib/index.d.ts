@@ -75,6 +75,16 @@ declare const UiBadge: DefineComponent<{ tone?: 'primary' | 'success' | 'warning
 declare const UiBarChart: DefineComponent<{ data?: number[]; labels?: string[]; height?: number }, AnyProps, unknown>
 declare const UiBottomSheet: DefineComponent<{ modelValue?: boolean; title?: string; maxHeight?: string; closeOnBackdrop?: boolean; scrim?: boolean; anchors?: number[] }, AnyProps, unknown>
 declare const UiCheckbox: DefineComponent<{ modelValue?: boolean; label?: string; disabled?: boolean }, AnyProps, unknown>
+declare const UiCard: DefineComponent<{
+  title?: string
+  description?: string
+  /** 24x24 viewBox 内的 SVG 内部标记 */
+  icon?: string
+  divider?: boolean
+  size?: 'sm' | 'md' | 'lg'
+  variant?: 'outline' | 'filled' | 'plain'
+  clickable?: boolean
+}, AnyProps, unknown>
 declare const UiCodeImage: DefineComponent<{ type: string | string[]; options?: Record<string, Record<string, unknown>>; width?: number }, AnyProps, unknown>
 declare const UiChip: DefineComponent<{ variant?: string; selected?: boolean; removable?: boolean; dot?: boolean }, AnyProps, unknown>
 declare const UiCodeEditor: DefineComponent<{
@@ -407,7 +417,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 /* ---------- components ---------- */
 export {
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiNumberInput, UiDateInput, UiTimeInput, UiFileUpload, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiBanner, UiToastQueue, UiKbd, UiIcon, UiVirtualScroll, UiCalendar, UiTimeline, UiCarousel, UiMarquee,
-  UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
+  UiCard, UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,

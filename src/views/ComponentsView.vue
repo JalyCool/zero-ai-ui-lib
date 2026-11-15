@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import {
-  UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
+  UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiMediaViewer, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
@@ -524,7 +524,7 @@ onMounted(() => {
   <section class="view active lib" data-view="components">
     <div class="lib-hero">
       <h2 class="lib-hero__title">组件库</h2>
-      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。9 个分区、98 个组件，窄屏单列、宽屏自动多列。</p>
+      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。9 个分区、99 个组件，窄屏单列、宽屏自动多列。</p>
     </div>
 
     <!-- 分类选择器：一次只展示一个分区，避免把几十个组件全排在一页里 -->
@@ -550,6 +550,23 @@ onMounted(() => {
             <UiButton variant="danger">危险</UiButton>
           </div>
           <span class="lib-cell__note">按下必收缩 scale(.97)，松手走 feedback 弹簧。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">卡片 · 页眉 / 主体 / 页脚 <small>Card</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiCard title="本周目标" description="4 / 5 天达标" icon="<circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;8.5&quot;/><path d=&quot;M12 7.5V12l3 2&quot;/>">
+              <template #actions><UiBadge tone="success">进行中</UiBadge></template>
+              <p class="lib-muted">再完成一次运动就达标。主体放任意内容，页眉 / 页脚都能省略。</p>
+              <template #footer>
+                <UiButton size="sm" variant="text">查看详情</UiButton>
+                <UiButton size="sm">去运动</UiButton>
+              </template>
+            </UiCard>
+            <UiCard title="纯文字卡" description="variant=plain、无页脚" variant="plain" :divider="false" size="sm">
+              <span class="lib-muted">没有描边与底色，只保留排版。</span>
+            </UiCard>
+          </div>
+          <span class="lib-cell__note">#header / 默认插槽 / #footer 三段；#actions 在页眉右侧；divider 控制分隔线。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">分段 / 步进 / 评分</span>

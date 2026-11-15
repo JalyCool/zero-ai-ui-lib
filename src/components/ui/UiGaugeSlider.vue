@@ -240,10 +240,9 @@ watch(() => props.modelValue, value => {
 
       <span
         class="ui-gauge-slider__thumb"
-      :class="{ 'is-released': released }"
         :style="{ left: thumbPos.x / 200 * 100 + '%', top: thumbPos.y / 140 * 100 + '%' }"
         aria-hidden="true"
-      ></span>
+      ><span class="ui-gauge-slider__thumb-body" :class="{ 'is-released': released }" aria-hidden="true"></span></span>
 
       <div v-if="showValue" class="ui-gauge-slider__center">
         <strong>
@@ -311,24 +310,31 @@ watch(() => props.modelValue, value => {
   z-index: 1;
   width: 18px;
   height: 18px;
+  /* 只负责定位；缩放放到内层，显示中心不会随变大偏出取值点。 */
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.ui-gauge-slider__thumb-body {
+  position: absolute;
+  inset: 0;
   border: 3px solid var(--surface);
   border-radius: 50%;
   background: var(--primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
+  transform: scale(1);
   transition: transform var(--t-pop);
+  pointer-events: none;
 }
-.ui-gauge-slider__dial.is-dragging .ui-gauge-slider__thumb { transform: translate(-50%, -50%) scale(1.16); }
-[data-motion="lively"] .ui-gauge-slider__dial.is-dragging .ui-gauge-slider__thumb { transform: translate(-50%, -50%) scale(1.28); }
-[data-motion="lively"] .ui-gauge-slider__thumb.is-released {
+.ui-gauge-slider__dial.is-dragging .ui-gauge-slider__thumb-body { transform: scale(1.16); }
+[data-motion="lively"] .ui-gauge-slider__dial.is-dragging .ui-gauge-slider__thumb-body { transform: scale(1.28); }
+[data-motion="lively"] .ui-gauge-slider__thumb-body.is-released {
   animation: uiGaugeDuang calc(var(--spring-pop-dur) * 1.35) cubic-bezier(.3, .8, .3, 1) both;
 }
 @keyframes uiGaugeDuang {
-  0% { transform: translate(-50%, -50%) scale(.7); }
-  22% { transform: translate(-50%, -50%) scale(.7); }
-  58% { transform: translate(-50%, -50%) scale(1.18); }
-  100% { transform: translate(-50%, -50%) scale(1); }
+  0% { transform: scale(.7); }
+  22% { transform: scale(.7); }
+  58% { transform: scale(1.18); }
+  100% { transform: scale(1); }
 }
 
 /* 数字显示逻辑与 UiGauge 相同：圆心明显偏上（top 58%）。 */
