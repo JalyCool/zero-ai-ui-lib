@@ -117,7 +117,8 @@ function settle(target, velocity) {
   spread.value = target ? 1 : 0
   const el = surfaceEl.value
   if (el) {
-    const spring = 'cubic-bezier(.22,1.2,.36,1)'
+    /* 吸附曲线跟气质走：活泼模式会过冲一下。 */
+    const spring = getComputedStyle(document.documentElement).getPropertyValue('--spring-pop').trim() || 'cubic-bezier(.22,1.2,.36,1)'
     el.style.transition = 'transform ' + (target ? 360 : 300) + 'ms ' + spring
     el.style.transform = 'translate3d(' + to + 'px,0,0)'
   }
@@ -255,7 +256,7 @@ onBeforeUnmount(() => { pointerId = null })
   font-size: var(--fs-micro);
   font-weight: var(--w-label);
   cursor: pointer;
-  transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback);
+  transition: background var(--t-fade), color var(--t-fade), transform var(--t-pop);
 }
 .ui-swipe-row__action:active { transform: scale(.96); }
 .ui-swipe-row__action.is-danger { background: var(--error); color: var(--on-error, #fff); }

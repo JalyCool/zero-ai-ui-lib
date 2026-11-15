@@ -332,7 +332,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   background: var(--primary);
   opacity: 0;
   pointer-events: none;
-  transition: transform 260ms cubic-bezier(.22, 1.2, .36, 1), opacity 160ms ease;
+  transition: transform var(--t-pop), opacity 160ms ease;
 }
 .ui-code-slots__caret.is-on { opacity: 1; animation: uiSlotCaretBlink 1.05s steps(1, end) infinite; }
 @keyframes uiSlotCaretBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
@@ -342,7 +342,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   display: block;
   will-change: opacity, filter, transform;
   animation-name: uiSlotLand;
-  animation-timing-function: cubic-bezier(.22, 1.2, .36, 1);
+  animation-timing-function: var(--spring-pop);
   animation-fill-mode: both;
 }
 @keyframes uiSlotLand {

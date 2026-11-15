@@ -772,3 +772,30 @@
     transition-delay: 0ms !important;
   }
 }
+
+/* ============================================================
+   活泼模式下给「原本不回弹」的小控件补回弹
+   ------------------------------------------------------------
+   这些元素原来的 transition 只做了几何或颜色变化，曲线是纯减速的，
+   所以无论在哪种气质下都是「稳稳到位」。这里统一把 transform /
+   geometry 类的过渡改成 --spring-pop：克制模式下它依然不回弹，
+   活泼模式下才过冲。只覆盖会动的属性，颜色过渡保持原曲线。
+   ============================================================ */
+[data-motion="lively"] .ui-switch__thumb,
+[data-motion="lively"] .ui-check__box,
+[data-motion="lively"] .ui-radio__dot,
+[data-motion="lively"] .ui-chip,
+[data-motion="lively"] .ui-avatar,
+[data-motion="lively"] .ui-badge,
+[data-motion="lively"] .ui-segmented__indicator,
+[data-motion="lively"] .ui-tab,
+[data-motion="lively"] .ui-tab-icon,
+[data-motion="lively"] .ui-skeleton,
+[data-motion="lively"] .ui-slider__thumb,
+[data-motion="lively"] .ui-sheet-handle,
+[data-motion="lively"] .ui-list-item {
+  transition-timing-function: var(--spring-pop);
+}
+[data-motion="lively"] .ui-switch.is-on .ui-switch__thumb { transition: transform var(--t-pop); }
+[data-motion="lively"] .ui-check__box,
+[data-motion="lively"] .ui-check__box svg { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade); }

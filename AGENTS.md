@@ -190,7 +190,8 @@ import {
 - **确认统一走 `confirmDialog`**：应用里不要再调 `window.confirm`，样式断层且阻塞；`await` 拿到布尔结果即可。
 - **返回只有一种写法**：Tab 用 replace、展开用 push、收起用 back()（动画播完再退），见 4.5。
 - **弧线宽度只有两档**：`--arc-stroke-thin`(10) / `--arc-stroke-bold`(12)，圆环族与仪表盘族共用，配合 `non-scaling-stroke` 保证宽度是 CSS 像素、与组件尺寸无关。
-- **动效令牌**：不要写死 duration，用 `--t-fade` / `--t-panel` / `--t-sheet` / `--t-exit`；弹簧曲线是 `--spring-*`。`prefers-reduced-motion` 时库内已自动降级。
+- **动效令牌**：不要写死 duration，用 `--t-fade` / `--t-panel` / `--t-sheet` / `--t-exit`；弹簧曲线是 `--spring-*`。
+  小控件（开关把手、勾选框、Chip、滑块把手、浮层进出、胶囊按钮、验证码落位…）统一用 `--t-pop` / `--spring-pop`：**克制模式不回弹，活泼模式强过冲** —— 这样「原本不生硬的控件」也会随气质一起弹。`prefers-reduced-motion` 时库内已自动降级。
 - **动效气质（motion tone）——产品调性，不是用户偏好**：两档 `calm`（默认，稳、短、几乎不过冲）与 `lively`（弹簧更陡、回弹与缩放幅度更大、位移更远、模糊更重）。它只换一组令牌：`--spring-*` / `--spring-*-dur`、`--motion-scale|bounce|distance|blur`、`--pop-scale`、`--press-scale`。
   **按应用定位在代码里预置**：`setMotionTone('lively')`，或写进 `zero.config.yaml` 的 `ui.motion`。**不要做成设置项暴露给终端用户** —— 示例应用把这个切换放在 **Playground 设置弹层**里，仅用于演示，正式应用不要照抄到用户设置页。
 

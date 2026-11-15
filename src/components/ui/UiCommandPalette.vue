@@ -101,7 +101,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onGlobalKey))
 .ui-palette__list small { color: var(--on-surface-variant); font-size: var(--fs-micro); }
 .ui-palette__empty { margin: 0; padding: 18px; text-align: center; color: var(--on-surface-variant); font-size: var(--fs-tiny); }
 .ui-palette-enter-active, .ui-palette-leave-active { transition: opacity var(--t-fade), backdrop-filter var(--t-panel); }
-.ui-palette-enter-active .ui-palette__box, .ui-palette-leave-active .ui-palette__box { transition: transform var(--t-panel) var(--spring-view), filter var(--t-fade); }
+.ui-palette-enter-active .ui-palette__box, .ui-palette-leave-active .ui-palette__box { transition: transform var(--t-pop), filter var(--t-fade); }
 .ui-palette-enter-from, .ui-palette-leave-to { opacity: 0; }
 .ui-palette-enter-from .ui-palette__box, .ui-palette-leave-to .ui-palette__box { transform: scale(.96) translateY(-8px); filter: blur(8px); }
 </style>

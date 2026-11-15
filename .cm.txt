@@ -1,0 +1,16 @@
+活泼模式下给「原本不回弹」的控件补回弹
+
+根因：只有几何/颜色过渡的元素（开关把手、勾选框、Chip、滑块把手、浮层进出、
+胶囊按钮、验证码落位…）用的是纯减速曲线，跟气质无关，所以活泼模式也不弹。
+
+新增专用令牌 --spring-pop（克制 = cubic-bezier(.25,.1,.25,1) 不回弹；
+活泼 = cubic-bezier(.14,2.6,.3,1) 强过冲）+ --t-pop 组合；
+· 全局 ui.css 增加 [data-motion="lively"] 覆盖：开关把手 / 勾选框 / 单选点 /
+  Chip / Avatar / Badge / 分段指示器 / Tab / 滑块把手 / 面板把手 / 列表行；
+· 新组件里写死的无过冲曲线全部换掉：StatusMark 描边过渡、CodeSlots 落位动画、
+  SwipeRow 吸附、TooltipGroup / ContextMenu / CommandPalette / Popover /
+  ToastQueue / Tour 的进出、Button 的 transform 与 slide 把手、Checkbox 删除线。
+
+实测：活泼模式 --spring-pop = cubic-bezier(.14, 2.6, .3, 1)，
+.ui-switch__thumb / .ui-chip 的 transition-timing-function 同步为该曲线；
+切回克制后属性移除，曲线回到终点不超 1 的减速（不回弹）；console 零错误。

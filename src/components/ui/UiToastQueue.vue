@@ -89,6 +89,6 @@ defineExpose({ push, dismiss, success: (text, extra = {}) => push({ text, tone: 
 .ui-toastq__item.is-success { color: #d7f5e2; }
 .ui-toastq__item.is-danger { color: #ffdad6; }
 .ui-toastq__item.is-warning { color: #ffe9c7; }
-.toastq-enter-active, .toastq-leave-active { transition: opacity var(--t-fade), transform var(--t-panel) var(--spring-view), filter var(--t-fade); }
+.toastq-enter-active, .toastq-leave-active { transition: opacity var(--t-fade), transform var(--t-pop), filter var(--t-fade); }
 .toastq-enter-from, .toastq-leave-to { opacity: 0; transform: translateY(12px) scale(.96); filter: blur(8px); }
 </style>

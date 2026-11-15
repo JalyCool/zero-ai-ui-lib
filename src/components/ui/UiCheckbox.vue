@@ -43,7 +43,7 @@ const emit = defineEmits(['update:modelValue'])
   background: currentColor;
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform var(--t-panel) var(--spring-view), opacity var(--t-fade);
+  transition: transform var(--t-pop), opacity var(--t-fade);
   opacity: 0;
 }
 .ui-check.is-strike:not(.is-on) .ui-check__label::after { transform-origin: right center; }

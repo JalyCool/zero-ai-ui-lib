@@ -80,7 +80,7 @@ onBeforeUnmount(() => { window.removeEventListener('resize', measure); document.
 .ui-tour { position: fixed; inset: 0; z-index: 380; }
 .ui-tour__blocker { position: absolute; inset: 0; }
 /* 挖孔：目标块用巨大的 box-shadow 盖住屏幕其余部分。 */
-.ui-tour__spot { position: fixed; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .42); transition: all var(--t-panel) var(--spring-view); pointer-events: none; }
+.ui-tour__spot { position: fixed; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .42); transition: all var(--t-pop); pointer-events: none; }
 .ui-tour__bubble { position: fixed; width: 280px; padding: 12px 13px; border: var(--border-w) solid var(--outline-variant); border-radius: 14px; background: var(--surface); box-shadow: var(--elev-tip); }
 .ui-tour__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .ui-tour__head b { font-size: var(--fs-small); font-weight: var(--w-heading); }

@@ -87,6 +87,6 @@ onBeforeUnmount(() => {
 .ui-popover { display: inline-flex; min-width: 0; }
 .ui-popover__anchor { display: inline-flex; }
 .ui-popover__panel { position: fixed; z-index: 340; max-width: min(320px, calc(100vw - 16px)); padding: 12px; border: var(--border-w) solid var(--outline-variant); border-radius: calc(14px * var(--radius-scale)); background: var(--surface); box-shadow: var(--elev-tip); }
-.ui-pop-enter-active, .ui-pop-leave-active { transition: opacity var(--t-fade), transform var(--t-panel) var(--spring-view), filter var(--t-fade); }
+.ui-pop-enter-active, .ui-pop-leave-active { transition: opacity var(--t-fade), transform var(--t-pop), filter var(--t-fade); }
 .ui-pop-enter-from, .ui-pop-leave-to { opacity: 0; transform: scale(.94) translateY(-4px); filter: blur(8px); }
 </style>

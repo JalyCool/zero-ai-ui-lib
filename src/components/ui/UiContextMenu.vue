@@ -93,6 +93,6 @@ onBeforeUnmount(() => { clearTimeout(holdTimer); close() })
 .ui-context-menu__label { flex: 1; min-width: 0; }
 .ui-context-menu__item kbd { padding: 1px 5px; border-radius: 5px; background: var(--surface-container-high); color: var(--on-surface-variant); font-size: var(--fs-micro); font-family: ui-monospace, monospace; }
 .ui-context-menu__divider { display: block; height: 1px; margin: 4px 6px; background: var(--outline-variant); }
-.ui-ctx-enter-active, .ui-ctx-leave-active { transition: opacity var(--t-fade), transform var(--t-feedback) var(--spring-view), filter var(--t-fade); }
+.ui-ctx-enter-active, .ui-ctx-leave-active { transition: opacity var(--t-fade), transform var(--t-pop), filter var(--t-fade); }
 .ui-ctx-enter-from, .ui-ctx-leave-to { opacity: 0; transform: scale(.94); filter: blur(6px); }
 </style>

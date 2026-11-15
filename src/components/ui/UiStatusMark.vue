@@ -150,8 +150,7 @@ const rootStyle = computed(() => ({
 .ui-status-mark.is-none .ui-status-mark__ring { opacity: 0; }
 .ui-status-mark.is-none .ui-status-mark__track { opacity: .34; }
 .ui-status-mark__ring {
-  transition: stroke-dasharray 320ms cubic-bezier(.23,1,.32,1),
-              stroke-dashoffset 320ms cubic-bezier(.23,1,.32,1),
+  transition: stroke-dasharray var(--t-pop), stroke-dashoffset var(--t-pop),
               stroke 200ms ease, opacity 200ms ease;
 }
 

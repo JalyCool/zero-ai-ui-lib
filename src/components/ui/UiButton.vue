@@ -384,7 +384,7 @@ defineExpose({
   font-size: var(--btn-fs-md, var(--fs-tiny));
   font-weight: var(--w-label);
   cursor: pointer;
-  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-feedback);
+  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-pop);
 }
 .ui-btn--fuse:active,
 .ui-btn--hold:active { transform: scale(var(--press-scale)); }
@@ -517,7 +517,7 @@ defineExpose({
   border-radius: calc(var(--r-button, 14px) * var(--radius-scale) - 4px);
   background: var(--primary);
   color: var(--on-primary);
-  transition: transform var(--t-panel) var(--spring-view), width var(--t-panel), background var(--t-fade);
+  transition: transform var(--t-pop), width var(--t-pop), background var(--t-fade);
 }
 .ui-btn__slide-handle svg { width: 16px; height: 16px; }
 .ui-btn__slide-spin { animation: uiBtnSpin 900ms linear infinite; }

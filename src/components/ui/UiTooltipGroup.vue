@@ -150,7 +150,7 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   border-radius: calc(10px * var(--radius-scale));
   background: var(--surface-container-low);
   border-bottom-width: var(--border-w);
-  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-feedback);
+  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-pop);
 }
 .ui-tooltip-group__trigger.is-icon:active { transform: scale(var(--press-scale)); }
 .ui-tooltip-group__trigger.is-icon:hover { background: var(--surface-container); }
@@ -174,7 +174,7 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   white-space: pre-line;
 }
 .ui-tip-enter-active,
-.ui-tip-leave-active { transition: opacity var(--t-fade), transform var(--t-feedback), filter var(--t-fade); }
+.ui-tip-leave-active { transition: opacity var(--t-fade), transform var(--t-pop), filter var(--t-fade); }
 .ui-tip-enter-from,
 .ui-tip-leave-to { opacity: 0; transform: translate(-50%, calc(-100% + 4px)) scale(.94); filter: blur(6px); }
 
