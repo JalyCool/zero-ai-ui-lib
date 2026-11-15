@@ -126,12 +126,16 @@ function md3Vibrant(seed, isDark) {
   const tone = (palette, value) => m3.hexFromArgb(palette.tone(value))
 
   if (isDark) {
+    /* 深色下 MD3 的默认层级（6 / 10 / 12 / 17 / 22）与页面底色只差 9 个灰阶，
+       卡片几乎粘在背景上。这里把「抬起」的层级整体拉开：
+       背景 6，卡片 14，容器 17，高层 22，最高层 27；
+       描边也提亮到 36，让 0.75px 的边在深色里真的看得见。 */
     return {
       '--background': tone(neutral, 6), '--surface': tone(neutral, 6),
-      '--surface-container-low': tone(neutral, 10), '--surface-container': tone(neutral, 12),
-      '--surface-container-high': tone(neutral, 17), '--surface-container-highest': tone(neutral, 22),
-      '--on-surface': tone(neutral, 90), '--on-surface-variant': tone(neutralVariant, 80),
-      '--outline': tone(neutralVariant, 60), '--outline-variant': tone(neutralVariant, 30),
+      '--surface-container-low': tone(neutral, 14), '--surface-container': tone(neutral, 17),
+      '--surface-container-high': tone(neutral, 22), '--surface-container-highest': tone(neutral, 27),
+      '--on-surface': tone(neutral, 92), '--on-surface-variant': tone(neutralVariant, 82),
+      '--outline': tone(neutralVariant, 62), '--outline-variant': tone(neutralVariant, 36),
       '--primary': tone(primary, 80), '--on-primary': tone(primary, 20),
       '--primary-container': tone(primary, 30), '--on-primary-container': tone(primary, 90),
       '--secondary': tone(secondary, 80), '--secondary-container': tone(secondary, 30),
@@ -201,8 +205,9 @@ function fallbackOklch(seed, isDark) {
   if (isDark) {
     return {
       '--background': neutral[11], '--surface': neutral[11],
-      '--surface-container-low': neutral[10], '--surface-container': neutral[9],
-      '--surface-container-high': neutral[8], '--surface-container-highest': neutral[7],
+      /* 与 MD3 分支同一策略：深色下把抬起层级拉开，卡片不再粘背景。 */
+      '--surface-container-low': neutral[9], '--surface-container': neutral[8],
+      '--surface-container-high': neutral[7], '--surface-container-highest': neutral[6],
       '--on-surface': neutral[0], '--on-surface-variant': neutralVariant[3],
       '--outline': neutralVariant[5], '--outline-variant': neutralVariant[7],
       '--primary': primary[2], '--on-primary': primary[10],
@@ -233,8 +238,8 @@ const WHITE_OVERRIDE = {
 
 const BLACK_OVERRIDE = {
   '--background': '#000000', '--surface': '#000000',
-  '--surface-container-low': '#0f0f11', '--surface-container': '#17171a',
-  '--surface-container-high': '#1f1f23', '--surface-container-highest': '#27272c'
+  '--surface-container-low': '#151518', '--surface-container': '#1d1d21',
+  '--surface-container-high': '#27272d', '--surface-container-highest': '#32323a'
 }
 
 export function apply({ animate = false } = {}) {
