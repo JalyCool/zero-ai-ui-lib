@@ -38,6 +38,8 @@ function viewportRect() {
 }
 
 function measure() {
+  /* 关掉之后不再画孔：resize 触发的 measure 也不许把遮罩画回来。 */
+  if (!open.value || closing.value) return
   if (!step.value) return
   const el = document.querySelector(step.value.target)
   if (!el) return
@@ -67,17 +69,24 @@ async function go(delta) {
   await nextTick()
   measure()
 }
+function detach() {
+  window.removeEventListener('resize', measure)
+  document.removeEventListener('keydown', onKey)
+}
 function close() {
   if (closing.value || !rendered.value) return
   closing.value = true
   open.value = false
-  /* 退场：孔张回整屏 */
+  /* 退场：孔张回整屏，遮罩环滑出视口；播完立刻卸载 + 摘监听，
+     否则之后的 resize 会把遮罩重新画出来。 */
   spot.value = viewportRect()
+  detach()
   const ms = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ? 0
     : readDuration('--spring-exit-dur', 400)
   clearTimeout(timer)
   timer = setTimeout(() => {
+    timer = 0
     rendered.value = false
     closing.value = false
     open.value = false
@@ -88,9 +97,12 @@ function close() {
 }
 function onKey(event) { if (event.key === 'Escape') close() }
 
+/* 关键：modelValue 变 false 时**不能**清掉 close() 刚排的卸载定时器 ——
+   close() 自己会 emit update:false，回环进这里若 clearTimeout，
+   组件就永远停在「已关闭但还挂在 DOM」的状态，遮罩 / 点击拦截都在。 */
 watch(() => props.modelValue, async value => {
-  clearTimeout(timer)
   if (value) {
+    clearTimeout(timer)
     index.value = props.startAt
     closing.value = false
     landed.value = false
@@ -116,8 +128,7 @@ watch(() => props.steps, () => { if (open.value) { measure() } })
 
 onBeforeUnmount(() => {
   clearTimeout(timer)
-  window.removeEventListener('resize', measure)
-  document.removeEventListener('keydown', onKey)
+  detach()
 })
 </script>
 <template>
