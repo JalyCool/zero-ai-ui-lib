@@ -53,6 +53,10 @@
 
 ## C. 进度记录（最近提交）
 
+- 本轮（第八段）：活泼模式所有弹簧时长统一 ×1.25（`LIVELY_DURATION_SCALE`，CSS 兜底值同步），
+  实测 feedback 0.52 / view 0.66 / sheet 0.82 / expand 0.67 / exit 0.56 / fade 0.42 / pop·shift 0.42；
+  开关把手圆角固定 999px，按压放大到 32×32 仍保持胶囊/圆形。
+
 - 本轮（第七段）：验证码去掉独立位光标（`ui-code-slots__caret`），当前位改为整格填充
   主色容器（错误态用 error 填充）；dev server 的 watch.ignored 扩到 `.chrome-*/` 与 `.shot*`。
 

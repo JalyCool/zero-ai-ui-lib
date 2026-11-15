@@ -140,7 +140,8 @@
   left: 2px;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  /* 把手会随按压 / 活泼模式变宽变高，固定胶囊圆角，避免百分比圆角在变形时跑形。 */
+  border-radius: 999px;
   background: var(--surface);
   transform: translateY(-50%);
   transition: transform var(--t-feedback), background var(--t-fade);
@@ -790,10 +791,10 @@
   /* 位移用 --t-shift（温和过冲），尺寸变化用 --t-pop（夸张）：
      位置不要甩、大小要弹，这是「活泼但不晕」的分界。 */
   transition: transform var(--t-shift), width var(--t-pop), height var(--t-pop),
-              border-radius var(--t-pop), background var(--t-fade);
+              background var(--t-fade);
 }
-.ui-switch:active .ui-switch__thumb { width: 26px; height: 26px; border-radius: 42%; }
-[data-motion="lively"] .ui-switch:active .ui-switch__thumb { width: 32px; height: 32px; border-radius: 38%; }
+.ui-switch:active .ui-switch__thumb { width: 26px; height: 26px; border-radius: 999px; }
+[data-motion="lively"] .ui-switch:active .ui-switch__thumb { width: 32px; height: 32px; border-radius: 999px; }
 [data-motion="lively"] .ui-switch__thumb { width: 24px; height: 24px; }
 .ui-check__box,
 .ui-check__box svg { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade), color var(--t-fade); }

@@ -72,16 +72,22 @@ export function springsFor(tone) {
 }
 
 /** 把当前气质（或显式传入的 tone）落成一整套 CSS 令牌。 */
+/* 活泼模式幅度更大（过冲 6%~20%、位移更远），同样的时长会显得「收得太急」；
+   统一放宽 25%，但不继续拉长 —— 再长就拖沓了。 */
+export const LIVELY_DURATION_SCALE = 1.25
+
 export function apply(tone) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   const active = tone || root.getAttribute('data-motion') || 'calm'
-  const table = springsFor(active === 'lively' ? 'lively' : 'calm')
+  const lively = active === 'lively'
+  const table = springsFor(lively ? 'lively' : 'calm')
+  const scale = lively ? LIVELY_DURATION_SCALE : 1
 
   Object.keys(table).forEach(name => {
     const params = table[name]
     const spring = springLinear(params.response, params.damping)
     root.style.setProperty(`--spring-${name}`, spring.easing)
-    root.style.setProperty(`--spring-${name}-dur`, spring.duration.toFixed(2) + 's')
+    root.style.setProperty(`--spring-${name}-dur`, (spring.duration * scale).toFixed(2) + 's')
   })
 }
