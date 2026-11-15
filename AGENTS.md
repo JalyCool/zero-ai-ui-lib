@@ -111,7 +111,7 @@ import {
   UiRangeDatePicker, UiWheelDatePicker, UiRangeTimePicker,
   UiRangeSlider, UiRingSlider, UiGaugeSlider, UiRollNumber,
   UiCodeEditor, UiTerminalOutput, UiTagInput, UiKeyValueEditor, UiSchemaForm,
-  UiDataTable, UiTreeView, UiVirtualList, UiImageViewer, UiFileDropzone,
+  UiDataTable, UiTreeView, UiVirtualList, UiFileDropzone,
   UiMorphPanel, UiWheel, UiCodeImage, UiTabBar, confirmDialog,
   UiRotatingText, UiText, UiStatusMark, UiToolCallChip, UiCodeSlots, UiScrubField,
   UiSwipeRow, UiStepFlow, UiTooltipGroup, UiMediaViewer, UiCardGroup,
@@ -168,7 +168,6 @@ import {
 | `UiDataTable` | `:columns` `{ key, label, width?, align?, sortable? }` + `:rows`；粘性表头、点表头三态排序、`max-height` 内滚动、`#cell-<key>` 插槽 |
 | `UiTreeView` | `:nodes` 递归树（folder / file / md / json / image 图标分色），箭头旋转变形、`default-open` 初始展开 |
 | `UiVirtualList` | 定高虚拟滚动（`item-height` `height`），几百上千行只渲染窗口；勾选标记在行首；`selection="single|multiple"` 决定单击语义；`drag-select`（多选）长按某行后竖向拖动连续勾选 —— 锚点初始状态决定这段是选中还是取消，往回拖可改终点，拖到边缘自动滚动（限速 12px/帧），期间容器 `touch-action: none` 接管原生滚动 |
-| `UiImageViewer` | `v-model` 开关 + `:src`；滚轮 / 按钮缩放 25–400%、旋转、拖拽平移、下载原图、Esc 关闭 |
 | `UiFileDropzone` | 拖入 / 点击收 `File` 列表，`accept` `max-size`(MB) 过滤，不合格文件走 `@reject` |
 | `UiSearchField` | 图标 ⇄ 输入框原地形变：外壳宽度走 view 弹簧，同一个搜索图标平移到尾部成为搜索按钮；Enter / 点图标 `@search`，Esc 先清空后收起，点外部收起 |
 | `confirmDialog` | `const ok = await confirmDialog({ title, message, danger })`，统一替代 `window.confirm`。**有意不接 Esc / Enter**：确认必须显式点击按钮，防键盘误触发危险操作（普通对话框不受此限制） |
@@ -329,8 +328,8 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 7. `UiToastHost` 在最上层，底部面板打开时可能盖住表单底部，可在打开前 dismiss。
 8. `UiToolMenu` 展开时会在文档流里占位、把下方内容推开；不想位移就换 `UiFloatingMenu`。
 9. 调试用的无头 Chrome profile 目录（`.chrome-p*/`）会被写大量文件，`vite.config.js` 已用 `server.watch.ignored` 排除，否则 dev/preview 会被热更风暴拖垮。
-11. 手势组件里的 `setPointerCapture` 必须 try/catch：指针在回调前已失效时（系统取消、合成事件）会抛 `NotFoundError`，一旦抛在回调中间，后续的吸附 / 收尾逻辑会被整段跳过。
 10. 给展开卡片做「滑出式关闭」时，动画必须**从当前跟手位置续接**（先 `void offsetWidth` 提交当前帧再写 transition），并在路由切换绘制后才清内联样式；否则完成动画会像从原位重新开始。
+11. 手势组件里的 `setPointerCapture` 必须 try/catch：指针在回调前已失效时（系统取消、合成事件）会抛 `NotFoundError`，一旦抛在回调中间，后续的吸附 / 收尾逻辑会被整段跳过。
 
 ## 9. 交付前自查
 
