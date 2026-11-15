@@ -174,9 +174,27 @@ function doClose() {
 }
 
 watch(model, value => {
-  if (value) doOpen()
-  else if (rendered.value) doClose()
+  if (value) { doOpen(); return }
+  if (!rendered.value) return
+  /* 外部直接置 false（或 doClose 因状态不符提前 return）时也要收尾：
+     否则 rendered 一直是 true，那层 fixed 全屏舞台会挡住整个页面，
+     表现就是「突然所有交互都失效」。 */
+  if (!open.value || closing.value) forceClose()
+  else doClose()
 })
+
+function forceClose() {
+  clearTimeout(closeTimer)
+  rendered.value = false
+  open.value = false
+  closing.value = false
+  backdrop.value = false
+  zoom.value = 1
+  panX.value = 0
+  panY.value = 0
+  dragDown.value = 0
+  releaseViewer(instance)
+}
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))

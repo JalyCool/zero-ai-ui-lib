@@ -1,0 +1,23 @@
+活泼模式加强 / 字体适配 / Playground 重写为 UiBottomSheet 样式测试 / 组件页改选择器 / 修全屏遮罩导致交互失效
+
+1. 活泼模式：照 react-bits 的弹簧手感（高刚度 + 大 bounce）翻译成 CSS 曲线，
+   过冲从 1.3~1.4 提到 1.6~2.1，时长压到 0.2~0.3s，press-scale 0.9、按比例放大
+   --motion-bounce 1.9 / --motion-distance 1.45 / --pop-scale 1.22。
+2. 字体：新增 --font-sans / --font-mono，中文首选「阿里巴巴普惠体 3.0」，
+   依次退 PingFang SC / 冬青黑 / 微软雅黑 / Noto Sans CJK；末尾用
+   html,body,button,input,textarea,select 统一落地（否则会被 base.css 前面的
+   body 规则覆盖）；同时开 -webkit-font-smoothing 与 font-synthesis。
+3. Playground 整体重写：SettingsSheet 现在就是库自己的 UiBottomSheet +
+   新的 StyleLab（样式测试）面板 —— 调性 / 明暗 / 配色 / 主题色 / 圆角倍率 /
+   密度 / 字号倍率 + 组件预览（按钮/标签/开关/状态标记/打字机/工具胶囊）。
+   删掉旧的 ColorPanel 手写面板。
+4. 组件示例页：不再把 8 个分区全排开，顶部改成 UiSelect 分类选择器，
+   一次只显示一个分区（实测「操作」5 格 →「滑轨」3 格切换正常）。
+5. 修「页面突然所有交互失效」：MediaViewer 的 rendered 可能在 doClose 提前
+   return 时留在 true，那层 fixed 全屏舞台会吃掉全部点击。新增 forceClose，
+   model 被外部置 false 时必定收尾。
+6. UiText 增加无光标示例（:cursor="false"），并保持默认 blur 逐字进场。
+
+验证：选择器切换、字体栈生效（body 计算值为 Alibaba PuHuiTi 3.0 …）、
+Playground 内含 3 个分段 + 3 个滑轨 + 取色器、切活泼后 --press-scale .9 /
+--motion-bounce 1.9 / --pop-scale 1.22 全部落地；console 零错误。

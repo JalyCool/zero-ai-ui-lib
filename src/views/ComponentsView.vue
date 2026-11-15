@@ -22,6 +22,7 @@ import { confirmDialog } from '../lib'
    窄屏自动单列，宽屏自动多列，不手写行列。
    ============================================================ */
 
+const activeSection = ref('')
 const sections = [
   { id: 'sec-actions', label: '操作' },
   { id: 'sec-forms', label: '表单' },
@@ -32,6 +33,8 @@ const sections = [
   { id: 'sec-overlay', label: '浮层反馈' },
   { id: 'sec-motion', label: '动效手势' }
 ]
+activeSection.value = sections[0].id
+const sectionOptions = sections.map(section => ({ label: section.label, value: section.id }))
 
 function jump(id) {
   const el = document.getElementById(id)
@@ -417,18 +420,17 @@ onMounted(() => {
       <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。7 个分区、54 个组件，窄屏单列、宽屏自动多列。</p>
     </div>
 
-    <nav class="lib-nav" aria-label="组件分区">
-        <button
-          v-for="tab in sections"
-          :key="tab.id"
-          type="button"
-          class="lib-nav__item"
-          @click="jump(tab.id)"
-        >{{ tab.label }}</button>
-    </nav>
+    <!-- 分类选择器：一次只展示一个分区，避免把几十个组件全排在一页里 -->
+    <div class="lib-picker">
+      <UiSelect
+        v-model="activeSection"
+        :options="sectionOptions"
+        label="选择分类"
+      />
+    </div>
 
     <!-- 操作 -->
-    <section :id="sections[0].id" class="lib-sec">
+    <section v-show="activeSection === sections[0].id" :id="sections[0].id" class="lib-sec">
       <h3 class="lib-sec__title">操作与选择</h3>
       <div class="lib-cells">
         <div class="lib-cell">
@@ -486,7 +488,7 @@ onMounted(() => {
     </section>
 
     <!-- 表单 -->
-    <section :id="sections[1].id" class="lib-sec">
+    <section v-show="activeSection === sections[1].id" :id="sections[1].id" class="lib-sec">
       <h3 class="lib-sec__title">表单</h3>
       <div class="lib-cells">
         <div class="lib-cell">
@@ -539,7 +541,7 @@ onMounted(() => {
     </section>
 
     <!-- 滑轨 -->
-    <section :id="sections[2].id" class="lib-sec">
+    <section v-show="activeSection === sections[2].id" :id="sections[2].id" class="lib-sec">
       <h3 class="lib-sec__title">滑轨与旋钮</h3>
       <div class="lib-cells">
         <div class="lib-cell">
@@ -569,7 +571,7 @@ onMounted(() => {
     </section>
 
     <!-- 日期时间 -->
-    <section :id="sections[3].id" class="lib-sec">
+    <section v-show="activeSection === sections[3].id" :id="sections[3].id" class="lib-sec">
       <h3 class="lib-sec__title">日期与时间</h3>
       <div class="lib-cells">
         <div class="lib-cell">
@@ -602,7 +604,7 @@ onMounted(() => {
     </section>
 
     <!-- 工程 -->
-    <section :id="sections[4].id" class="lib-sec">
+    <section v-show="activeSection === sections[4].id" :id="sections[4].id" class="lib-sec">
       <h3 class="lib-sec__title">工程控件</h3>
       <div class="lib-cells lib-cells--wide">
         <div class="lib-cell lib-cell--span">
@@ -648,7 +650,7 @@ onMounted(() => {
     </section>
 
     <!-- 可视化 -->
-    <section :id="sections[5].id" class="lib-sec">
+    <section v-show="activeSection === sections[5].id" :id="sections[5].id" class="lib-sec">
       <h3 class="lib-sec__title">数据与可视化</h3>
       <div class="lib-cells">
         <div class="lib-cell">
@@ -697,7 +699,7 @@ onMounted(() => {
     </section>
 
     <!-- 浮层与反馈 -->
-    <section :id="sections[6].id" class="lib-sec">
+    <section v-show="activeSection === sections[6].id" :id="sections[6].id" class="lib-sec">
       <h3 class="lib-sec__title">浮层与反馈</h3>
       <div class="lib-cells">
         <div class="lib-cell">
@@ -742,7 +744,7 @@ onMounted(() => {
       </div>
     </section>
 
-    <section :id="sections[7].id" class="lib-sec">
+    <section v-show="activeSection === sections[7].id" :id="sections[7].id" class="lib-sec">
       <h3 class="lib-sec__title">动效与手势</h3>
       <div class="lib-cells">
         <div class="lib-cell">
@@ -760,6 +762,7 @@ onMounted(() => {
             <UiText variant="type" type-effect="blur" :text="'正在生成报告…'" :cps="16" :loop="true" />
             <UiText variant="type" type-effect="fade" cursor-style="block" :text="'淡入进场 · 方块光标'" :cps="20" :loop="true" />
             <UiText variant="type" type-effect="rise" cursor-style="underscore" :text="'升起进场 · 下划线光标'" :cps="18" :loop="true" />
+            <UiText variant="type" type-effect="blur" :cursor="false" :text="'不要光标 · 只留逐字进场'" :cps="16" :loop="true" />
             <UiText variant="shiny" text="掠光文字" sheen="chrome" />
             <UiText variant="gradient" text="流动渐变 · 扫过" gradient="sweep" />
             <UiText variant="gradient" text="流动渐变 · 网格" gradient="mesh" />
@@ -955,6 +958,7 @@ onMounted(() => {
 .lib-nav__item:active { transform: scale(var(--press-scale)); }
 
 /* ---------- 分区 ---------- */
+.lib-picker { position: sticky; top: 0; z-index: 5; padding: 8px 0; background: color-mix(in oklab, var(--background) 88%, transparent); backdrop-filter: blur(8px); }
 .lib-sec { scroll-margin-top: 54px; }
 .lib-sec__title {
   margin: 0 0 10px;

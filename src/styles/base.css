@@ -1,4 +1,25 @@
 /* ============================================================
+   字体：中文优先阿里巴巴普惠体 3.0（需应用自行引入字体文件），
+   再退到各平台原生中文字体，最后是系统 sans 栈。
+   macOS/iOS  → PingFang SC；Windows → 微软雅黑；Android → Noto Sans CJK。
+   ============================================================ */
+:root {
+  --font-sans: 'Alibaba PuHuiTi 3.0', 'Alibaba PuHuiTi', 'AlibabaPuHuiTi-3', 'AlibabaPuHuiTi',
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei UI', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC',
+    'Source Han Sans SC', 'Segoe UI', Roboto, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+}
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================
    Reset & 触屏修复
    ============================================================ */
 *,
@@ -136,4 +157,12 @@ header {
   height: 0;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* ============================================================
+   字体落地（放在文件末尾，避免被前面的 body 规则覆盖）
+   中文优先阿里巴巴普惠体 3.0，其次各平台原生中文字体。
+   ============================================================ */
+html, body, button, input, textarea, select {
+  font-family: var(--font-sans);
 }
