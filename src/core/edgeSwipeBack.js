@@ -98,9 +98,19 @@ export function useEdgeSwipeBack(options = {}) {
     return !config.shouldHandle || config.shouldHandle()
   }
 
-  /* 遮罩：黑色压暗 + 背景模糊，随进度渐显。 */
+  /* 遮罩：优先复用展开卡片那张 .expand-backdrop —— 卡片展开时底下本来就是
+     压暗 + 模糊的，侧滑过程应该反过来「由黑转不黑、由模糊转清晰」，
+     所以驱动的是 1 - 进度。没有卡片遮罩时（比如只滑视图）才自建一层。 */
+  let externalScrim = false
   function ensureScrim() {
-    if (scrim && scrim.isConnected) return scrim
+    if (scrim) return scrim
+    const backdrop = document.querySelector('.expand-backdrop')
+    if (backdrop) {
+      scrim = backdrop
+      externalScrim = true
+      backdrop.style.transition = 'none'
+      return scrim
+    }
     scrim = document.createElement('div')
     scrim.className = 'ui-edge-scrim'
     scrim.setAttribute('aria-hidden', 'true')
@@ -115,11 +125,35 @@ export function useEdgeSwipeBack(options = {}) {
       'transition:none'
     ].join(';')
     document.body.appendChild(scrim)
+    externalScrim = false
     return scrim
   }
 
   function dropScrim() {
-    if (scrim) { scrim.remove(); scrim = null }
+    if (!scrim) return
+    if (externalScrim) {
+      /* 交还给卡片遮罩自己管理：清掉临时过渡与乘算系数。 */
+      scrim.style.transition = ''
+      scrim.style.removeProperty('--edge-fade')
+    } else {
+      scrim.remove()
+    }
+    scrim = null
+    externalScrim = false
+  }
+
+  /* 遮罩强度：随进度从满档淡出（fade = 1 - 进度）。 */
+  function setScrimFade(fade, withTransition) {
+    if (!scrim) return
+    if (withTransition) scrim.style.transition = ''
+    if (externalScrim) {
+      scrim.style.setProperty('--edge-fade', fade.toFixed(3))
+      return
+    }
+    scrim.style.opacity = (config.scrimOpacity * fade).toFixed(3)
+    const blur = (config.scrimBlur * fade).toFixed(2) + 'px'
+    scrim.style.webkitBackdropFilter = 'blur(' + blur + ')'
+    scrim.style.backdropFilter = 'blur(' + blur + ')'
   }
 
   /* 进度 0..1：有效位移 / 跟手上限 */
@@ -135,12 +169,8 @@ export function useEdgeSwipeBack(options = {}) {
     el.style.transition = 'none'
     el.style.transform = 'translate3d(' + travelled + 'px,0,0) scale(' + scale + ')'
     el.style.borderRadius = radius > 0.4 ? radius.toFixed(2) + 'px' : savedRadius
-    if (scrim) {
-      scrim.style.opacity = (config.scrimOpacity * progress).toFixed(3)
-      const blur = (config.scrimBlur * progress).toFixed(2) + 'px'
-      scrim.style.webkitBackdropFilter = 'blur(' + blur + ')'
-      scrim.style.backdropFilter = 'blur(' + blur + ')'
-    }
+    /* 跟手：越滑越亮、越清晰（1 - 进度）。 */
+    setScrimFade(1 - progress, false)
     if (config.onProgress) config.onProgress(progress)
   }
 
@@ -267,12 +297,7 @@ export function useEdgeSwipeBack(options = {}) {
     /* 滑出过程中圆角继续加大到上限，和跟手趋势一致。 */
     el.style.borderRadius = config.maxRadius + 'px'
     el.style.opacity = '0.85'
-    if (scrim) {
-      scrim.style.transition = 'opacity ' + config.finishDuration + 'ms ease-out'
-      scrim.style.opacity = '0'
-      scrim.style.webkitBackdropFilter = 'blur(0px)'
-      scrim.style.backdropFilter = 'blur(0px)'
-    }
+    setScrimFade(0, true)
     if (config.onProgress) config.onProgress(1)
 
     /* 通知卡片：这次收起由侧滑完成，落定即可，别再弹回原位。 */
@@ -329,12 +354,8 @@ export function useEdgeSwipeBack(options = {}) {
     el.style.transform = 'translate3d(0,0,0) scale(1)'
     el.style.borderRadius = savedRadius
 
-    if (scrim) {
-      scrim.style.transition = 'opacity ' + duration + 'ms ease, backdrop-filter ' + duration + 'ms ease'
-      scrim.style.opacity = '0'
-      scrim.style.webkitBackdropFilter = 'blur(0px)'
-      scrim.style.backdropFilter = 'blur(0px)'
-    }
+    /* 弹回原位 = 卡片重新盖住下层：遮罩回到满档。 */
+    setScrimFade(1, true)
     if (config.onProgress) config.onProgress(0)
     setTimeout(() => {
       animating = false

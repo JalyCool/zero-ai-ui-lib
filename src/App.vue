@@ -68,14 +68,17 @@ onBeforeUnmount(() => {
 /* iOS 侧滑跟手：完全接管左边缘手势（原生层需关闭系统滑动返回，
    并把左边缘系统手势优先交给 WebView）。只在有展开卡片时接管，
    拖的是那张卡片；过阈值 -> 完成动画后统一 back()，
-   未过阈值 -> 恢复 transition 弹回。 */
+   未过阈值 -> 恢复 transition 弹回。
+   桌面端不启用：那里没有边缘手势的交互习惯，收起走遮罩 / Esc / 返回按钮。 */
 let swipeBack = null
+const isDesktopLayout = () =>
+  window.matchMedia && window.matchMedia('(min-width: 900px)').matches
 
 onMounted(() => {
   swipeBack = useEdgeSwipeBack({
     container: () => document,
     target: () => getActive()?.card || document.getElementById('viewRoot'),
-    shouldHandle: () => !!getActive(),
+    shouldHandle: () => !isDesktopLayout() && !!getActive(),
     onBack: () => router.back()
   })
 

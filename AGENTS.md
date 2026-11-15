@@ -126,7 +126,7 @@ import {
 | `UiSelect` | 自绘下拉：`v-model` + `:options="[{label,value}]"`；点输入框原地展开成列表 |
 | `UiSlider` | `v-model`；`stops` 数组或 `snapCount` 等分 → 拖动跟手、松手弹簧吸附；`@snap="({index, value}) => …"`；刻度：`show-scale` + `major-ticks`（大刻度区间数）+ `minor-ticks`（大刻度间的小刻度份数）+ `precision`（小数位）。刻度在轨道上方、短浅线，小刻度短大刻度长；数值只在最小值 / 最大值（无刻度时）或大刻度位置显示；`show-bubble` 拖拽时把手上方浮当前值；弹簧参数收进 `spring` 对象（`{ stiffness, dampingRatio, flingTime, rubber, maxOverscroll }`），旧的 5 个独立 props 已废弃仍兼容 |
 | `UiDatePicker` / `UiTimePicker` | `v-model` 字符串（`YYYY-MM-DD` / `HH:mm[:ss]`）；贴着输入框展开，不压暗背景；`UiTimePicker` 有 `precision`（h/m/s）决定波轮字段数 |
-| `UiCodeImage` | children 直接传文本：<`CodeImage type="qrcode">https://…</`CodeImage>；`type` 字符串或数组（数组 = 可切换码制组，<=3 用 Segmented、>3 用下拉；跨一维/二维用图标区分，同族用文字标签）；`options` 按码制传参 `{ qrcode: { errorCorrectionLevel: 'H' }, ean13: { flat: true } }`，未传的走默认、未知键忽略不崩溃；内容不合规的选项可见但禁用、自动切到可用项；全部不可用走降级候选（二维码兜底），仍无解渲染空状态。校验 / 参数 / 降级规则全部集中在 `core/codeFormats`，组件内不硬编码码制规则 |
+| `UiCodeImage` | 切换动画的方向按「目标相对当前位置」动态决定（目标在后往正方向进、在前往反方向进），进场层先按新方向落位、下一帧再滑回原位；用下拉切换时轴改为纵向（上下滑入滑出），分段 / 图标切换保持横向；仅两个跨族（一维/二维）选项时图标模式不再显示文字标签（图标已说明族差别）。children 直接传文本：<`CodeImage type="qrcode">https://…</`CodeImage>；`type` 字符串或数组（数组 = 可切换码制组，<=3 用 Segmented、>3 用下拉；跨一维/二维用图标区分，同族用文字标签）；`options` 按码制传参 `{ qrcode: { errorCorrectionLevel: 'H' }, ean13: { flat: true } }`，未传的走默认、未知键忽略不崩溃；内容不合规的选项可见但禁用、自动切到可用项；全部不可用走降级候选（二维码兜底），仍无解渲染空状态。校验 / 参数 / 降级规则全部集中在 `core/codeFormats`，组件内不硬编码码制规则 |
 | `UiTabBar` | `:items` 传 `{ value, label, icon }`（icon 是 24x24 viewBox 内的 SVG 标记），`v-model` + `@change`；移动端贴底横排、背景铺满整屏宽度（tab 各自上限 96px），桌面端贴左竖排、背景铺满整个高度、tab 从顶部固定间距往下排 |
 | `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；时间 / 日期波轮都基于它 |
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起 |
@@ -214,7 +214,7 @@ import { EmptyRoute } from 'zero-ai-ui-lib'
 - `variant`：`card`（整卡）/ `metric`（格子）/ `list-item`（列表行）——三者的背景、描边、圆角、内边距都由库样式提供，应用只管往里塞内容。
 - 展开内容里放关闭按钮：`<UiButton data-close>返回</UiButton>`。
 - 卡片内可交互元素（按钮、输入框、图表）默认已被忽略，不会误触发展开；额外元素加 `data-no-expand`。
-- 桌面端（≥900px）展开成居中模态 + 背景压暗模糊；移动端铺满整屏。
+- 桌面端（≥900px）展开成居中模态 + 背景压暗模糊；移动端铺满整屏，但**展开遮罩两端都铺**（`.expand-backdrop` 满档 = 20% 黑 + 5px 模糊）：移动端卡片收起 / 侧滑的过程中遮罩露出来，承担同一段「由黑转不黑 + 由模糊转清晰」的过渡（`--edge-fade` 乘算系数控制强度）。
 - 更多细节见仓库 `docs/route-expand-card.md`。
 
 ## 4.5 历史栈与返回（硬规则）
@@ -240,12 +240,12 @@ const swipe = useEdgeSwipeBack({
 })
 ```
 
-- `touchstart` 只落在左边缘 `edgeWidth`（默认 26px）内才开始拖拽；明显纵向滑动立即让位给页面滚动。
-- `touchmove` 按 `deltaX` 实时写 `translate3d / scale / border-radius`，期间 `transition: none` 完全跟手；同时驱动一层黑色遮罩 + 背景模糊（`backdrop-filter`）随进度渐显。
+- 仅移动端接管（应用侧 `shouldHandle` 里加 `matchMedia('(min-width: 900px)')` 判断即可）；`touchstart` 只落在左边缘 `edgeWidth`（默认 26px）内才开始拖拽；明显纵向滑动立即让位给页面滚动。
+- `touchmove` 按 `deltaX` 实时写 `translate3d / scale / border-radius`，期间 `transition: none` 完全跟手；遮罩**优先复用展开卡片的 `.expand-backdrop`**（有就乘算 `--edge-fade`），没有才自建一层 —— 侧滑时下层经历的是与收起一致的「由 20% 黑 + 5px 模糊淡向全亮」。`--edge-fade = 1 - 进度`：越滑越亮越清晰，松手弹回时回到满档。
 - **跟手有限度**：位移到 `travelLimit`（默认 78% 宽度）为止，超出走橡皮筋（最多再 12%），拖不到屏幕外；到底时缩放 `maxScale`（默认 .86）、圆角 `maxRadius`（默认 **32px**）都取最大，中途连续变化。
 - `touchend` 按位移比例（默认 34% × 上限）+ 速度（默认 0.62px/ms）判断：过阈值 -> **从当前跟手位置继续滑出**（圆角同时加到 32px，先提交当前帧再过渡，绝不回原位重放），落定后 `back()`，并在路由切换绘制完成后才清掉内联样式。
 - **弹回按距离给弹性**：未过阈值时从松手的确切位置 / 缩放 / 圆角续接（显式落值 + 强制一帧，不会重放），离得越远时长越长（`revertDuration` 340ms → `revertDurationFar` 520ms）、过冲越大（cubic-bezier 的 y2 从 `revertOvershootNear` 1.02 线性升到 `revertOvershootFar` 1.42），近处几乎不回弹。
-- 卡片展开态下侧滑完成时会给卡片打 `uiSwipeClose` 标记，`ExpandableCard` 看到标记就直接落定，不再重放「弹回原位」的弹簧。
+- 卡片展开态下侧滑完成时会给卡片打 `uiSwipeClose` 标记，`ExpandableCard` 看到标记**不直接落定**，而是把跟手留下的 `translate / scale / 圆角` 当作收起动画的起点，走与「点返回按钮」完全相同的弹簧路径（只是多过渡一个 transform）—— 卡片从松手的位置连续收回列表原位，不会「先消失再在目标位置淡入」。
 - 手感参数（阈值 / 上限 / 橡皮筋 / 缩放 / 圆角 / 遮罩 / 时长）全部可配，见 `DEFAULTS`。
 
 **宿主（原生 WebView 壳）必须配套两件事**，否则手势会被系统抢走：

@@ -239,23 +239,27 @@
   opacity: .5;
 }
 /* ============================================================
-   桌面端：展开卡片变成居中模态
-   卡片不再铺满整页，而是生长成居中的面板；背景压暗并轻微模糊。
+   展开遮罩（桌面 + 移动共用）
+   桌面端展开成居中模态时必须压暗；移动端卡片铺满整屏时它藏在卡片后面，
+   收起 / 侧滑的过程中露出来，承担同一段「变亮 + 去模糊」的过渡。
+   · 满档 = 20% 黑 + 5px 背景模糊；
+   · --edge-fade 是乘算系数（1 = 满档，0 = 完全透明），
+     侧滑跟手时按进度反向驱动它（1-p），松手后再补一段过渡到 0。
    ============================================================ */
 .expand-backdrop {
   position: fixed;
   inset: 0;
   z-index: 290;
-  background: rgba(0, 0, 0, .16);
+  background: rgba(0, 0, 0, .2);
   -webkit-backdrop-filter: blur(0px);
   backdrop-filter: blur(0px);
   opacity: 0;
-  transition: opacity var(--t-fade),
-              -webkit-backdrop-filter 420ms ease,
-              backdrop-filter 420ms ease;
+  transition: opacity var(--spring-exit-dur) var(--spring-exit),
+              -webkit-backdrop-filter var(--spring-exit-dur) var(--spring-exit),
+              backdrop-filter var(--spring-exit-dur) var(--spring-exit);
 }
 .expand-backdrop.is-open {
-  opacity: 1;
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
+  opacity: var(--edge-fade, 1);
+  -webkit-backdrop-filter: blur(calc(5px * var(--edge-fade, 1)));
+  backdrop-filter: blur(calc(5px * var(--edge-fade, 1)));
 }

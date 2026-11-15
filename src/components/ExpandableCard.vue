@@ -121,7 +121,8 @@ function unlockPageScroll() {
 }
 
 function showBackdrop() {
-  if (!isDesktop()) return
+  /* 移动端也铺这层遮罩：卡片铺满时看不见它，但收起 / 侧滑过程中
+     卡片缩回列表，遮罩要跟着一起「由黑转不黑、由模糊转清晰」。 */
   backdropVisible.value = true
   requestAnimationFrame(() => {
     if (backdropVisible.value) backdropOpen.value = true
@@ -315,6 +316,9 @@ async function openCard(method = 'pointer') {
 function settleClosed(card, state, method) {
   const { slot, originalStyle } = state
   closing.value = false
+  /* 遮罩淡出需要它在 DOM 里活着：先摘掉 is-open（closeCard 已做），
+     等淡出播完再卸节点，避免「啪」一下消失。 */
+  clearTimeout(backdropTimer)
   const inner = directChild(card, 'card-inner')
   if (inner) {
     inner.removeAttribute('aria-hidden')
@@ -326,7 +330,9 @@ function settleClosed(card, state, method) {
 
   document.body.classList.remove('locked')
   unlockPageScroll()
-  backdropVisible.value = false
+  backdropTimer = setTimeout(() => {
+    backdropVisible.value = false
+  }, reduceMotion() ? 0 : 200)
 
   if (method === 'keyboard') card.focus({ preventScroll: true })
   else if (document.activeElement === card) card.blur()
@@ -362,23 +368,15 @@ function closeCard() {
   closing.value = true
   backdropOpen.value = false
 
-  /* 侧滑跟手已经把这层滑出屏幕了：直接落定，不再重放
-     「从展开位弹回原位」的弹簧，否则视觉上动画像从原位重新开始。 */
+  /* 侧滑松手后交回这里：跟手写下的 translate / scale / 圆角 都保留着，
+     正是收起动画的起点 —— 和点返回按钮走同一条弹簧路径，
+     只是多过渡一个 transform，所以不会「先消失再在目标位置淡入」。 */
   const swipeClosed = card.dataset.uiSwipeClose === '1'
   delete card.dataset.uiSwipeClose
-  if (swipeClosed) {
-    card.style.transition = 'none'
-    card.style.transform = ''
-    card.style.opacity = ''
-    card.style.borderRadius = ''
-    card.style.zIndex = ''
-    void card.offsetWidth
-    card.style.transition = ''
-    settleClosed(card, state, method)
-    return
-  }
+  const swipeClear = swipeClosed ? ['transform var(--spring-exit-dur) var(--spring-exit)'] : []
 
   card.style.transition = [
+    ...swipeClear,
     'top var(--spring-exit-dur) var(--spring-exit)',
     'left var(--spring-exit-dur) var(--spring-exit)',
     'width var(--spring-exit-dur) var(--spring-exit)',
@@ -401,6 +399,12 @@ function closeCard() {
   card.style.backgroundColor = 'var(--surface-container-low)'
   card.style.borderColor = 'var(--outline-variant)'
   card.style.boxShadow = 'var(--elev-card)'
+  if (swipeClosed) {
+    /* 松手位置 -> 列表原位：位移与缩放连续收回，不留跳变。 */
+    card.style.transform = 'translate3d(0,0,0) scale(1)'
+    card.style.opacity = ''
+    card.style.zIndex = ''
+  }
 
   const exitMs = reduceMotion() ? 0 : readDuration('--spring-exit-dur', 400)
   clearTimeout(closeTimer)

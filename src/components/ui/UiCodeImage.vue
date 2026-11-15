@@ -72,6 +72,10 @@ watch(items, pickInitial, { immediate: true })
 
 const mode = computed(() => renderMode(optionsList.value))
 const switcherKind = computed(() => (items.value.length <= 3 ? 'segmented' : 'select'))
+/* 只有两个可选项、且跨一维 / 二维两族：图标本身已经把族差别说清楚了，
+   文字标签纯属冗余，只留图标。 */
+const labelsRedundant = computed(() =>
+  mode.value === 'icon' && items.value.length === 2)
 const switcherOptions = computed(() => items.value.map(item => ({
   label: item.label, value: item.format, disabled: !item.usable
 })))
@@ -80,9 +84,16 @@ const switcherOptions = computed(() => items.value.map(item => ({
 const stageEl = ref(null)
 const layerEls = new Map()
 const renderError = ref('')
-/* 切换方向：-1 向左进，1 向右进 */
+/* 切换方向：横向时 ±1 = 左 / 右，纵向（下拉框）时 ±1 = 上 / 下。
+   拆成两个分量写进 CSS 变量，层的基础 transform 只做位移不做过渡，
+   因此可以「先按新方向落位、下一帧再进场」—— 滑入方向才会跟着动态切。 */
 const panDir = ref(1)
+const verticalPan = computed(() => switcherKind.value === 'select')
+const panX = computed(() => (verticalPan.value ? 0 : panDir.value))
+const panY = computed(() => (verticalPan.value ? panDir.value : 0))
 const leavingFormat = ref('')
+/* 层真正显示的码制：比 active 晚一帧，保证进场层起点已经是新方向 */
+const shownFormat = ref(active.value)
 
 function setLayerEl(el, format) {
   if (el) layerEls.set(format, el)
@@ -163,16 +174,35 @@ async function renderAll() {
   }
 }
 
-/* 切换：先算方向，再触发旧层离开。 */
+/* 切换：方向按「目标相对当前位置」决定 —— 目标排在后面就往正方向进，
+   排在前面就往反方向进；旧层同步向反方向离场。
+   新层的进场延后到下一帧：这一帧它先按新方向落位（无过渡），
+   下一帧再过渡到原位，滑入方向才是真正的动态方向。 */
+let panFrame = 0
 watch(active, (next, prev) => {
   const nextIndex = optionsList.value.indexOf(next)
   const prevIndex = optionsList.value.indexOf(prev)
   panDir.value = nextIndex >= prevIndex ? 1 : -1
-  leavingFormat.value = prev || ''
+  if (prev === undefined || prev === '' || reduceNow()) {
+    shownFormat.value = next
+    leavingFormat.value = ''
+    return
+  }
+  leavingFormat.value = prev
+  if (panFrame) cancelAnimationFrame(panFrame)
+  panFrame = requestAnimationFrame(() => {
+    panFrame = requestAnimationFrame(() => {
+      panFrame = 0
+      shownFormat.value = next
+    })
+  })
   if (leavingTimer) clearTimeout(leavingTimer)
   leavingTimer = setTimeout(() => { leavingFormat.value = '' }, 460)
 })
 let leavingTimer = 0
+
+const reduceNow = () =>
+  window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /* 内容 / 选项 / 参数变化 -> 全量重渲染（预渲染保证切换时零开销）。
    高度与可见性只靠显示 / 隐藏切换，绝不销毁重建层：
@@ -184,7 +214,11 @@ watch([contentText, optionsList, () => props.options, () => props.width], () => 
 /* 首帧必须渲染一次：层是空 div，不画就什么都不显示。 */
 onMounted(() => { nextTick(renderAll) })
 
-onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
+onBeforeUnmount(() => {
+  clearTimeout(leavingTimer)
+  if (panFrame) cancelAnimationFrame(panFrame)
+  layerEls.clear()
+})
 </script>
 
 <template>
@@ -193,7 +227,7 @@ onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
       ref="stageEl"
       class="ui-code-image__stage"
       :data-empty="!anyUsable || !contentText ? '' : undefined"
-      :style="{ '--pan-dir': panDir }"
+      :style="{ '--pan-x': panX, '--pan-y': panY }"
     >
       <!-- 所有可用码制叠放预渲染，同格堆叠保证尺寸取最大值、切换不跳变。
            层常驻 DOM：可见性只用 is-active 切换，不做 v-if 销毁重建。 -->
@@ -203,8 +237,8 @@ onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
         :ref="el => setLayerEl(el, item.format)"
         class="ui-code-image__layer"
         :class="{
-          'is-active': anyUsable && !!contentText && active === item.format,
-          'is-leaving': leavingFormat === item.format
+          'is-active': anyUsable && !!contentText && shownFormat === item.format,
+          'is-leaving': leavingFormat === item.format && shownFormat !== item.format
         }"
         aria-hidden="true"
       ></div>
@@ -224,7 +258,11 @@ onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
           type="button"
           role="tab"
           class="ui-code-image__icon-btn"
-          :class="{ 'is-active': active === item.format, 'is-disabled': !item.usable }"
+          :class="{
+            'is-active': active === item.format,
+            'is-disabled': !item.usable,
+            'is-icon-only': labelsRedundant
+          }"
           :aria-selected="active === item.format"
           :disabled="!item.usable"
           :title="item.usable ? item.label : item.label + '（当前内容不适用）'"
@@ -236,7 +274,7 @@ onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
             <path d="M4 5v14M7 5v14M10 5v10M13 5v14M16 5v10M19 5v14" />
           </svg>
-          <span>{{ item.label }}</span>
+          <span v-if="!labelsRedundant">{{ item.label }}</span>
         </button>
       </div>
       <UiSegmented
@@ -277,28 +315,37 @@ onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
 }
 .ui-code-image__stage > * { grid-area: 1 / 1; }
 /* 空状态叠在同一格，靠 v-show 控制，不参与尺寸竞争。 */
+/* 位移拆成 x / y 两个分量：横向切换（分段 / 图标）只给 x，
+   下拉切换只给 y —— 方向由 --pan-x / --pan-y 的符号动态决定。 */
 .ui-code-image__layer {
   display: grid;
   place-items: center;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  /* 进入层从目标相对位置那一侧平移进来，并带模糊渐变。 */
-  transform: translateX(calc(var(--pan-dir, 1) * 24%));
+  /* 进场层停在「新方向的那一侧」，无过渡：这一帧只落位。 */
+  transform: translate(
+    calc(var(--pan-x, 1) * 24%),
+    calc(var(--pan-y, 1) * 24%)
+  );
   filter: blur(10px);
 }
+/* 下一帧：从那一侧过渡回原位，同时模糊渐清 —— 这才是滑入动画。 */
 .ui-code-image__layer.is-active {
-  opacity: 1;
   visibility: visible;
-  transform: none;
+  opacity: 1;
+  transform: translate(0, 0);
   filter: blur(0);
   transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
 }
-/* 离开层：向进入方向的反侧平移 + 模糊渐出。 */
+/* 离开层：向进场方向的反侧滑出 + 模糊渐出。 */
 .ui-code-image__layer.is-leaving {
   visibility: visible;
   opacity: 0;
-  transform: translateX(calc(var(--pan-dir, 1) * -24%));
+  transform: translate(
+    calc(var(--pan-x, 1) * -24%),
+    calc(var(--pan-y, 1) * -24%)
+  );
   filter: blur(8px);
   transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
 }
@@ -330,6 +377,15 @@ onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
   color: var(--on-primary-container);
 }
 .ui-code-image__icon-btn.is-disabled { opacity: .42; cursor: not-allowed; }
+/* 两个跨族选项：只剩图标，改成方形按钮并用 aria-label / title 说明。 */
+.ui-code-image__icon-btn.is-icon-only {
+  flex-direction: row;
+  gap: 0;
+  padding: 10px;
+  min-width: 44px;
+  justify-content: center;
+}
+.ui-code-image__icon-btn.is-icon-only svg { width: 22px; height: 22px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-code-image__layer,
