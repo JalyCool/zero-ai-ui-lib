@@ -3,7 +3,7 @@
    组件 props 用「已知键 + 宽松兜底」模式：常用 prop 精确标注，
    其余透传属性不报错；模板里不会出现隐式 any。
    ============================================================ */
-import type { DefineComponent } from 'vue'
+import type { App, DefineComponent, ObjectDirective } from 'vue'
 
 type AnyProps = Record<string, unknown>
 
@@ -278,6 +278,71 @@ export declare function renderMode(formats: string[]): 'icon' | 'text'
 export declare function fallbackCandidates(formats: string[], text: string): string[]
 export declare function familyOf(format: string): 'qr' | 'bar' | null
 
+/* ---------- core：无障碍 / 指令 / 快捷键 / 图标 / 弹簧求解 ---------- */
+export interface FocusTrapOptions {
+  /** 为 false 时暂时不接管 Tab；默认恒为 true */
+  active?: () => boolean
+  /** 传入布尔 ref：打开时激活、关闭时还原焦点 */
+  model?: { value: boolean }
+}
+export declare function useFocusTrap(
+  elRef: { value: HTMLElement | null | undefined },
+  options?: FocusTrapOptions
+): { activate(): Promise<void>; deactivate(): void }
+
+export interface RovingTabindexOptions {
+  orientation?: 'horizontal' | 'vertical' | 'both'
+  selector?: string
+  onSelect?: (index: number, element: HTMLElement) => void
+}
+export declare function useRovingTabindex(
+  itemsRef: { value: HTMLElement | HTMLElement[] | null | undefined },
+  options?: RovingTabindexOptions
+): { move(index: number): void; refresh(): void; detach: () => void }
+
+/** 视觉隐藏但读屏可读的样式对象（配合 :style 使用） */
+export declare const srOnly: Record<string, string>
+
+export declare const vRipple: ObjectDirective
+export declare const vIntersect: ObjectDirective
+export declare const vResize: ObjectDirective
+export declare const vClickOutside: ObjectDirective
+export declare const zeroDirectives: { install(app: App): void }
+
+export interface ShortcutOptions {
+  target?: EventTarget | null
+  preventDefault?: boolean
+}
+/** 组合键写法：'mod+k' / 'shift+enter' / 'escape'；返回解绑函数 */
+export declare function createShortcuts(
+  map: Record<string, (event: KeyboardEvent) => void>,
+  options?: ShortcutOptions
+): () => void
+export declare function defineShortcuts(
+  map: Record<string, (event: KeyboardEvent) => void>,
+  options?: ShortcutOptions
+): { stop(): void }
+
+/** 24x24 viewBox 内的 SVG 内部标记 */
+export declare const ICONS: Record<string, string>
+export declare function registerIcons(map: Record<string, string>): void
+export declare function iconMarkup(name: string): string
+
+export interface SpringPreset { stiffness: number; damping: number }
+export declare const SPRINGS: Record<'place' | 'settle' | 'tuck' | 'fling' | 'lean' | 'press', SpringPreset>
+export interface AnimateSpringOptions {
+  from?: number
+  to?: number
+  velocity?: number
+  stiffness?: number
+  damping?: number
+  /** 默认按行程推导（range * 0.0012），小行程动画不会被一帧掐断 */
+  precision?: number
+  onUpdate?: (value: number) => void
+  onDone?: () => void
+}
+export declare function animateSpring(options?: AnimateSpringOptions): () => void
+
 /* ---------- 动效气质（产品调性，非用户偏好） ---------- */
 export declare const MOTION_TONES: Record<'calm' | 'lively', { value: 'calm' | 'lively'; label: string; hint: string }>
 export declare function setMotionTone(tone: 'calm' | 'lively'): 'calm' | 'lively'
@@ -353,5 +418,10 @@ export {
   UiStepper, UiSwitch, UiTabBar, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,
   UiToastHost, UiToolMenu, UiTooltip, UiTreeView, UiVirtualList, UiWheelColumn,
   UiWheel, UiWheelDatePicker,
-  ExpandableCard, RouteExpandCard, EmptyRoute
+  ExpandableCard, RouteExpandCard, EmptyRoute,
+  useFocusTrap, useRovingTabindex, srOnly,
+  vRipple, vIntersect, vResize, vClickOutside, zeroDirectives,
+  createShortcuts, defineShortcuts,
+  ICONS, registerIcons, iconMarkup,
+  SPRINGS, animateSpring
 }

@@ -53,6 +53,10 @@
 
 ## C. 进度记录（最近提交）
 
+- 本轮（第四段）：颜色生成本地化（官方 `@material/material-color-utilities@0.3.0` 依赖，
+  断网可用、输出与库一致）；StyleLab 预览组件选择器；core 的 a11y / 指令 / 快捷键 /
+  图标 / 弹簧求解补齐真实 d.ts 声明（不再只有运行时导出）。
+
 - 本轮（第三段）：CardGroup 的 depth / wall / bounce 重做；hold 按钮加波纹 + 前缘辉光 + 完成态弹一下；
   「更多组件」新分区（9 格，覆盖 31 个组件）+ AGENTS 组件表补齐 31 行 + 补 UiCol 导出。
 
