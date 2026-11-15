@@ -6,9 +6,9 @@ zero_ai_ui_flutter/
 *.log
 .t1.txt
 t1.txt
-.chrome-profile*/
 .git-msg.txt
 # 第三方参考仓库（react-bits / vuetify / nuxt-ui 克隆），只作查阅，不入库
 3rdpartexample/
-.chrome-p*/
+# 无头 Chrome 的调试 profile（.chrome-color / .chrome-p* / .chrome-profile* 等）
+.chrome-*/
 .shot*
