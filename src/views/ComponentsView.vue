@@ -298,7 +298,8 @@ const buttonLog = ref('')
 const strikeDone = ref(false)
 const jellyPick = ref('a')
 
-const viewer = ref(false)
+const viewerMotion = ref(false)
+const viewerOverlay = ref(false)
 const viewerSrc = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d7e2ff"/><stop offset="1" stop-color="#3f5f90"/></linearGradient></defs><rect width="640" height="360" fill="url(#g)"/><circle cx="180" cy="140" r="60" fill="#faf9fd" opacity=".9"/><path d="M60 300 L260 180 L420 260 L600 140 L600 360 L60 360 Z" fill="#3f5f90" opacity=".55"/></svg>')
 
@@ -702,7 +703,7 @@ onMounted(() => {
           <span class="lib-cell__label">确认与图片</span>
           <div class="lib-cell__stage">
             <UiButton variant="danger" @click="askDemo">confirmDialog 演示</UiButton>
-            <UiButton variant="outline" @click="viewer = true">查看图片</UiButton>
+            <UiButton variant="outline" @click="viewerOverlay = true">查看图片</UiButton>
           </div>
           <span class="lib-cell__note">确认框有意不接 Esc / Enter。媒体查看器从缩略位置长开，支持捏合 / 双击缩放、下拉关闭。</span>
         </div>
@@ -837,8 +838,8 @@ onMounted(() => {
         <div class="lib-cell">
           <span class="lib-cell__label">媒体查看 <small>MediaViewer</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiMediaViewer v-model="viewer" kind="image" :src="viewerSrc" label="训练场地" aspect="4 / 3" />
-            <UiButton size="sm" variant="outline" @click="viewer = true">打开</UiButton>
+            <UiMediaViewer v-model="viewerMotion" kind="image" :src="viewerSrc" label="训练场地" aspect="4 / 3" />
+            <UiButton size="sm" variant="outline" @click="viewerMotion = true">打开</UiButton>
           </div>
           <span class="lib-cell__note">缩略预览点击后原地长开，支持捏合 / 双击缩放、下拉关闭。</span>
         </div>
@@ -892,7 +893,7 @@ onMounted(() => {
       </div>
     </UiBottomSheet>
 
-    <UiMediaViewer v-model="viewer" :src="viewerSrc" alt="示例图片" />
+    <UiMediaViewer v-model="viewerOverlay" :src="viewerSrc" label="示例图片" />
     <UiToastHost ref="toast" />
   </section>
 </template>

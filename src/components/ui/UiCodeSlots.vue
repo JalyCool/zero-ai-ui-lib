@@ -48,6 +48,8 @@ function sanitize(value) {
 }
 
 watch(() => props.modelValue, (next, prev) => {
+  /* 外部改值（含我们自己的删除）时让原生 input 跟上。 */
+  if (inputEl.value && inputEl.value.value !== String(next || '')) inputEl.value.value = String(next || '')
   const nextLen = String(next || '').replace(/\D/g, '').length
   const prevLen = String(prev || '').replace(/\D/g, '').length
   /* 一次进来两位以上（粘贴 / 自动填充）：按位错峰插入，间隔很短。 */
@@ -94,6 +96,34 @@ function onPaste(event) {
   if (text.length === props.length) emit('complete', text)
 }
 
+/* 按当前位删除：
+   · 退格删「当前位前面那一位」的数字（位光标停在 0 时删第一位）；
+   · Delete 删当前位本身的数字；
+   删完后面的数字整体前移，位光标落到被删的位置上。 */
+function removeDigitAt(index) {
+  const raw = String(props.modelValue || '').replace(/\D/g, '')
+  if (!raw.length) return
+  const at = Math.max(0, Math.min(raw.length - 1, index))
+  const next = raw.slice(0, at) + raw.slice(at + 1)
+  emit('update:modelValue', next)
+  if (inputEl.value) inputEl.value.value = next
+  caret.value = next.length ? Math.min(at, next.length - 1) : 0
+  if (next.length === 0) delays.value = {}
+}
+
+function onBackspace() {
+  const len = String(props.modelValue || '').replace(/\D/g, '').length
+  if (!len) return
+  /* 当前位 > 0：删它前面那位；停在第一位：删第一位。 */
+  removeDigitAt(caret.value > 0 ? caret.value - 1 : 0)
+}
+
+function onDelete() {
+  const len = String(props.modelValue || '').replace(/\D/g, '').length
+  if (!len) return
+  removeDigitAt(Math.min(caret.value, len - 1))
+}
+
 /* 左右键在「已填的位」与「末尾下一位」之间走动，不允许走到空洞上。 */
 function moveCaret(delta) {
   const max = Math.min(filled.value, props.length - 1)
@@ -114,6 +144,8 @@ function onKeydown(event) {
   else if (event.key === 'ArrowRight') { event.preventDefault(); moveCaret(1) }
   else if (event.key === 'Home') { event.preventDefault(); caret.value = 0 }
   else if (event.key === 'End') { event.preventDefault(); caret.value = Math.min(filled.value, props.length - 1) }
+  else if (event.key === 'Backspace') { event.preventDefault(); onBackspace() }
+  else if (event.key === 'Delete') { event.preventDefault(); onDelete() }
 }
 
 onMounted(() => {

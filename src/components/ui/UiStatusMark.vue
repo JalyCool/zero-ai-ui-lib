@@ -116,11 +116,21 @@ const sizeStyle = computed(() => ({ width: props.size + 'px', height: props.size
   place-items: center;
   flex-shrink: 0;
   color: var(--on-surface-variant);
-  /* 状态切换时的形变脉冲与颜色过渡。 */
-  transition: color var(--t-fade), transform var(--t-panel) var(--spring-view);
+  /* 只过渡颜色；不要动根节点的 transform —— inline-grid 上的缩放会连带
+     改变视觉位置，看起来就是「圆环偏移」。 */
+  vertical-align: middle;
+  transition: color var(--t-fade);
 }
-.ui-status-mark.is-morphing { transform: scale(1.06); }
-.ui-status-mark svg { width: 100%; height: 100%; overflow: visible; display: block; }
+/* 形变脉冲只作用于内部 svg，永远以圆心为原点，不会挪动圆环。 */
+.ui-status-mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  transform-origin: 50% 50%;
+  transition: transform var(--t-panel) var(--spring-view);
+}
+.ui-status-mark.is-morphing svg { transform: scale(1.06); }
 
 /* 轨道：虚环只在 idle 明显，其它状态淡到底环。 */
 .ui-status-mark__track {
@@ -169,24 +179,14 @@ const sizeStyle = computed(() => ({ width: props.size + 'px', height: props.size
   animation: uiStatusPop var(--spring-feedback-dur, 320ms) var(--spring-feedback, cubic-bezier(.22,1.2,.36,1));
 }
 .ui-status-mark.is-error .ui-status-mark__arc { opacity: .5; }
-/* 失败时整颗抖一下（与形变脉冲叠加，位移很小）。 */
-.ui-status-mark.is-error { animation: uiStatusShake 420ms cubic-bezier(.36, .07, .19, .97); }
-
 @keyframes uiStatusSpin { to { transform: rotate(360deg); } }
 @keyframes uiStatusPop {
   from { transform: scale(.82); }
   to { transform: scale(1); }
 }
-@keyframes uiStatusShake {
-  0%, 100% { translate: 0 0; }
-  22% { translate: -2px 0; }
-  46% { translate: 2px 0; }
-  70% { translate: -1px 0; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .ui-status-mark,
   .ui-status-mark * { transition-duration: .01ms !important; animation: none !important; }
-  .ui-status-mark.is-morphing { transform: none; }
+  .ui-status-mark.is-morphing svg { transform: none; }
 }
 </style>

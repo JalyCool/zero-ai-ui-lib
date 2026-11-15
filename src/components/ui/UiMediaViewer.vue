@@ -1,28 +1,26 @@
+<script>
+/* 同页可能挂多个查看器（示例页就有两个）：任一时刻只允许一个打开，
+   否则两层 Teleport root 会叠在一起、出现两个遮罩。 */
+let activeViewer = null
+function releaseViewer(instance) {
+  if (activeViewer === instance) activeViewer = null
+}
+</script>
+
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-
-/* 指针捕获在指针已失效时会抛 NotFoundError，包一层避免打断手势。 */
-function safeCapture(el, id) {
-  try { el && el.setPointerCapture && el.setPointerCapture(id) } catch (error) { /* 指针已失效，忽略 */ }
-}
-function safeRelease(el, id) {
-  try { el && el.releasePointerCapture && el.releasePointerCapture(id) } catch (error) { /* 指针已失效，忽略 */ }
-}
 
 const props = defineProps({
   /* 图片或视频地址 */
   src: { type: String, default: '' },
   /* auto = 按扩展名判断；也可以显式指定 */
   kind: { type: String, default: 'auto' },
-  /* 视频封面 / 图片占位 */
   poster: { type: String, default: '' },
   label: { type: String, default: '' },
   alt: { type: String, default: '' },
   /* 缩略预览的宽高比 */
   aspect: { type: String, default: '4 / 3' },
-  /* 缩略预览宽度上限 */
   thumbWidth: { type: String, default: '100%' },
-  /* 是否可缩放（图片） */
   zoomable: { type: Boolean, default: true },
   maxZoom: { type: Number, default: 4 }
 })
@@ -32,11 +30,13 @@ const emit = defineEmits(['open', 'close', 'error'])
 
 /* ============================================================
    媒体查看器（图片 / 视频）
-   · 收起态就是一张缩略预览：点击后这一块从缩略的位置「长」到屏幕中央，
-     不是淡入一个新窗口 —— 几何连续，用户知道它从哪儿来；
-   · 关闭反向缩回缩略位置；Esc / 点空白 / 下拉 都能关；
-   · 触摸：双指捏合、双击放大、放大后单指拖动平移、未放大时下拉关闭；
-     视频用原生控件，关闭时自动暂停。
+   · 收起态是缩略预览；点击后这一块从缩略位置长到**整个视口**，
+     几何连续，用户知道它从哪儿来；
+   · 舞台就是全屏：放大、平移都在整个屏幕空间里发生，不会被
+     「目标尺寸」那个小盒子裁掉；
+   · 触摸 / 触控板都适配：双指捏合、双击、Ctrl+滚轮（触控板捏合
+     在浏览器里就是带 ctrlKey 的 wheel）走指数缩放，普通滚轮也缩放，
+     放大后单指拖动平移，未放大时下拉关闭；视频用原生控件，关闭即暂停。
    ============================================================ */
 
 const VIDEO_EXT = /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i
@@ -57,7 +57,6 @@ const zoom = ref(1)
 const panX = ref(0)
 const panY = ref(0)
 const dragDown = ref(0)
-/* 手势进行中：关掉图片的 transform 过渡，保证跟手。 */
 const gesturing = ref(false)
 
 const DUR = 420
@@ -70,23 +69,14 @@ const aspectRatio = computed(() => {
   return a > 0 && b > 0 ? a / b : 4 / 3
 })
 
-/* 目标尺寸：在视口内留边，并保持媒体自身比例。 */
-function targetRect() {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const marginX = Math.min(64, vw * 0.06)
-  const marginY = Math.min(96, vh * 0.1)
-  const maxW = vw - marginX * 2
-  const maxH = vh - marginY * 2
-  let width = maxW
-  let height = width / aspectRatio.value
-  if (height > maxH) { height = maxH; width = height * aspectRatio.value }
+/* 打开后的舞台 = 整个视口：图片放大时才有一整屏可用。 */
+function viewportRect() {
   return {
-    left: (vw - width) / 2 + 'px',
-    top: (vh - height) / 2 + 'px',
-    width: width + 'px',
-    height: height + 'px',
-    radius: (Math.min(24, width * 0.03)) + 'px'
+    left: '0px',
+    top: '0px',
+    width: window.innerWidth + 'px',
+    height: window.innerHeight + 'px',
+    radius: '0px'
   }
 }
 
@@ -94,7 +84,13 @@ function thumbRect() {
   const el = thumbEl.value
   if (!el) return null
   const r = el.getBoundingClientRect()
-  return { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', radius: getComputedStyle(el).borderRadius }
+  return {
+    left: r.left + 'px',
+    top: r.top + 'px',
+    width: r.width + 'px',
+    height: r.height + 'px',
+    radius: getComputedStyle(el).borderRadius
+  }
 }
 
 function setGeometry(rect, animate) {
@@ -111,8 +107,27 @@ function setGeometry(rect, animate) {
   geometry.value = rect
 }
 
+/* 单例：打开自己之前先把别的查看器立刻收起（不做动画）。 */
+const instance = {
+  closeImmediately() {
+    clearTimeout(closeTimer)
+    rendered.value = false
+    open.value = false
+    closing.value = false
+    backdrop.value = false
+    zoom.value = 1
+    panX.value = 0
+    panY.value = 0
+    dragDown.value = 0
+    model.value = false
+    releaseViewer(instance)
+  }
+}
+
 async function doOpen() {
   if (!props.src) return
+  if (activeViewer && activeViewer !== instance) activeViewer.closeImmediately()
+  activeViewer = instance
   clearTimeout(closeTimer)
   const from = thumbRect()
   if (!from) return
@@ -121,12 +136,13 @@ async function doOpen() {
   zoom.value = 1
   panX.value = 0
   panY.value = 0
+  dragDown.value = 0
   await nextTick()
   setGeometry(from, false)
   void stageEl.value.offsetWidth
   backdrop.value = true
   requestAnimationFrame(() => {
-    setGeometry(targetRect(), true)
+    setGeometry(viewportRect(), true)
     open.value = true
     model.value = true
     emit('open')
@@ -141,6 +157,7 @@ function doClose() {
   zoom.value = 1
   panX.value = 0
   panY.value = 0
+  dragDown.value = 0
   const to = thumbRect()
   if (to) setGeometry(to, true)
   if (videoEl.value) { try { videoEl.value.pause() } catch (e) { /* 忽略 */ } }
@@ -149,6 +166,7 @@ function doClose() {
     rendered.value = false
     closing.value = false
     model.value = false
+    releaseViewer(instance)
     emit('close')
   }, DUR)
 }
@@ -158,12 +176,23 @@ watch(model, value => {
   else if (rendered.value) doClose()
 })
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function setZoom(next) {
+  zoom.value = clamp(next, 1, props.maxZoom)
+  if (zoom.value === 1) { panX.value = 0; panY.value = 0 }
+}
+
 /* ---------- 图片手势 ---------- */
 const pointers = new Map()
 let pinchStart = 1
 let pinchBase = 1
+let pinchMid = { x: 0, y: 0 }
 let panStart = null
 let lastTap = 0
+let gestureBase = 1
 
 function onPointerDown(event) {
   if (resolvedKind.value === 'video') return
@@ -173,19 +202,18 @@ function onPointerDown(event) {
     const [a, b] = [...pointers.values()]
     pinchStart = Math.hypot(a.x - b.x, a.y - b.y) || 1
     pinchBase = zoom.value
+    pinchMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
   } else if (pointers.size === 1) {
     panStart = { x: event.clientX, y: event.clientY, panX: panX.value, panY: panY.value }
     const now = Date.now()
     if (now - lastTap < 280 && props.zoomable) {
-      /* 双击：在 1 与 2.5 之间切换。 */
-      zoom.value = zoom.value > 1.2 ? 1 : 2.5
-      if (zoom.value === 1) { panX.value = 0; panY.value = 0 }
+      setZoom(zoom.value > 1.2 ? 1 : 2.5)
       lastTap = 0
       return
     }
     lastTap = now
   }
-  stageEl.value && stageEl.value.setPointerCapture && safeCapture(stageEl.value, event.pointerId)
+  try { stageEl.value && stageEl.value.setPointerCapture && stageEl.value.setPointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
 }
 
 function onPointerMove(event) {
@@ -194,20 +222,19 @@ function onPointerMove(event) {
   if (pointers.size === 2 && pinchStart > 0) {
     const [a, b] = [...pointers.values()]
     const distance = Math.hypot(a.x - b.x, a.y - b.y) || 1
-    zoom.value = Math.min(props.maxZoom, Math.max(1, (pinchBase * distance) / pinchStart))
+    setZoom((pinchBase * distance) / pinchStart)
     return
   }
   if (!panStart) return
   const dx = event.clientX - panStart.x
   const dy = event.clientY - panStart.y
   if (zoom.value > 1.01) {
-    /* 放大后拖动平移：限制在放大出来的范围内。 */
-    const limitX = ((zoom.value - 1) * (stageEl.value?.clientWidth || 0)) / 2
-    const limitY = ((zoom.value - 1) * (stageEl.value?.clientHeight || 0)) / 2
-    panX.value = Math.max(-limitX, Math.min(limitX, panStart.panX + dx))
-    panY.value = Math.max(-limitY, Math.min(limitY, panStart.panY + dy))
+    /* 放大后平移：范围按整屏算（舞台就是全屏）。 */
+    const limitX = ((zoom.value - 1) * window.innerWidth) / 2
+    const limitY = ((zoom.value - 1) * window.innerHeight) / 2
+    panX.value = clamp(panStart.panX + dx, -limitX, limitX)
+    panY.value = clamp(panStart.panY + dy, -limitY, limitY)
   } else {
-    /* 未放大：只允许下拉，用来关闭。 */
     dragDown.value = Math.max(0, dy)
   }
 }
@@ -222,17 +249,37 @@ function onPointerUp(event) {
   if (pointers.size < 2) pinchStart = 0
 }
 
+/* ---------- 滚轮 / 触控板 ---------- */
+/* 触控板捏合在浏览器里表现为 ctrlKey=true 的 wheel，deltaY 很细；
+   普通滚轮 deltaY 是台阶。两者都用指数换算，避免一滚就跳到底。 */
 function onWheel(event) {
   if (!props.zoomable || resolvedKind.value === 'video') return
   event.preventDefault()
-  const next = zoom.value * (event.deltaY < 0 ? 1.08 : 0.92)
-  zoom.value = Math.min(props.maxZoom, Math.max(1, next))
-  if (zoom.value === 1) { panX.value = 0; panY.value = 0 }
+  const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1
+  const delta = event.deltaY * unit
+  const k = event.ctrlKey ? 0.012 : 0.0026
+  const factor = clamp(Math.exp(-delta * k), 0.8, 1.25)
+  setZoom(zoom.value * factor)
+}
+
+/* Safari 的触控板捏合走 gesture 事件。 */
+function onGestureStart(event) {
+  if (resolvedKind.value === 'video') return
+  event.preventDefault()
+  gestureBase = zoom.value
+}
+function onGestureChange(event) {
+  if (resolvedKind.value === 'video') return
+  event.preventDefault()
+  setZoom(gestureBase * event.scale)
 }
 
 function onKeydown(event) {
   if (!open.value) return
   if (event.key === 'Escape') { event.preventDefault(); doClose() }
+  if (event.key === '+' || event.key === '=') { event.preventDefault(); setZoom(zoom.value * 1.2) }
+  if (event.key === '-') { event.preventDefault(); setZoom(zoom.value / 1.2) }
+  if (event.key === '0') { event.preventDefault(); setZoom(1) }
 }
 
 watch(rendered, value => {
@@ -244,9 +291,10 @@ watch(rendered, value => {
 onBeforeUnmount(() => {
   clearTimeout(closeTimer)
   document.removeEventListener('keydown', onKeydown)
+  releaseViewer(instance)
 })
 
-defineExpose({ open: doOpen, close: doClose })
+defineExpose({ open: doOpen, close: doClose, closeImmediately: instance.closeImmediately })
 </script>
 
 <template>
@@ -284,6 +332,8 @@ defineExpose({ open: doOpen, close: doClose })
           @pointerup="onPointerUp"
           @pointercancel="onPointerUp"
           @wheel="onWheel"
+          @gesturestart="onGestureStart"
+          @gesturechange="onGestureChange"
         >
           <img
             v-if="resolvedKind === 'image'"
@@ -309,9 +359,12 @@ defineExpose({ open: doOpen, close: doClose })
             :style="{ transform: 'translate3d(0,' + dragDown + 'px,0)' }"
             @error="emit('error', $event)"
           ></video>
-          <button type="button" class="ui-media-viewer__close" aria-label="关闭" @click.stop="doClose">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
+          <div class="ui-media-viewer__bar">
+            <span class="ui-media-viewer__zoom" aria-hidden="true">{{ Math.round(zoom * 100) }}%</span>
+            <button type="button" class="ui-media-viewer__close" aria-label="关闭" @click.stop="doClose">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -340,7 +393,6 @@ defineExpose({ open: doOpen, close: doClose })
 .ui-media-viewer__thumb:active { transform: scale(var(--press-scale)); }
 .ui-media-viewer__thumb:focus-visible { outline: var(--focus-w) solid var(--primary); outline-offset: 2px; }
 .ui-media-viewer__video-blank { position: absolute; inset: 0; background: linear-gradient(135deg, var(--surface-container-high), var(--surface-container)); }
-/* 播放角标：视频缩略图上居中。 */
 .ui-media-viewer__play {
   position: absolute;
   inset: 50% auto auto 50%;
@@ -386,21 +438,22 @@ defineExpose({ open: doOpen, close: doClose })
 .ui-media-viewer__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, .82);
+  background: rgba(0, 0, 0, .86);
   opacity: 0;
   backdrop-filter: blur(0px);
   transition: opacity var(--t-panel), backdrop-filter var(--t-panel);
 }
 .ui-media-viewer__backdrop.is-open { opacity: 1; backdrop-filter: blur(8px); }
-/* 舞台：位置 / 尺寸 / 圆角都由 JS 从缩略位置过渡到目标位置。 */
+/* 舞台：位置 / 尺寸由 JS 从缩略位置过渡到整个视口。
+   注意这里没有 max-width / max-height —— 放大后的图片要用满屏空间。 */
 .ui-media-viewer__stage {
   position: fixed;
   overflow: hidden;
   border-radius: 0;
-  background: #000;
-  box-shadow: 0 18px 60px -24px rgba(0, 0, 0, .7);
+  background: transparent;
   touch-action: none;
   will-change: left, top, width, height;
+  overscroll-behavior: contain;
 }
 .ui-media-viewer__media {
   display: block;
@@ -410,11 +463,29 @@ defineExpose({ open: doOpen, close: doClose })
   user-select: none;
   -webkit-user-drag: none;
   transform-origin: center center;
+  will-change: transform;
+}
+.ui-media-viewer__bar {
+  position: absolute;
+  inset: 12px 12px auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+.ui-media-viewer__zoom {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .46);
+  color: #fff;
+  font-size: var(--fs-micro);
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(6px);
+  opacity: .92;
+  transition: opacity var(--t-fade);
 }
 .ui-media-viewer__close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   display: grid;
   place-items: center;
   width: 34px;
@@ -425,11 +496,13 @@ defineExpose({ open: doOpen, close: doClose })
   color: #fff;
   cursor: pointer;
   backdrop-filter: blur(6px);
+  pointer-events: auto;
   transition: transform var(--t-feedback), background var(--t-fade);
 }
 .ui-media-viewer__close svg { width: 16px; height: 16px; }
 .ui-media-viewer__close:active { transform: scale(.92); }
-.ui-media-viewer__root:not(.is-open) .ui-media-viewer__close { opacity: 0; pointer-events: none; }
+.ui-media-viewer__root:not(.is-open) .ui-media-viewer__close,
+.ui-media-viewer__root:not(.is-open) .ui-media-viewer__zoom { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-media-viewer__stage { transition: none !important; }
