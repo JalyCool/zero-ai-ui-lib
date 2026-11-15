@@ -64,6 +64,8 @@ const options = [
 
 编码与图形：`UiCodeImage`（children 传文本渲染二维码 / 一维码，多码制可切换，内容不合规自动禁用与降级）
 
+导航：`UiTabBar`（移动端贴底铺满整宽、桌面端贴左竖排铺满整高，两套定位互斥不冲突）
+
 交互基座：`UiMorphPanel`（泛用「按钮 ⇄ 任意组件」形变容器）、`UiWheel`（通用多列波轮基座，时间 / 日期波轮共用）
 
 布局与卡片：`UiAvatar` `UiEmptyState` `ExpandableCard` `RouteExpandCard`

@@ -76,15 +76,23 @@ function toggle(index) {
   emitMultiple(next, [index])
 }
 
-/* ---------- 长按竖向连选 ---------- */
-const dragState = ref(null)   /* { from, added:Set, anchorRect } */
+/* ---------- 长按竖向连选 ----------
+   · 进入连选后整段手势被列表接管：touch-action 切成 none，
+     并阻止默认行为，浏览器原生滚动不会再抢走这一下拖动。
+   · 锚点行的初始状态决定这次是「全选」还是「取消」：
+     锚点原本未选中 -> 经过的行都选中；锚点原本已选中 -> 经过的行都取消。
+   · 结束位置可以来回改：往回拖会把中间段恢复成锚点的初始状态。
+   · 拖到可视区边缘自动滚动，速度按超出深度线性缓入，最高约 12px/帧。 */
+const dragState = ref(null)
 let holdTimer = 0
 let pointerId = null
 let startY = 0
 let lastRowIndex = -1
 let autoScrollRaf = 0
 let pointerY = 0
-let dragMoved = false
+let moved = false
+let baseSet = null
+let anchorWasSelected = false
 
 function rowIndexFromClientY(clientY) {
   const el = scrollEl.value
@@ -94,99 +102,126 @@ function rowIndexFromClientY(clientY) {
   return Math.max(0, Math.min(props.items.length - 1, Math.floor(offset / props.itemHeight)))
 }
 
+function rangeBetween(a, b) {
+  const from = Math.min(a, b)
+  const to = Math.max(a, b)
+  const out = []
+  for (let i = from; i <= to; i++) out.push(i)
+  return out
+}
+
+/* 把 [锚点, 当前行] 这一段设成目标状态（value），其余保持基线。 */
+function applyRange(toIndex, value) {
+  const next = new Set(baseSet)
+  for (const index of rangeBetween(dragState.value.from, toIndex)) {
+    if (value) next.add(index)
+    else next.delete(index)
+  }
+  baseSet = next
+  emit('update:modelValue', [...next].sort((a, b) => a - b))
+}
+
 function onRowPointerDown(event, index) {
   if (event.pointerType === 'mouse' && event.button !== 0) return
   pointerId = event.pointerId
   startY = event.clientY
   pointerY = event.clientY
   lastRowIndex = index
-  dragMoved = false
+  moved = false
   if (!props.dragSelect || props.selection !== 'multiple') return
-  /* 长按门槛：超过 holdMs 仍未当成点击，则进入连选模式。 */
   clearTimeout(holdTimer)
   holdTimer = setTimeout(() => {
-    const base = new Set(props.modelValue || [])
-    base.add(index)
-    dragState.value = { from: index, added: new Set([index]), base }
-    dragMoved = true
-    event.currentTarget?.setPointerCapture?.(event.pointerId)
-    emitMultiple(base, [index])
+    baseSet = new Set(props.modelValue || [])
+    anchorWasSelected = baseSet.has(index)
+    dragState.value = { from: index }
+    moved = true
+    /* 接管手势：容器禁止原生滚动，指针捕获到列表上。 */
+    scrollEl.value?.setPointerCapture?.(event.pointerId)
+    /* 锚点自身先切换一次，作为整段的起点。 */
+    applyRange(index, !anchorWasSelected)
   }, props.holdMs)
 }
 
-function onRowPointerMove(event) {
-  pointerY = event.clientY
-  const dy = Math.abs(event.clientY - startY)
-  if (dy > 6) { dragMoved = true }
-  if (!dragState.value) return
-  event.preventDefault()
-  const index = rowIndexFromClientY(event.clientY)
-  if (index === lastRowIndex) { autoScrollTick(); return }
-  lastRowIndex = index
-  const next = new Set(dragState.value.base)
-  /* 锚点到当前行之间的整段一起选中（拖动经过的行都勾上）。 */
-  const from = Math.min(dragState.value.from, index)
-  const to = Math.max(dragState.value.from, index)
-  const changed = []
-  for (let i = from; i <= to; i++) {
-    if (!next.has(i)) { next.add(i); changed.push(i) }
+function onPointerMove(event) {
+  if (dragState.value) {
+    /* 已进入连选：阻止原生滚动 / 下拉刷新抢走手势。 */
+    if (event.cancelable) event.preventDefault()
+    pointerY = event.clientY
+    const index = rowIndexFromClientY(event.clientY)
+    if (index !== lastRowIndex) {
+      lastRowIndex = index
+      /* 经过的行按锚点语义设置 / 取消；往回拖时，
+         被排除在区间外的行自动恢复基线。 */
+      applyRange(index, !anchorWasSelected)
+    }
+    autoScrollTick()
+    return
   }
-  dragState.value.base = next
-  if (changed.length) emitMultiple(next, changed)
-  autoScrollTick()
+  if (pointerId === null) return
+  if (Math.abs(event.clientY - startY) > 8) {
+    /* 长按还没到就已经明显在滚：这是普通滚动，取消连选与点击。 */
+    clearTimeout(holdTimer)
+    holdTimer = 0
+    moved = true
+  }
 }
 
-/* 拖到可视区上下边缘时自动滚动，让连选能越过屏幕继续。 */
+/* 边缘自动滚动：超出深度线性映射到 0..12px/帧。 */
 function autoScrollTick() {
   const el = scrollEl.value
-  if (!el || !dragState.value) return
+  if (!el || !dragState.value) return stopAutoScroll()
   const rect = el.getBoundingClientRect()
-  const edge = Math.max(36, props.itemHeight)
-  const cancel = () => {
-    if (autoScrollRaf) { cancelAnimationFrame(autoScrollRaf); autoScrollRaf = 0 }
-  }
-  if (pointerY < rect.top + edge || pointerY > rect.bottom - edge) {
-    if (autoScrollRaf) return
-    const step = () => {
-      const now = dragState.value
-      if (!now) { cancel(); return }
-      const direction = pointerY < rect.top + edge ? -1 : 1
-      el.scrollTop += direction * Math.max(4, props.itemHeight * 0.35)
-      /* 滚动后重新计算当前行并补选。 */
+  const edge = Math.max(40, props.itemHeight * 1.2)
+  let speed = 0
+  if (pointerY < rect.top + edge) speed = -((rect.top + edge) - pointerY) / edge
+  else if (pointerY > rect.bottom - edge) speed = (pointerY - (rect.bottom - edge)) / edge
+  if (!speed) return stopAutoScroll()
+  if (autoScrollRaf) return
+  const step = () => {
+    if (!dragState.value) { autoScrollRaf = 0; return }
+    const before = el.scrollTop
+    /* 缓入：越靠近边缘越快，最深约 12px/帧，不至于飞出去。 */
+    el.scrollTop += Math.sign(speed) * Math.min(12, Math.abs(speed) * 12)
+    if (el.scrollTop !== before) {
       const index = rowIndexFromClientY(pointerY)
       if (index !== lastRowIndex) {
         lastRowIndex = index
-        const next = new Set(now.base)
-        const from = Math.min(now.from, index)
-        const to = Math.max(now.from, index)
-        const changed = []
-        for (let i = from; i <= to; i++) if (!next.has(i)) { next.add(i); changed.push(i) }
-        now.base = next
-        if (changed.length) emitMultiple(next, changed)
+        applyRange(index, !anchorWasSelected)
       }
-      if (dragState.value) autoScrollRaf = requestAnimationFrame(step)
-      else cancel()
     }
     autoScrollRaf = requestAnimationFrame(step)
-  } else {
-    cancel()
   }
+  autoScrollRaf = requestAnimationFrame(step)
 }
 
-function onRowPointerUp(event, index) {
+function stopAutoScroll() {
+  if (autoScrollRaf) { cancelAnimationFrame(autoScrollRaf); autoScrollRaf = 0 }
+}
+
+function onPointerUp() {
   clearTimeout(holdTimer)
   holdTimer = 0
   if (dragState.value) {
-    /* 连选结束：清状态（滚动补选循环自然停止）。 */
+    /* 连选结束：交还滚动能力。 */
     dragState.value = null
-    if (autoScrollRaf) { cancelAnimationFrame(autoScrollRaf); autoScrollRaf = 0 }
+    baseSet = null
+    pointerId = null
+    stopAutoScroll()
     return
   }
-  /* 没进入连选 -> 视为一次单击选中。 */
-  if (!dragMoved || true) {
-    if (event.pointerType !== 'mouse' || !dragMoved) toggle(index)
-  }
+  /* 没进入连选 -> 单击选中 / 取消（用起手行，避免事件目标漂移）。 */
+  if (!moved && lastRowIndex >= 0) toggle(lastRowIndex)
   pointerId = null
+  moved = false
+}
+
+function onPointerLeaveList() {
+  /* 指针离开列表：结束连选，不改变已选区间。 */
+  if (!dragState.value) return
+  dragState.value = null
+  baseSet = null
+  pointerId = null
+  stopAutoScroll()
 }
 
 watch(() => props.items.length, length => {
@@ -214,6 +249,10 @@ defineExpose({
     :class="{ 'is-dragging': !!dragState }"
     :style="{ height: height + 'px' }"
     @scroll.passive="onScroll"
+    @pointermove="onPointerMove"
+    @pointerup="onPointerUp"
+    @pointercancel="onPointerUp"
+    @pointerleave="onPointerLeaveList"
   >
     <div class="ui-vlist__spacer" :style="{ height: totalHeight + 'px' }">
       <div class="ui-vlist__window" :style="{ transform: 'translateY(' + startIndex * itemHeight + 'px)' }">
@@ -224,9 +263,6 @@ defineExpose({
           :class="{ 'is-selected': selected.has(entry.index) }"
           :style="{ height: itemHeight + 'px' }"
           @pointerdown="onRowPointerDown($event, entry.index)"
-          @pointermove="onRowPointerMove"
-          @pointerup="onRowPointerUp($event, entry.index)"
-          @pointercancel="onRowPointerUp($event, entry.index)"
         >
           <!-- 勾选标记在行首（左侧）。 -->
           <span v-if="selection === 'multiple'" class="ui-vlist__mark" :class="{ 'is-on': selected.has(entry.index) }" aria-hidden="true">
@@ -254,6 +290,7 @@ defineExpose({
   touch-action: pan-y;
 }
 .ui-vlist.is-dragging { user-select: none; touch-action: none; }
+.ui-vlist.is-dragging .ui-vlist__row { cursor: ns-resize; }
 .ui-vlist__spacer { position: relative; }
 .ui-vlist__window { position: absolute; top: 0; left: 0; right: 0; will-change: transform; }
 .ui-vlist__row {

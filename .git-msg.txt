@@ -1,0 +1,18 @@
+侧滑跟手重做 + tabbar 宽度规则 + vite watch 忽略
+
+1. 完成动画不再从原位重放：finishBack 先 void offsetWidth 提交当前跟手帧，
+   再写 transition 滑到屏外；back() 在落定后调用，内联样式等到路由切换
+   绘制完才清（双层 rAF），中途不会闪回原位。
+2. 跟手有限度：travelLimit 默认 78% 宽度，超出走橡皮筋（系数 .26，
+   最多再 12%），拖不出屏幕；maxScale 从 .94 加深到 .86，滑得越远缩得越多。
+3. 滑动过程中圆角连续变化：maxRadius 18px 按进度插值，同时抬层级。
+4. 新增下层遮罩：黑色压暗（scrimOpacity .36）+ backdrop-filter 模糊
+   （scrimBlur 10px）随进度渐显，完成 / 弹回时一起渐隐消失。
+5. ExpandableCard 认 uiSwipeClose 标记：侧滑已把这层滑出屏幕时直接落定
+   （settleClosed 抽出复用），不再重放弹回原位的弹簧。
+6. UiTabBar 移动端：背景 left:0/right:0 铺满整屏宽度、去掉 max-width:480px，
+   tab 改为 flex 1 1 0 + max-width 96px，宽屏手机上总宽有上限不被拉散。
+7. vite.config.js / vite.lib.config.js 加 server.watch.ignored 排除
+   .chrome-p*/ 与 .chrome-profile*/，避免调试 profile 触发热更风暴。
+
+本轮按要求未做浏览器实测，仅做语法检查与构建验证（均 0 错误）。

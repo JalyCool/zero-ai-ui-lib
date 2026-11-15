@@ -119,7 +119,7 @@ function iconFor(record) {
       </template>
     </UiEmptyState>
 
-    <div v-else class="list list-enter">
+    <div v-else class="list">
       <RouteExpandCard
         v-for="record in records"
         :key="record.id"

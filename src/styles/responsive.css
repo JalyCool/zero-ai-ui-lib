@@ -35,30 +35,7 @@
     width: 100%;
   }
 
-  /* 竖排 tabbar：位置换成左侧竖条，外观参数全部沿用手机款。
-     定位属性在本块内给全，不依赖基础规则。
-     背景仍然铺满整个高度（top:0 / bottom:0），只是里面的 tab
-     从顶部开始按固定间距往下排，不再垂直居中；
-     移动端底部横排的规则完全不进这个查询，互不影响。 */
-  .tabbar {
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: auto;
-    transform: none;
-    width: 74px;
-    max-width: none;
-    height: 100dvh;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 6px;
-    padding: 16px 8px;
-    border-top: 0;
-    border-right: var(--border-w) solid var(--outline-variant);
-  }
-  /* 竖排时高度由内容决定（不平分整条侧栏），宽度占满竖条做点击区。 */
-  .tab { flex: 0 0 auto; width: 100%; }
-
+  /* 竖排导航条由 UiTabBar 组件自带样式；这里只让内容区避开它。 */
   #scrollArea {
     padding: calc(20px * var(--density)) clamp(24px, 4vw, 64px) calc(40px * var(--density))
              calc(74px + clamp(20px, 3vw, 48px));

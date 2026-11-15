@@ -100,6 +100,7 @@ declare const UiStepper: DefineComponent<{
   disabled?: boolean
 }, AnyProps, unknown>
 declare const UiSwitch: DefineComponent<{ modelValue?: boolean; label?: string; disabled?: boolean }, AnyProps, unknown>
+declare const UiTabBar: DefineComponent<{ items?: { value: string | number; label: string; icon?: string }[]; modelValue?: string | number; label?: string; desktopAt?: number }, AnyProps, unknown>
 declare const UiTagInput: DefineComponent<{ modelValue?: string[]; label?: string; placeholder?: string; hint?: string; max?: number; delimiters?: string[] }, AnyProps, unknown>
 declare const UiTerminalOutput: DefineComponent<{ text?: string; label?: string; height?: number; follow?: boolean }, AnyProps, unknown>
 declare const UiTextarea: DefineComponent<{ modelValue?: string; label?: string; placeholder?: string; rows?: number; disabled?: boolean }, AnyProps, unknown>
@@ -203,7 +204,7 @@ export {
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
   UiRating, UiRingProgress, UiRingSlider, UiRollNumber, UiSchemaForm,
   UiSearchField, UiSelect, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,
-  UiStepper, UiSwitch, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,
+  UiStepper, UiSwitch, UiTabBar, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,
   UiToastHost, UiToolMenu, UiTooltip, UiTreeView, UiVirtualList, UiWheelColumn,
   UiWheel, UiWheelDatePicker,
   ExpandableCard, RouteExpandCard, EmptyRoute

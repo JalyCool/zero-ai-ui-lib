@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SettingsSheet from './components/SettingsSheet.vue'
+import { UiTabBar } from './components/ui'
 import { state } from './core/state'
 import * as spring from './core/spring'
 import * as typography from './core/typography'
@@ -19,6 +20,15 @@ const scrollArea = ref(null)
 
 const meta = computed(() => route.meta)
 const activeTab = computed(() => route.meta.tab)
+
+/* 导航项：icon 是 24x24 viewBox 内的 SVG 内部标记。 */
+const tabItems = [
+  { value: 'home', label: '首页', icon: '<path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-9.5z"/>' },
+  { value: 'activity', label: '活动', icon: '<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>' },
+  { value: 'trends', label: '趋势', icon: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>' },
+  { value: 'components', label: '组件', icon: '<rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/>' },
+  { value: 'profile', label: '我的', icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>' }
+]
 
 const pageSub = computed(() => {
   if (route.meta.tab !== 'activity') return route.meta.sub
@@ -117,28 +127,7 @@ onMounted(() => {
       </div>
     </main>
 
-    <nav class="tabbar" id="tabbar" aria-label="主导航">
-      <button class="tab" :class="{ active: activeTab === 'home' }" data-tab="home" @click="selectTab('home')">
-        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-9.5z"/></svg></span>
-        <span>首页</span>
-      </button>
-      <button class="tab" :class="{ active: activeTab === 'activity' }" data-tab="activity" @click="selectTab('activity')">
-        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 8L9 4l-3 8H2"/></svg></span>
-        <span>活动</span>
-      </button>
-      <button class="tab" :class="{ active: activeTab === 'trends' }" data-tab="trends" @click="selectTab('trends')">
-        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>
-        <span>趋势</span>
-      </button>
-      <button class="tab" :class="{ active: activeTab === 'components' }" data-tab="components" @click="selectTab('components')">
-        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/></svg></span>
-        <span>组件</span>
-      </button>
-      <button class="tab" :class="{ active: activeTab === 'profile' }" data-tab="profile" @click="selectTab('profile')">
-        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
-        <span>我的</span>
-      </button>
-    </nav>
+    <UiTabBar id="tabbar" :items="tabItems" :model-value="activeTab" @change="selectTab" />
   </div>
 
   <SettingsSheet :open="sheetOpen" @close="closeSheet" />

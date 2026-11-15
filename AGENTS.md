@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 0.75px 细描边 + 圆角分档」，不用阴影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：57 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：58 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -112,7 +112,7 @@ import {
   UiRangeSlider, UiRingSlider, UiGaugeSlider, UiRollNumber,
   UiCodeEditor, UiTerminalOutput, UiTagInput, UiKeyValueEditor, UiSchemaForm,
   UiDataTable, UiTreeView, UiVirtualList, UiImageViewer, UiFileDropzone,
-  UiMorphPanel, UiWheel, UiCodeImage, confirmDialog,
+  UiMorphPanel, UiWheel, UiCodeImage, UiTabBar, confirmDialog,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -127,6 +127,7 @@ import {
 | `UiSlider` | `v-model`；`stops` 数组或 `snapCount` 等分 → 拖动跟手、松手弹簧吸附；`@snap="({index, value}) => …"`；刻度：`show-scale` + `major-ticks`（大刻度区间数）+ `minor-ticks`（大刻度间的小刻度份数）+ `precision`（小数位）。刻度在轨道上方、短浅线，小刻度短大刻度长；数值只在最小值 / 最大值（无刻度时）或大刻度位置显示；`show-bubble` 拖拽时把手上方浮当前值；弹簧参数收进 `spring` 对象（`{ stiffness, dampingRatio, flingTime, rubber, maxOverscroll }`），旧的 5 个独立 props 已废弃仍兼容 |
 | `UiDatePicker` / `UiTimePicker` | `v-model` 字符串（`YYYY-MM-DD` / `HH:mm[:ss]`）；贴着输入框展开，不压暗背景；`UiTimePicker` 有 `precision`（h/m/s）决定波轮字段数 |
 | `UiCodeImage` | children 直接传文本：<`CodeImage type="qrcode">https://…</`CodeImage>；`type` 字符串或数组（数组 = 可切换码制组，<=3 用 Segmented、>3 用下拉；跨一维/二维用图标区分，同族用文字标签）；`options` 按码制传参 `{ qrcode: { errorCorrectionLevel: 'H' }, ean13: { flat: true } }`，未传的走默认、未知键忽略不崩溃；内容不合规的选项可见但禁用、自动切到可用项；全部不可用走降级候选（二维码兜底），仍无解渲染空状态。校验 / 参数 / 降级规则全部集中在 `core/codeFormats`，组件内不硬编码码制规则 |
+| `UiTabBar` | `:items` 传 `{ value, label, icon }`（icon 是 24x24 viewBox 内的 SVG 标记），`v-model` + `@change`；移动端贴底横排、背景铺满整屏宽度（tab 各自上限 96px），桌面端贴左竖排、背景铺满整个高度、tab 从顶部固定间距往下排 |
 | `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；时间 / 日期波轮都基于它 |
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起 |
 | `UiModal` | `v-model`；插槽 `#header` / `#title` / 默认 / `#footer`，作用域都带 `close`；遮罩压暗 + 5px 模糊 |
@@ -153,7 +154,7 @@ import {
 | `UiSchemaForm` | `:schema` JSON Schema（properties / required / enum / type）自动生成表单，`@submit` 回传收敛后的值 |
 | `UiDataTable` | `:columns` `{ key, label, width?, align?, sortable? }` + `:rows`；粘性表头、点表头三态排序、`max-height` 内滚动、`#cell-<key>` 插槽 |
 | `UiTreeView` | `:nodes` 递归树（folder / file / md / json / image 图标分色），箭头旋转变形、`default-open` 初始展开 |
-| `UiVirtualList` | 定高虚拟滚动（`item-height` `height`），几百上千行只渲染窗口；`swipe-select` 横向拖过 44px 切换选中（滑动多选），松手回弹 |
+| `UiVirtualList` | 定高虚拟滚动（`item-height` `height`），几百上千行只渲染窗口；勾选标记在行首；`selection="single|multiple"` 决定单击语义；`drag-select`（多选）长按某行后竖向拖动连续勾选 —— 锚点初始状态决定这段是选中还是取消，往回拖可改终点，拖到边缘自动滚动（限速 12px/帧），期间容器 `touch-action: none` 接管原生滚动 |
 | `UiImageViewer` | `v-model` 开关 + `:src`；滚轮 / 按钮缩放 25–400%、旋转、拖拽平移、下载原图、Esc 关闭 |
 | `UiFileDropzone` | 拖入 / 点击收 `File` 列表，`accept` `max-size`(MB) 过滤，不合格文件走 `@reject` |
 | `UiSearchField` | 图标 ⇄ 输入框原地形变：外壳宽度走 view 弹簧，同一个搜索图标平移到尾部成为搜索按钮；Enter / 点图标 `@search`，Esc 先清空后收起，点外部收起 |
@@ -240,9 +241,11 @@ const swipe = useEdgeSwipeBack({
 ```
 
 - `touchstart` 只落在左边缘 `edgeWidth`（默认 26px）内才开始拖拽；明显纵向滑动立即让位给页面滚动。
-- `touchmove` 按 `deltaX` 实时写 `scale / translateX`，期间 `transition: none` 完全跟手。
-- `touchend` 按位移比例（默认 34%）+ 速度（默认 0.62px/ms）判断：过阈值播完完成动画后 `back()`；未过阈值恢复 transition 弹回原位。
-- 手感参数（阈值 / 阻尼 / 缩放 / 时长）全部可配，见 `DEFAULTS`。
+- `touchmove` 按 `deltaX` 实时写 `translate3d / scale / border-radius`，期间 `transition: none` 完全跟手；同时驱动一层黑色遮罩 + 背景模糊（`backdrop-filter`）随进度渐显。
+- **跟手有限度**：位移到 `travelLimit`（默认 78% 宽度）为止，超出走橡皮筋（最多再 12%），拖不到屏幕外；到底时缩放 `maxScale`（默认 .86）、圆角 `maxRadius`（默认 18px）都取最大，中途连续变化。
+- `touchend` 按位移比例（默认 34% × 上限）+ 速度（默认 0.62px/ms）判断：过阈值 -> **从当前跟手位置继续滑出**（先提交当前帧再过渡，绝不回原位重放），落定后 `back()`，并在路由切换绘制完成后才清掉内联样式；未过阈值恢复 transition 弹回原位。
+- 卡片展开态下侧滑完成时会给卡片打 `uiSwipeClose` 标记，`ExpandableCard` 看到标记就直接落定，不再重放「弹回原位」的弹簧。
+- 手感参数（阈值 / 上限 / 橡皮筋 / 缩放 / 圆角 / 遮罩 / 时长）全部可配，见 `DEFAULTS`。
 
 **宿主（原生 WebView 壳）必须配套两件事**，否则手势会被系统抢走：
 
@@ -289,7 +292,7 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 }
 ```
 
-底部导航：移动端固定底部居中（最大宽 480px）；桌面端可以把**同一套外观**改成贴左侧竖排 —— 只换排列方向，别换视觉参数。
+底部导航：直接用 `UiTabBar`（`:items` 传 `{ value, label, icon }`，`@change` 里做 replace 跳转）。移动端背景铺满整屏宽度（不设 max-width），tab 总宽各自上限 96px；桌面端贴左竖排、背景铺满整个高度，tab 从顶部按固定间距往下排。两套定位在互斥的 media 查询里，永不互相污染。
 
 ## 7. 日期与数字显示约定
 
@@ -308,6 +311,8 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 6. pnpm 用本地 tarball 时先复制进项目（`vendor/*.tgz`）再写 `file:vendor/...`；指向仓库外路径会随文件移动而失效。
 7. `UiToastHost` 在最上层，底部面板打开时可能盖住表单底部，可在打开前 dismiss。
 8. `UiToolMenu` 展开时会在文档流里占位、把下方内容推开；不想位移就换 `UiFloatingMenu`。
+9. 调试用的无头 Chrome profile 目录（`.chrome-p*/`）会被写大量文件，`vite.config.js` 已用 `server.watch.ignored` 排除，否则 dev/preview 会被热更风暴拖垮。
+10. 给展开卡片做「滑出式关闭」时，动画必须**从当前跟手位置续接**（先 `void offsetWidth` 提交当前帧再写 transition），并在路由切换绘制后才清内联样式；否则完成动画会像从原位重新开始。
 
 ## 9. 交付前自查
 

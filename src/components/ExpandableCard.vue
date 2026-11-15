@@ -63,14 +63,6 @@ function expandedTarget() {
   }
 }
 
-/* 历史栈规则：
-   · 卡片展开用 push 产生历史记录（见 onClick / onKeydown）。
-   · 卡片内返回与系统返回统一走 back()，不用 push / replace 到父路由。
-   · 收起要先播完弹簧动画，再 back()。
-   expandDepth 记录「本组件实例压入过几次展开历史」：
-   深链直达时我们没有压入历史，back() 会退出应用，只能 replace 回父路由。 */
-let expandDepth = 0
-
 let closeTimer = null
 let settleTimer = null
 let mounted = false
@@ -79,7 +71,6 @@ let scrollPrevOverflow = ''
 let backdropTimer = null
 let pendingMethod = 'pointer'
 let reopenAfterClose = false
-let closingPromise = null
 
 const rootEl = ref(null)
 const innerEl = ref(null)
@@ -185,33 +176,14 @@ function restoreAria(card, state) {
   else card.setAttribute('aria-modal', state.originalAriaModal)
 }
 
-/* 等待弹簧收起动画播完（--spring-exit-dur + 缓冲）。 */
-function awaitCollapse() {
-  if (!expanded.value && !closing.value) return Promise.resolve()
-  const exitMs = reduceMotion() ? 0 : readDuration('--spring-exit-dur', 400)
-  return new Promise(resolve => setTimeout(resolve, exitMs + CLOSE_BUFFER))
-}
-
+/* 关闭动作先回到父路由，由路由变化统一收起卡片。 */
 async function requestClose() {
-  if (closingPromise) return closingPromise
-  closingPromise = (async () => {
-    try {
-      /* 先播收起动画，动画完成后再改历史，避免路由切换打断弹簧。 */
-      if (routeActive.value || getActive()) closeCard()
-      await awaitCollapse()
-      if (expandDepth > 0) {
-        expandDepth -= 1
-        /* 统一用 back()：卡片内返回按钮和系统返回走同一条路。 */
-        router.back()
-      } else if (routeActive.value) {
-        /* 深链直达：没有我们压入的历史条目，只能替换回父路由。 */
-        await router.replace({ name: props.parentRouteName })
-      }
-    } finally {
-      closingPromise = null
-    }
-  })()
-  return closingPromise
+  if (routeActive.value) {
+    const failure = await router.push({ name: props.parentRouteName })
+    if (failure && routeActive.value) closeCard()
+  } else {
+    closeCard()
+  }
 }
 
 async function openCard(method = 'pointer') {
@@ -339,6 +311,42 @@ async function openCard(method = 'pointer') {
   })
 }
 
+/* 收起落定：只隐藏展开内容，不销毁；原有内容一直保留。 */
+function settleClosed(card, state, method) {
+  const { slot, originalStyle } = state
+  closing.value = false
+  const inner = directChild(card, 'card-inner')
+  if (inner) {
+    inner.removeAttribute('aria-hidden')
+    inner.inert = false
+  }
+  if (slot.parentNode) slot.remove()
+  card.style.cssText = originalStyle
+  restoreAria(card, state)
+
+  document.body.classList.remove('locked')
+  unlockPageScroll()
+  backdropVisible.value = false
+
+  if (method === 'keyboard') card.focus({ preventScroll: true })
+  else if (document.activeElement === card) card.blur()
+
+  clearActive(state)
+  settling.value = true
+
+  if (reopenAfterClose && routeActive.value) {
+    reopenAfterClose = false
+    requestAnimationFrame(() => {
+      if (routeActive.value && !getActive()) openCard('pointer')
+    })
+  }
+
+  clearTimeout(settleTimer)
+  settleTimer = setTimeout(() => {
+    settling.value = false
+  }, reduceMotion() ? 0 : SETTLE_DELAY)
+}
+
 function closeCard() {
   if (!getActive() || closing.value) return
 
@@ -353,6 +361,22 @@ function closeCard() {
   expanded.value = false
   closing.value = true
   backdropOpen.value = false
+
+  /* 侧滑跟手已经把这层滑出屏幕了：直接落定，不再重放
+     「从展开位弹回原位」的弹簧，否则视觉上动画像从原位重新开始。 */
+  const swipeClosed = card.dataset.uiSwipeClose === '1'
+  delete card.dataset.uiSwipeClose
+  if (swipeClosed) {
+    card.style.transition = 'none'
+    card.style.transform = ''
+    card.style.opacity = ''
+    card.style.borderRadius = ''
+    card.style.zIndex = ''
+    void card.offsetWidth
+    card.style.transition = ''
+    settleClosed(card, state, method)
+    return
+  }
 
   card.style.transition = [
     'top var(--spring-exit-dur) var(--spring-exit)',
@@ -381,38 +405,7 @@ function closeCard() {
   const exitMs = reduceMotion() ? 0 : readDuration('--spring-exit-dur', 400)
   clearTimeout(closeTimer)
   closeTimer = setTimeout(() => {
-    // 收起时只隐藏展开内容，不销毁；原有内容一直保留。
-    closing.value = false
-    const inner = directChild(card, 'card-inner')
-    if (inner) {
-      inner.removeAttribute('aria-hidden')
-      inner.inert = false
-    }
-    slot.remove()
-    card.style.cssText = originalStyle
-    restoreAria(card, state)
-
-    document.body.classList.remove('locked')
-    unlockPageScroll()
-    backdropVisible.value = false
-
-    if (method === 'keyboard') card.focus({ preventScroll: true })
-    else if (document.activeElement === card) card.blur()
-
-    clearActive(state)
-    settling.value = true
-
-    if (reopenAfterClose && routeActive.value) {
-      reopenAfterClose = false
-      requestAnimationFrame(() => {
-        if (routeActive.value && !getActive()) openCard('pointer')
-      })
-    }
-
-    clearTimeout(settleTimer)
-    settleTimer = setTimeout(() => {
-      settling.value = false
-    }, reduceMotion() ? 0 : SETTLE_DELAY)
+    settleClosed(card, state, method)
   }, exitMs + CLOSE_BUFFER)
 }
 
@@ -432,9 +425,7 @@ async function onClick(event) {
   const method = event.detail === 0 ? 'keyboard' : 'pointer'
   pendingMethod = method
   const failure = await router.push({ name: props.routeName, params: props.routeParams })
-  /* push 成功即产生一条展开历史。 */
-  if (!failure) expandDepth += 1
-  else if (failure && routeActive.value && !getActive() && !closing.value) openCard(method)
+  if (failure && routeActive.value && !getActive() && !closing.value) openCard(method)
 }
 
 async function onKeydown(event) {
@@ -445,8 +436,7 @@ async function onKeydown(event) {
   event.preventDefault()
   pendingMethod = 'keyboard'
   const failure = await router.push({ name: props.routeName, params: props.routeParams })
-  if (!failure) expandDepth += 1
-  else if (failure && routeActive.value && !getActive() && !closing.value) openCard('keyboard')
+  if (failure && routeActive.value && !getActive() && !closing.value) openCard('keyboard')
 }
 
 function scrollCardIntoView() {
@@ -484,8 +474,6 @@ watch(routeActive, value => {
     pendingMethod = 'pointer'
   } else {
     reopenAfterClose = false
-    /* 路由已离开展开子页：这条展开历史已经被消费（系统返回 / back()）。 */
-    expandDepth = 0
     const current = getActive()
     if (current && current.card === rootEl.value) closeCard()
     pendingMethod = 'pointer'

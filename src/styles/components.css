@@ -71,65 +71,7 @@
 .list-item[data-expand] { cursor: pointer; }
 
 
-/* ============================================================
-   Tab bar
-   ============================================================ */
-/* 定位只在互斥的 media 查询里给：移动端底部横条、桌面端左侧竖条，
-   两套规则永不共存，打包顺序再怎么变也不会互相污染。 */
-.tabbar {
-  position: fixed;
-  background: var(--surface-container-low);
-  display: flex;
-  z-index: 20;
-  transition: background var(--t-fade), border-color var(--t-fade);
-}
-@media (max-width: 899.98px) {
-  .tabbar {
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 480px;
-    border-top: var(--border-w) solid var(--outline-variant);
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-  }
-}
-/* 默认按内容尺寸：不沿主轴拉伸填充容器。
-   需要等分铺满的场景在各自的 media 查询里显式声明。 */
-.tab {
-  flex: 0 0 auto;
-  background: none;
-  border: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 4px 0;
-  color: var(--on-surface-variant);
-  font-size: var(--fs-micro);
-  font-weight: 550;
-  cursor: pointer;
-  border-radius: 14px;
-  transition: color var(--t-fade), transform var(--t-feedback);
-}
-.tab:active { transform: scale(var(--press-scale)); }
-/* 移动端底部横排：等分整条宽度（交叉轴不拉伸，高度由内容决定）。
-   必须写在基础 .tab 之后，否则同特异度会被 flex: 0 0 auto 覆盖。 */
-@media (max-width: 899.98px) {
-  .tab { flex: 1 1 0; min-width: 0; }
-}
-.tab-icon {
-  width: 48px;
-  height: 28px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  transition: background var(--t-fade);
-}
-.tab-icon svg { width: 20px; height: 20px; }
-.tab.active { color: var(--accent); }
-.tab.active .tab-icon { background: var(--accent-container); }
-.tab.active .tab-icon svg { color: var(--on-accent-container); }
+
 
 /* ============================================================
    可展开卡片的按压反馈

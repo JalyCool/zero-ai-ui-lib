@@ -14,30 +14,45 @@
 
    2. JS 层监听 touchstart / touchmove / touchend：
       · 只有 touchstart 落在左边缘（edgeWidth 内）才开始拖拽；
-      · touchmove 按 deltaX 实时算 scale / translateX，并禁用 transition；
-      · touchend 按位移 + 速度判断：过阈值 -> 播完收起动画后 back()；
+      · touchmove 按 deltaX 实时写 translate / scale / 圆角，
+        并驱动下层「黑色遮罩 + 背景模糊」一起渐显；位移超过
+        travelLimit 后走橡皮筋，不会真的拖出屏幕；
+      · touchend 按位移 + 速度判断：过阈值 -> 从当前位置继续
+        滑出（不回到原位重放），落定后再 back()；
         未过阈值 -> 恢复 transition 弹回原位。
 
-   手感参数（阈值 / 阻尼 / 缩放幅度）全部可配，宿主按需调。
+   3. 与卡片展开的衔接：滑出完成时在卡片上留 ui-swipe-close 标记，
+      ExpandableCard 收起时看到标记就直接落定，不再重放
+      「从展开位弹回原位」的弹簧 —— 否则视觉上就是动画从头开始。
    ============================================================ */
 
 const DEFAULTS = {
   /* 左边缘热区宽度（px）：只有从这里起手的滑动才算侧滑返回 */
   edgeWidth: 26,
-  /* 位移阈值：拖到目标宽度的这个比例即判定完成 */
+  /* 位移阈值：拖到跟手上限的这个比例即判定完成 */
   distanceRatio: 0.34,
   /* 速度阈值（px/ms）：短促快滑也能完成 */
   velocityThreshold: 0.62,
   /* 完成时最小位移（px）：低于它即使速度快也只弹回，避免误触 */
   minTravel: 46,
-  /* 跟手时的最大缩放，模拟 iOS 上层卡片后退时轻微缩小 */
-  maxScale: 0.94,
+  /* 跟手位移上限（占目标宽度比例）：超出后进入橡皮筋，拖不动到底 */
+  travelLimit: 0.78,
+  /* 橡皮筋系数：越界部分每像素只走这么多 */
+  rubber: 0.26,
+  /* 跟手到底时的缩小幅度（越小越明显） */
+  maxScale: 0.86,
+  /* 跟手到底时的圆角（px）：滑动过程中圆角连续变大 */
+  maxRadius: 18,
   /* 起始阻尼：前段位移需要多拖一点才动（0 = 完全线性跟手） */
   startDeadZone: 4,
-  /* 完成动画时长（ms） */
-  finishDuration: 240,
-  /* 弹回动画时长（ms） */
-  revertDuration: 320
+  /* 完成 / 弹回动画时长（ms） */
+  finishDuration: 260,
+  revertDuration: 340,
+  /* 下层遮罩：最大不透明度与背景模糊半径 */
+  scrimOpacity: 0.36,
+  scrimBlur: 10,
+  /* 拖拽期间给目标元素的层级 */
+  dragZIndex: 320
 }
 
 const reduceMotion = () =>
@@ -50,18 +65,23 @@ export function useEdgeSwipeBack(options = {}) {
   const onBack = config.onBack
 
   let el = null
+  let scrim = null
   let tracking = false
   let startX = 0
   let startY = 0
-  let deltaX = 0
+  let travelled = 0        /* 橡皮筋之后的有效位移 */
+  let rawTravelled = 0     /* 手指位移（已扣死区） */
   let lastX = 0
   let lastT = 0
   let velocity = 0
   let width = 1
+  let limit = 1
   let activeTouchId = null
   let rafId = 0
   let animating = false
   let disposed = false
+  let savedZIndex = ''
+  let savedRadius = ''
 
   function resolveTarget() {
     if (typeof target === 'function') return target()
@@ -73,19 +93,65 @@ export function useEdgeSwipeBack(options = {}) {
     return !config.shouldHandle || config.shouldHandle()
   }
 
-  function applyTransform(x) {
+  /* 遮罩：黑色压暗 + 背景模糊，随进度渐显。 */
+  function ensureScrim() {
+    if (scrim && scrim.isConnected) return scrim
+    scrim = document.createElement('div')
+    scrim.className = 'ui-edge-scrim'
+    scrim.setAttribute('aria-hidden', 'true')
+    scrim.style.cssText = [
+      'position:fixed', 'inset:0',
+      'z-index:' + (config.dragZIndex - 1),
+      'pointer-events:none',
+      'background:#000',
+      'opacity:0',
+      '-webkit-backdrop-filter:blur(0px)',
+      'backdrop-filter:blur(0px)',
+      'transition:none'
+    ].join(';')
+    document.body.appendChild(scrim)
+    return scrim
+  }
+
+  function dropScrim() {
+    if (scrim) { scrim.remove(); scrim = null }
+  }
+
+  /* 进度 0..1：有效位移 / 跟手上限 */
+  function progressOf(value) {
+    return Math.min(1, Math.max(0, value / limit))
+  }
+
+  function applyFrame() {
     if (!el) return
-    const progress = width > 0 ? Math.min(1, Math.max(0, x / width)) : 0
+    const progress = progressOf(travelled)
     const scale = 1 - (1 - config.maxScale) * progress
+    const radius = config.maxRadius * progress
     el.style.transition = 'none'
-    el.style.transform = 'translate3d(' + x + 'px,0,0) scale(' + scale + ')'
+    el.style.transform = 'translate3d(' + travelled + 'px,0,0) scale(' + scale + ')'
+    el.style.borderRadius = radius > 0.4 ? radius.toFixed(2) + 'px' : savedRadius
+    if (scrim) {
+      scrim.style.opacity = (config.scrimOpacity * progress).toFixed(3)
+      const blur = (config.scrimBlur * progress).toFixed(2) + 'px'
+      scrim.style.webkitBackdropFilter = 'blur(' + blur + ')'
+      scrim.style.backdropFilter = 'blur(' + blur + ')'
+    }
     if (config.onProgress) config.onProgress(progress)
+  }
+
+  /* 手指位移 -> 有效位移：上限内 1:1，超出走橡皮筋并留视觉余量。 */
+  function toTravelled(raw) {
+    if (raw <= limit) return raw
+    /* 橡皮筋：越界部分按系数衰减，最多再走 12% 宽度。 */
+    return limit + Math.min(limit * 0.12, (raw - limit) * config.rubber)
   }
 
   function restoreStatic() {
     if (!el) return
     el.style.transform = ''
     el.style.transition = ''
+    el.style.borderRadius = savedRadius
+    el.style.zIndex = savedZIndex
     if (config.onProgress) config.onProgress(0)
   }
 
@@ -95,10 +161,12 @@ export function useEdgeSwipeBack(options = {}) {
     if (!enabled()) return
     const point = event.touches[0]
     if (point.clientX > config.edgeWidth) return
-    el = resolveTarget()
-    if (!el) return
+    const node = resolveTarget()
+    if (!node) return
+    el = node
     const rect = el.getBoundingClientRect()
     width = rect.width || window.innerWidth
+    limit = width * config.travelLimit
     tracking = true
     activeTouchId = point.identifier
     startX = point.clientX
@@ -106,8 +174,13 @@ export function useEdgeSwipeBack(options = {}) {
     lastX = point.clientX
     lastT = event.timeStamp
     velocity = 0
-    /* 起手时先让出一点死区，避免和纵向滚动抢手。 */
-    applyTransform(0)
+    travelled = 0
+    rawTravelled = 0
+    savedZIndex = el.style.zIndex
+    savedRadius = el.style.borderRadius
+    el.style.zIndex = String(config.dragZIndex)
+    ensureScrim()
+    applyFrame()
   }
 
   function onTouchMove(event) {
@@ -121,19 +194,15 @@ export function useEdgeSwipeBack(options = {}) {
       cancelTracking()
       return
     }
-    const travelled = Math.max(0, dx - config.startDeadZone)
-    deltaX = travelled
+    rawTravelled = Math.max(0, dx - config.startDeadZone)
     velocity = (point.clientX - lastX) / Math.max(1, event.timeStamp - lastT)
     lastX = point.clientX
     lastT = event.timeStamp
-    /* 只跟手向右（后退方向）；向左不回拉。 */
+    travelled = toTravelled(rawTravelled)
     if (rafId) cancelAnimationFrame(rafId)
-    rafId = requestAnimationFrame(() => {
-      rafId = 0
-      applyTransform(Math.min(deltaX, width))
-    })
+    rafId = requestAnimationFrame(() => { rafId = 0; applyFrame() })
     /* 阻止页面横向滚动 / 弹性滚动跟手打架。 */
-    if (event.cancelable && travelled > 0) event.preventDefault()
+    if (event.cancelable && rawTravelled > 0) event.preventDefault()
   }
 
   function findTouch(list) {
@@ -150,10 +219,10 @@ export function useEdgeSwipeBack(options = {}) {
     activeTouchId = null
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0 }
 
-    const distance = point ? Math.max(0, point.clientX - startX - config.startDeadZone) : deltaX
+    const raw = point ? Math.max(0, point.clientX - startX - config.startDeadZone) : rawTravelled
     const finished =
-      (distance >= width * config.distanceRatio) ||
-      (velocity >= config.velocityThreshold && distance >= config.minTravel)
+      (raw >= limit * config.distanceRatio) ||
+      (velocity >= config.velocityThreshold && travelled >= config.minTravel)
 
     if (finished) finishBack()
     else revert()
@@ -167,41 +236,80 @@ export function useEdgeSwipeBack(options = {}) {
     revert()
   }
 
-  /* 完成：把动画交给宿主（CSS transition 或 JS 补间），结束后 back()。 */
+  /* 完成：从当前位置继续滑出（先提交当前帧，避免回跳原位重放），
+     落定后再 back()，并在路由切换绘制完成后才清掉内联样式。 */
   function finishBack() {
-    if (!el) { callBack(); return }
+    if (!el) { dropScrim(); callBack(); return }
     animating = true
-    const from = deltaX
-    const to = width
     if (reduceMotion()) {
+      const node = el
+      node.dataset.uiSwipeClose = '1'
       restoreStatic()
+      dropScrim()
       animating = false
       callBack()
       return
     }
-    el.style.transition = 'transform ' + config.finishDuration + 'ms cubic-bezier(.32,.72,.3,1)'
+    /* 关键：把当前跟手样式提交一帧，transition 才有正确的起点。 */
+    void el.offsetWidth
+    const to = width
+    el.style.transition = [
+      'transform ' + config.finishDuration + 'ms cubic-bezier(.32,.72,.24,1)',
+      'border-radius ' + config.finishDuration + 'ms cubic-bezier(.32,.72,.24,1)',
+      'opacity ' + config.finishDuration + 'ms ease-out'
+    ].join(', ')
     el.style.transform = 'translate3d(' + to + 'px,0,0) scale(' + config.maxScale + ')'
-    if (config.onProgress) config.onProgress(1)
-    const settle = () => {
-      animating = false
-      restoreStatic()
-      callBack()
+    el.style.opacity = '0.85'
+    if (scrim) {
+      scrim.style.transition = 'opacity ' + config.finishDuration + 'ms ease-out'
+      scrim.style.opacity = '0'
+      scrim.style.webkitBackdropFilter = 'blur(0px)'
+      scrim.style.backdropFilter = 'blur(0px)'
     }
-    window.setTimeout(settle, config.finishDuration + 16)
+    if (config.onProgress) config.onProgress(1)
+
+    /* 通知卡片：这次收起由侧滑完成，落定即可，别再弹回原位。 */
+    el.dataset.uiSwipeClose = '1'
+
+    setTimeout(() => {
+      const node = el
+      animating = false
+      callBack()
+      /* 等路由切换绘制完再清样式，避免中途闪回原位。 */
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (node) {
+          node.style.opacity = ''
+          restoreStatic()
+        }
+        dropScrim()
+      }))
+    }, config.finishDuration)
   }
 
   /* 未过阈值：恢复 transition 弹回原位。 */
   function revert() {
-    if (!el) return
-    if (reduceMotion()) { restoreStatic(); return }
+    if (!el) { dropScrim(); return }
+    if (reduceMotion()) { restoreStatic(); dropScrim(); return }
     animating = true
-    el.style.transition = 'transform ' + config.revertDuration + 'ms cubic-bezier(.25,.1,.25,1)'
+    void el.offsetWidth
+    el.style.transition = [
+      'transform ' + config.revertDuration + 'ms cubic-bezier(.25,.1,.25,1)',
+      'border-radius ' + config.revertDuration + 'ms cubic-bezier(.25,.1,.25,1)'
+    ].join(', ')
     el.style.transform = 'translate3d(0,0,0) scale(1)'
+    el.style.borderRadius = savedRadius
+    if (scrim) {
+      scrim.style.transition = 'opacity ' + config.revertDuration + 'ms ease, backdrop-filter ' + config.revertDuration + 'ms ease'
+      scrim.style.opacity = '0'
+      scrim.style.webkitBackdropFilter = 'blur(0px)'
+      scrim.style.backdropFilter = 'blur(0px)'
+    }
     if (config.onProgress) config.onProgress(0)
-    window.setTimeout(() => {
+    setTimeout(() => {
       animating = false
       restoreStatic()
-    }, config.revertDuration + 16)
+      dropScrim()
+    }, config.revertDuration + 20)
   }
 
   function callBack() {
@@ -234,6 +342,7 @@ export function useEdgeSwipeBack(options = {}) {
     if (detach) { detach(); detach = null }
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0 }
     if (el) restoreStatic()
+    dropScrim()
     el = null
   }
 
@@ -242,7 +351,7 @@ export function useEdgeSwipeBack(options = {}) {
   return {
     unmount,
     /* 手动触发一次「完成」，用于调试或无障碍按钮。 */
-    complete: () => { deltaX = width; finishBack() },
+    complete: () => { travelled = limit; rawTravelled = limit; finishBack() },
     isTracking: () => tracking,
     config
   }
