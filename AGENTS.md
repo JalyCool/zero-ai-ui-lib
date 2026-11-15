@@ -325,6 +325,7 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 ```
 
 深色：`--background` 取很深的色、`--on-surface` 取浅色、`--surface-container-*` 依次调亮一档，并给 `<html>` 设 `color-scheme: dark`。
+示例应用的整套配色由**官方 `@material/material-color-utilities` 本地依赖**生成（`src/core/theme.js` 里 `Hct` + `SchemeVibrant`），不请求任何 CDN：断网、内网、CSP 禁外链都能正常出主题色。
 首帧防闪：在 `<head>` 里同步读 localStorage 落 `--background` 与 `data-appearance`，别等模块脚本。
 
 ## 5.1 应用级配置：zero.config.yaml / zero.config.json

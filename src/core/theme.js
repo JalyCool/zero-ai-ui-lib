@@ -2,8 +2,11 @@
    主题与配色（MD3 / OKLCH 回退）
    ============================================================ */
 import { persistThemeState, state } from './state'
+import * as materialColor from '@material/material-color-utilities'
 
-let m3 = null
+/* 真实 MD3 调色板：直接用官方 @material/material-color-utilities（本地依赖）。
+   之前是从 jsdelivr 动态 import：离线 / 被 CORS 拦时整页报错、配色退回近似色。 */
+const m3 = materialColor
 let transitionTimer = null
 const TOKEN_CACHE_KEY = 'vital.theme.tokens.v1'
 // 首帧预置底色：index.html 的启动脚本会读取它，避免先白后深。
@@ -39,15 +42,9 @@ export const PRESET_COLORS = [
   '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#64748b'
 ]
 
-/* MD3 异步加载：不阻塞首屏，加载成功后自动升级配色 */
+/* 兼容旧调用：颜色库已打进包里，同步就绪，不再从网络加载。 */
 export async function loadMD3() {
-  try {
-    m3 = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@material/material-color-utilities@0.3.0/+esm')
-    return true
-  } catch (error) {
-    console.warn('MD3 加载失败，将使用 OKLCH 近似', error)
-    return false
-  }
+  return Boolean(m3)
 }
 
 function hexToRgb255(hex) {

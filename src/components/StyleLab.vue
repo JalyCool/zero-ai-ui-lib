@@ -4,7 +4,7 @@ import { state } from '../core/state'
 import { PRESET_COLORS } from '../core/theme'
 import { getMotionTone, setMotionTone } from '../core/motionTone'
 import {
-  UiButton, UiChip, UiColorPicker, UiSegmented, UiSlider,
+  UiButton, UiCheckbox, UiChip, UiColorPicker, UiSegmented, UiSelect, UiSlider,
   UiStatusMark, UiSwitch, UiText, UiToolCallChip
 } from './ui'
 
@@ -25,6 +25,18 @@ const radius = ref(1)
 const density = ref(0.93)
 const fontScale = ref(1)
 const demoOn = ref(true)
+const previewCheck = ref(true)
+const previewSlider = ref(42)
+const previewPick = ref('button')
+const previewOptions = [
+  { label: '按钮', value: 'button' },
+  { label: '标签 / 复选', value: 'chip' },
+  { label: '开关', value: 'switch' },
+  { label: '状态标记', value: 'status' },
+  { label: '滑轨', value: 'slider' },
+  { label: '文字动效', value: 'text' },
+  { label: '工具调用胶囊', value: 'tool' }
+]
 
 const schemeOptions = [
   { label: 'Material 鲜艳', value: 'material' },
@@ -85,20 +97,38 @@ watch(fontScale, value => document.documentElement.style.setProperty('--font-sca
 
     <section class="style-lab__group">
       <h4>预览</h4>
+      <UiSelect v-model="previewPick" :options="previewOptions" label="预览组件（仅演示）" />
       <div class="style-lab__preview">
-        <UiButton>主要按钮</UiButton>
-        <UiButton variant="tonal" size="sm">次要</UiButton>
-        <UiChip selected>标签</UiChip>
-        <UiSwitch v-model="demoOn" label="开关" />
-        <UiStatusMark status="progress" :progress="0.64" :size="22" />
-        <UiStatusMark status="progress" :progress="null" :size="22" />
-        <UiStatusMark status="done" :size="22" />
-      </div>
-      <div class="style-lab__preview">
-        <UiText variant="type" type-effect="blur" :text="'逐字进场预览'" :cps="14" :loop="true" />
-      </div>
-      <div class="style-lab__preview">
-        <UiToolCallChip name="search_web" detail="q=样式测试" status="success" :expected="2" />
+        <template v-if="previewPick === 'button'">
+          <UiButton>主要按钮</UiButton>
+          <UiButton variant="tonal" size="sm">次要</UiButton>
+          <UiButton variant="outline" size="sm">描边</UiButton>
+        </template>
+        <template v-else-if="previewPick === 'chip'">
+          <UiChip selected>标签</UiChip>
+          <UiChip removable>可移除</UiChip>
+          <UiCheckbox v-model="previewCheck" label="复选" />
+        </template>
+        <template v-else-if="previewPick === 'switch'">
+          <UiSwitch v-model="demoOn" label="开关" />
+          <span class="style-lab__hint">{{ demoOn ? '已开启' : '已关闭' }}</span>
+        </template>
+        <template v-else-if="previewPick === 'status'">
+          <UiStatusMark status="progress" :progress="0.64" :size="22" />
+          <UiStatusMark status="progress" :progress="null" :size="22" />
+          <UiStatusMark status="pending" :size="22" />
+          <UiStatusMark status="done" :size="22" />
+          <UiStatusMark status="failed" :size="22" />
+        </template>
+        <template v-else-if="previewPick === 'slider'">
+          <UiSlider v-model="previewSlider" label="滑轨" unit="%" class="style-lab__slider" />
+        </template>
+        <template v-else-if="previewPick === 'text'">
+          <UiText variant="type" type-effect="blur" :text="'逐字进场预览 · 透明度 + 模糊'" :cps="14" :loop="true" />
+        </template>
+        <template v-else>
+          <UiToolCallChip name="search_web" detail="q=样式测试" status="success" :expected="2" />
+        </template>
       </div>
     </section>
   </div>
@@ -118,6 +148,7 @@ watch(fontScale, value => document.documentElement.style.setProperty('--font-sca
 .style-lab__hint { margin: 0; color: var(--on-surface-variant); font-size: var(--fs-micro); line-height: 1.6; }
 .style-lab__hint b { color: var(--on-surface); font-weight: var(--w-label); }
 .style-lab__hint code { padding: 1px 4px; border-radius: 4px; background: var(--surface-container); font-family: var(--font-mono); font-size: .95em; }
+.style-lab__slider { flex: 1 1 100%; }
 .style-lab__preview {
   display: flex;
   align-items: center;

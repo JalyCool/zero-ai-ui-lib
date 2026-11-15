@@ -7,25 +7,25 @@
 
 | 组件 | ui/index 导出 | d.ts 声明 | AGENTS 组件表 | 示例页 |
 |---|---|---|---|---|
-| UiColorPicker / UiAutocomplete | ✅ | ✅ | ❌ | ❌ |
-| UiForm / UiFormField | ✅ | ✅ | ❌ | ❌ |
-| UiNumberInput | ✅ | ✅ | ❌ | ❌ |
-| UiDateInput / UiTimeInput | ✅ | ✅ | ❌ | ❌ |
-| UiFileUpload | ✅ | ✅ | ❌ | ❌ |
-| UiBreadcrumb / UiPagination | ✅ | ✅ | ❌ | ❌ |
-| UiSidebar / UiSlideover | ✅ | ✅ | ❌ | ❌ |
-| UiNavigationMenu | ✅ | ✅ | ❌ | ❌ |
-| UiGrid / UiRow / UiCol | ✅ | ✅ | ❌ | ❌ |
-| UiSplitter | ✅ | ✅ | ❌ | ❌ |
-| UiScrollArea | ✅ | ✅ | ❌ | ❌ |
-| UiContextMenu / UiCommandPalette | ✅ | ✅ | ❌ | ❌ |
-| UiTour / UiPopover / UiBanner | ✅ | ✅ | ❌ | ❌ |
-| UiToastQueue | ✅ | ✅ | ❌ | ❌ |
-| UiKbd / UiIcon / UiVirtualScroll | ✅ | ✅ | ❌ | ❌ |
-| UiCalendar / UiTimeline / UiCarousel / UiMarquee | ✅ | ✅ | ❌ | ❌ |
-| core：a11y / directives / shortcuts / icons / springPhysics | ✅ lib 入口导出 | ❌ | 部分 | ❌ |
+| UiColorPicker / UiAutocomplete | ✅ | ✅ | ✅ | ✅ |
+| UiForm / UiFormField | ✅ | ✅ | ✅ | ✅ |
+| UiNumberInput | ✅ | ✅ | ✅ | ✅ |
+| UiDateInput / UiTimeInput | ✅ | ✅ | ✅ | ✅ |
+| UiFileUpload | ✅ | ✅ | ✅ | ✅ |
+| UiBreadcrumb / UiPagination | ✅ | ✅ | ✅ | ✅ |
+| UiSidebar / UiSlideover | ✅ | ✅ | ✅ | ✅ |
+| UiNavigationMenu | ✅ | ✅ | ✅ | ✅ |
+| UiGrid / UiRow / UiCol | ✅ | ✅ | ✅ | ✅ |
+| UiSplitter | ✅ | ✅ | ✅ | ✅ |
+| UiScrollArea | ✅ | ✅ | ✅ | ✅ |
+| UiContextMenu / UiCommandPalette | ✅ | ✅ | ✅ | ✅ |
+| UiTour / UiPopover / UiBanner | ✅ | ✅ | ✅ | ✅ |
+| UiToastQueue | ✅ | ✅ | ✅ | ✅ |
+| UiKbd / UiIcon / UiVirtualScroll | ✅ | ✅ | ✅ | ✅ |
+| UiCalendar / UiTimeline / UiCarousel / UiMarquee | ✅ | ✅ | ✅ | ✅ |
+| core：a11y / directives / shortcuts / icons / springPhysics | ✅ lib 入口导出 | ✅ | 部分 | 不适用 |
 
-→ d.ts 31 个声明**已补**（本轮）。待办：**AGENTS 组件表行 + 示例页分区演示**。
+→ 31 个组件的 d.ts / AGENTS 组件表 / 示例页分区演示**全部接线完成**。
 
 ## B. 完全没实现的能力
 
@@ -44,11 +44,12 @@
    - ✅ **Stack 与 CardSwap 拆成两套机制**：Stack = 物理牌堆（前后左右错位 + 甩出 tuck 回堆底）；
      CardSwap = 三维轮换台（整叠向一侧错开 15px、绕 X 后仰 3°，前卡绕底边向后仰掉出、再从背后落下）。
 4. ✅ **Button hold 完整动画**：按住有扩散波纹、填充前缘辉光、完成态整颗填充 + 勾 + 弹一下。
-5. **BottomSheet 锚点规则**（用户两次提出）：
-   - 内容全高 < 60% 时；不要出现 60% 档；
-   - 内容全高 < 95% 时；必须在「内容完整显示」的高度加吸附；
-   - 有压暗背景的版本不要 20% 档（已做）。
-6. **Playground**：本轮已改成 UiBottomSheet + StyleLab；后续可加组件级预览选择器。
+5. ✅ **BottomSheet 锚点规则**（用户两次提出）：
+   - 内容全高 < 60% 时；不要出现 60% 档（实测 27% 内容上下拖动都回到 251px）；
+   - 内容全高 < 95% 时；自动追加「内容完整显示」高度锚点（fullFraction）；
+   - 有压暗背景的版本不要 20% 档；有拖拽把手时不再有关闭键。
+6. ✅ **Playground**：UiBottomSheet + StyleLab，并加了「预览组件」选择器（按钮 / 标签复选 / 开关 / 状态标记 / 滑轨 / 文字动效 / 工具调用胶囊）。
+7. ✅ **颜色生成本地化**：调色板改为官方 `@material/material-color-utilities@0.3.0` 本地依赖，断网可用；实测 seed #3b82f6 → #005ac2、#10b981 → #006c49，与库自身输出一致，无外部请求。
 
 ## C. 进度记录（最近提交）
 
