@@ -133,7 +133,7 @@ import {
 | `UiText` | 文字动效包装器：`variant="type"` 打字机（`cps` 节奏、逐字符进场 `type-effect="blur|fade|rise"` —— 默认 blur 就是**透明度 + 模糊**渐变、光标四档 `bar|block|underscore|character`、`loop` 会先逐字删除再重打）、`shiny` 掠光（`sheen="soft|chrome"`）、`gradient` 流动渐变（`sweep|mesh|conic` + `colors`） |
 | `UiStatusMark` | 任务状态标记（仅受控），五个状态：`none`（只有底部一段空槽，上半部分什么都没有）/ `pending`（整圈虚线待命）/ `progress`（**分两种**：`progress` 是数字 → 弧长 = 实际进度、静止不转；`progress=null` → 一小段弧匀速转圈，表示没有实际进度）/ `done`（弧收满 + 勾抽笔）/ `failed`（弧淡出 + 叉抽笔）。全部由同一圈描边用 dasharray 连续过渡，任意两态互转不闪；圆环旋转原点只由 SVG `rotate(-90 12 12)` 提供，不要再写 CSS `transform-origin`（会被应用两次导致整体偏移） |
 | `UiToolCallChip` | 工具调用胶囊（仅受控）：`name` `detail` `status="running|success|error"` `expected`（秒）；运行中填充按耗时擦过、右侧计时器跳动，成功补满转绿、失败转红抖动 |
-| `UiCodeSlots` | 一次性验证码（按 react-bits CodeSlots 手法）：每个数字**独立落位**（透明度 + 模糊 + 上移 + 缩放，spring 曲线），粘贴按 `cascade`（默认 20ms）逐位错开；位光标是一个元素在格子间滑过，只在当前位为空 / 错误态显示；`status="success"` 洗色从中间展开 + 数字下沉 + 勾升起，`status="error"` 从后往前逐位抽走再清空；键盘可完全操作（数字 / 退格删前一位 / Delete 删本位 / 方向键 / Home / End），原生 input 负责焦点与 `autocomplete="one-time-code"` |
+| `UiCodeSlots` | 一次性验证码（按 react-bits CodeSlots 手法）：每个数字**独立落位**（透明度 + 模糊 + 上移 + 缩放，spring 曲线），粘贴按 `cascade`（默认 20ms）逐位错开；**当前输入位直接整格填充主色容器**（不再有独立光标线），空位 / 错误态时强调，成功后洗色时自动收起；`status="success"` 洗色从中间展开 + 数字下沉 + 勾升起，`status="error"` 从后往前逐位抽走再清空；键盘可完全操作（数字 / 退格删前一位 / Delete 删本位 / 方向键 / Home / End），原生 input 负责焦点与 `autocomplete="one-time-code"` |
 | `UiScrubField` | 可拖数字：横向拖动改值（`pixels-per-range` 定灵敏度），越界走橡皮筋松手弹回；不拖直接点击切换成输入框；方向键可微调 |
 | `UiSwipeRow` | 划开式列表行：`actions` 露在右侧，拖拽跟手、按位移 + 速度吸附；继续划到底直接执行最后一个操作（`full-swipe-action`）；`once` 触发后自动收回 |
 | `UiStepFlow` | 多步流程：`steps` + `v-model` 索引；指示器是一块绝对定位的薄条，靠 transform 在轨道上滑到当前格位，面板内容按方向滑入并模糊；`orientation="horizontal|vertical"` |
@@ -395,7 +395,7 @@ useZeroConfig({ ui: { motion: 'lively', colors: { primary: '#0f766e' } } })
 6. pnpm 用本地 tarball 时先复制进项目（`vendor/*.tgz`）再写 `file:vendor/...`；指向仓库外路径会随文件移动而失效。
 7. `UiToastHost` 在最上层，底部面板打开时可能盖住表单底部，可在打开前 dismiss。
 8. `UiToolMenu` 展开时会在文档流里占位、把下方内容推开；不想位移就换 `UiFloatingMenu`。
-9. 调试用的无头 Chrome profile 目录（`.chrome-p*/`）会被写大量文件，`vite.config.js` 已用 `server.watch.ignored` 排除，否则 dev/preview 会被热更风暴拖垮。
+9. 调试用的无头 Chrome profile 目录（`.chrome-*/`，含 `.chrome-color`）与根目录截图（`.shot*`）会被写大量文件，`.gitignore` 已忽略，`vite.config.js` 的 `server.watch.ignored` 也排除了它们，否则 dev/preview 会被热更风暴拖垮。
 10. 给展开卡片做「滑出式关闭」时，动画必须**从当前跟手位置续接**（先 `void offsetWidth` 提交当前帧再写 transition），并在路由切换绘制后才清内联样式；否则完成动画会像从原位重新开始。
 11. 媒体查看器的舞台必须是整个视口、不能有 max-width / max-height：一旦按「合适尺寸」限制舞台，放大后的图片会被舞台裁掉。缩略态与展开态之间靠 left/top/width/height 过渡保持几何连续。
 12. 动效气质不要做成用户设置：它是产品定位（工具类用 `calm`、娱乐社交类用 `lively`），应在代码或 `zero.config` 里预置。做成「设置 → 动效风格」会让同一产品的手感随用户漂移，动效语言就散了。

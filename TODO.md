@@ -53,6 +53,9 @@
 
 ## C. 进度记录（最近提交）
 
+- 本轮（第七段）：验证码去掉独立位光标（`ui-code-slots__caret`），当前位改为整格填充
+  主色容器（错误态用 error 填充）；dev server 的 watch.ignored 扩到 `.chrome-*/` 与 `.shot*`。
+
 - 本轮（第六段）：分区下拉错位 —— 根因是粘性筛选条的 backdrop-filter 把 fixed 包含块
   从视口换成了自己；新增 `core/fixedBox` 做包含块补偿，UiSelect 与 useMorphWindow 共用；
   顺手修了对象式 style 数值不补 px 导致 top/width 被丢弃的问题。桌面 1306 / 移动 430

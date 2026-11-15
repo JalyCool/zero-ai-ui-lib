@@ -48,13 +48,24 @@ const digits = computed(() => {
   return Array.from({ length: props.length }, (_, i) => raw[i] || '')
 })
 const filled = computed(() => digits.value.filter(Boolean).length)
-const pitch = computed(() => 46 + 8)
-const caretVisible = computed(() =>
-  focused.value && !props.disabled && !veiled.value && props.status !== 'success' && (props.status === 'error' || !digits.value[active.value]))
+function onFocus() {
+  focused.value = true
+  /* 聚焦时把当前位落到「第一个空格」，全部填满则停在最后一位。 */
+  active.value = Math.min(filled.value, props.length - 1)
+  emit('focus')
+}
 
-/* 光标位置：当前位；若当前位已填满则停在末尾下一位。 */
-const caretIndex = computed(() => Math.min(Math.max(0, active.value), props.length - 1))
-const caretStyle = computed(() => ({ transform: 'translate3d(' + (caretIndex.value * pitch.value) + 'px,0,0)' }))
+function onBlur() {
+  focused.value = false
+  emit('blur')
+}
+
+/* 当前位：不再用独立光标元素，直接给这一格填充强调。
+   成功后整排会洗色，就不再强调当前位。 */
+const activeIndex = computed(() => Math.min(Math.max(0, active.value), props.length - 1))
+const showActive = computed(() =>
+  focused.value && !props.disabled && !veiled.value && props.status !== 'success'
+)
 
 function sanitize(value) {
   return String(value || '').replace(/\D/g, '').slice(0, props.length)
@@ -227,17 +238,10 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
         @keydown="onKeydown"
         @input="onInput"
         @paste="onPaste"
-        @focus="focused = true; active = Math.min(filled, length - 1); emit('focus')"
-        @blur="focused = false; emit('blur')"
+        @focus="onFocus"
+        @blur="onBlur"
       />
 
-      <!-- 位光标：一个元素在格子间滑过去 -->
-      <span
-        class="ui-code-slots__caret"
-        :class="{ 'is-on': caretVisible }"
-        :style="caretStyle"
-        aria-hidden="true"
-      ></span>
       <!-- 洗色层：success 时从中间向两侧展开 -->
       <span class="ui-code-slots__wash" aria-hidden="true"></span>
       <!-- 勾：success 时从下方升起 -->
@@ -249,7 +253,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
         v-for="(digit, index) in digits"
         :key="'slot-' + index"
         class="ui-code-slots__slot"
-        :class="{ 'is-filled': !!digit, 'is-active': index === caretIndex && focused, 'is-ghost': !!ghosts[index] }"
+        :class="{ 'is-filled': !!digit, 'is-active': index === activeIndex && showActive, 'is-ghost': !!ghosts[index] }"
         :style="{ '--i': index }"
         aria-hidden="true"
       >
@@ -316,26 +320,18 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   transition: border-color var(--t-fade), background var(--t-fade), transform var(--t-feedback);
 }
 .ui-code-slots__slot.is-filled { border-color: color-mix(in oklab, var(--primary) 34%, var(--outline-variant)); }
-.ui-code-slots__slot.is-active { border-color: var(--primary); background: var(--surface-container); }
+.ui-code-slots__slot.is-active {
+  border-color: var(--primary);
+  /* 当前输入位「填充强调」：用主色容器整格填上，而不是一条光标线 */
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
 .ui-code-slots.is-disabled .ui-code-slots__slot { opacity: .42; }
 .ui-code-slots.is-error .ui-code-slots__slot { border-color: color-mix(in oklab, var(--error) 40%, var(--outline-variant)); }
-
-/* 位光标：一个元素在格子间滑过去（transform 走 spring 曲线）。 */
-.ui-code-slots__caret {
-  position: absolute;
-  left: 23px;
-  bottom: 9px;
-  z-index: 2;
-  width: 16px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--primary);
-  opacity: 0;
-  pointer-events: none;
-  transition: transform var(--t-pop), opacity 160ms ease;
+.ui-code-slots.is-error .ui-code-slots__slot.is-active {
+  border-color: var(--error);
+  background: color-mix(in oklab, var(--error) 15%, var(--surface-container-low));
 }
-.ui-code-slots__caret.is-on { opacity: 1; animation: uiSlotCaretBlink 1.05s steps(1, end) infinite; }
-@keyframes uiSlotCaretBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 
 /* 单个数字：落位（透明度 + 模糊 + 位移 + 缩放）。 */
 .ui-code-slots__digit {
