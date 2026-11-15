@@ -1,3 +1,8 @@
+<script>
+/* 模块级共享 key：所有递归实例共用同一个 Symbol。 */
+const ROOT_KEY = Symbol('ui-tree-root')
+</script>
+
 <script setup>
 import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
 
@@ -25,7 +30,6 @@ const emit = defineEmits(['update:modelValue', 'select', 'expand'])
    选中与展开状态由根实例持有并 provide，递归子实例 inject 共用。
    ============================================================ */
 
-const ROOT_KEY = Symbol('ui-tree-root')
 const isRoot = props.depth === 0
 
 function childrenOf(node) {
@@ -65,7 +69,7 @@ const state = isRoot ? {
 } : null
 
 if (isRoot) provide(ROOT_KEY, state)
-const shared = isRoot ? state : inject(ROOT_KEY, state)
+const shared = isRoot ? state : (inject(ROOT_KEY) || state)
 
 const rows = computed(() => props.nodes.map((node, index) => {
   const path = props.pathPrefix ? props.pathPrefix + '/' + index : String(index)
@@ -115,20 +119,20 @@ watch(() => shared.openMap.value, map => {
 
 onBeforeUnmount(() => { if (isRoot) shared.groups.clear() })
 
-if (isRoot) {
-  defineExpose({
-    openAll: deep => {
-      const next = new Map()
-      const walk = (list, prefix) => list.forEach((node, index) => {
-        const path = prefix ? prefix + '/' + index : String(index)
-        const kids = childrenOf(node)
-        if (kids.length) { next.set(nodeKey(node, path), !!deep); walk(kids, path) }
-      })
-      walk(props.nodes, props.pathPrefix)
-      shared.openMap.value = next
-    }
-  })
-}
+/* defineExpose 是编译宏，必须无条件出现在 setup 顶层；
+   递归子实例只暴露一个空对象，openAll 只在根实例上有效。 */
+defineExpose(isRoot ? {
+  openAll: deep => {
+    const next = new Map()
+    const walk = (list, prefix) => list.forEach((node, index) => {
+      const path = prefix ? prefix + '/' + index : String(index)
+      const kids = childrenOf(node)
+      if (kids.length) { next.set(nodeKey(node, path), !!deep); walk(kids, path) }
+    })
+    walk(props.nodes, props.pathPrefix)
+    shared.openMap.value = next
+  }
+} : {})
 </script>
 
 <template>
