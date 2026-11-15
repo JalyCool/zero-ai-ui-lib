@@ -197,6 +197,9 @@ let lastTap = 0
 let gestureBase = 1
 
 function onPointerDown(event) {
+  /* 关闭按钮在舞台内部：pointerdown 一旦被舞台捕获，后续 click 会落到舞台，
+     按钮就永远点不动。这里先让路。 */
+  if (event.target && event.target.closest && event.target.closest('.ui-media-viewer__close')) return
   if (resolvedKind.value === 'video') return
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
   gesturing.value = true

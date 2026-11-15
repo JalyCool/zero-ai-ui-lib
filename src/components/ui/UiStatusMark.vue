@@ -94,7 +94,9 @@ const rootStyle = computed(() => ({
       : '待处理'"
   >
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <!-- 主描边：none 底部残弧 / pending 虚线 / progress 实弧 / done·failed 整圈 -->
+      <!-- 槽：永远完整一圈的浅色底轨，进度弧叠在上面 -->
+      <circle class="ui-status-mark__track" cx="12" cy="12" :r="R" pathLength="100" transform="rotate(-90 12 12)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="100 0.001" />
+      <!-- 主描边：pending 虚线 / progress 实弧 / done·failed 整圈；none 时隐藏 -->
       <circle
         class="ui-status-mark__ring"
         cx="12" cy="12" :r="R"
@@ -140,6 +142,13 @@ const rootStyle = computed(() => ({
 /* 主描边：dasharray / dashoffset 都是连续量，状态互转时自然过渡。
    注意这里不写 CSS transform-origin —— 旋转原点由 rotate(-90 12 12) 自带，
    再写一次会让圆环整体偏移（踩过这个坑）。 */
+.ui-status-mark__track {
+  opacity: .18;
+  transition: opacity 200ms ease, stroke 200ms ease;
+}
+/* none：只留底槽，上面什么都没有 */
+.ui-status-mark.is-none .ui-status-mark__ring { opacity: 0; }
+.ui-status-mark.is-none .ui-status-mark__track { opacity: .34; }
 .ui-status-mark__ring {
   transition: stroke-dasharray 320ms cubic-bezier(.23,1,.32,1),
               stroke-dashoffset 320ms cubic-bezier(.23,1,.32,1),
@@ -151,7 +160,6 @@ const rootStyle = computed(() => ({
 .ui-status-mark.is-pending { color: var(--on-surface-variant); }
 .ui-status-mark.is-pending .ui-status-mark__ring { opacity: .62; }
 .ui-status-mark.is-none { color: var(--outline-variant); }
-.ui-status-mark.is-none .ui-status-mark__ring { opacity: .8; }
 .ui-status-mark.is-done { color: var(--ui-success, #15803d); }
 .ui-status-mark.is-failed { color: var(--error); }
 /* 完成 / 失败：整圈退成淡底，让勾叉当主角 */

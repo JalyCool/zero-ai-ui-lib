@@ -302,7 +302,8 @@ defineExpose({
         v-if="fusePosition === 'outline'"
         class="ui-btn__rim"
         :viewBox="'0 0 ' + rim.w + ' ' + rim.h"
-        preserveAspectRatio="none"
+        :width="rim.w"
+        :height="rim.h"
         aria-hidden="true"
       >
         <path :d="rim.d" pathLength="1" @transitionend="onFuseEnd" />
@@ -417,14 +418,19 @@ defineExpose({
 
 /* 烧边：outline 用 pathLength=1 的 rect，dashoffset 0 → -1 烧一整圈。
    时长直接等于撤销窗口，所以「边烧完」与「可撤销结束」是同一刻。 */
+/* 用实测宽高做 svg 尺寸（不要 100% 拉伸，也不要 preserveAspectRatio=none：
+   一旦 viewBox 与实际尺寸不一致，圆角会被拉成椭圆、描边粗细也会不均）。 */
 .ui-btn__rim {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  left: 0;
+  top: 0;
   pointer-events: none;
   overflow: visible;
+  opacity: 0;
+  transition: opacity 140ms ease;
 }
+/* 保险丝只在「已上膛」期间出现，平时不应该看得见。 */
+.ui-btn--fuse.is-armed .ui-btn__rim { opacity: 1; }
 .ui-btn__rim path {
   fill: none;
   stroke: var(--ui-warning, #b45309);
@@ -473,6 +479,7 @@ defineExpose({
 /* ---------- slide ---------- */
 .ui-btn--slide {
   padding: 0;
+  border-radius: calc(var(--r-button, 14px) * var(--radius-scale));
   background: var(--surface-container-high);
   color: var(--on-surface);
   border-color: var(--outline-variant);
@@ -506,7 +513,8 @@ defineExpose({
   display: grid;
   place-items: center;
   width: 38px;
-  border-radius: 999px;
+  /* 滑块的圆角跟容器对齐（容器圆角 - 内边距），不要做成胶囊。 */
+  border-radius: calc(var(--r-button, 14px) * var(--radius-scale) - 4px);
   background: var(--primary);
   color: var(--on-primary);
   transition: transform var(--t-panel) var(--spring-view), width var(--t-panel), background var(--t-fade);
@@ -515,8 +523,15 @@ defineExpose({
 .ui-btn__slide-spin { animation: uiBtnSpin 900ms linear infinite; }
 .ui-btn--slide.is-running .ui-btn__slide-hint { opacity: .5; }
 /* 跑完：把手从最左铺满整条轨道（宽度由行内样式给，位移已归零）。 */
+/* 完成态：完整铺满整个按钮（连内边距一起），圆角与容器一致。 */
 .ui-btn--slide.is-done .ui-btn__slide-handle {
-  width: calc(100% - 8px) !important;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 100% !important;
+  height: 100%;
+  border-radius: inherit;
+  transform: none !important;
   background: var(--ui-success, #15803d);
 }
 .ui-btn--slide.is-done .ui-btn__slide-handle svg { width: 18px; height: 18px; }

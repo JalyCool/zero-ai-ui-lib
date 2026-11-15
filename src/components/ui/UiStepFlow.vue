@@ -47,12 +47,14 @@ const indicatorStyle = computed(() => {
   if (props.orientation === 'vertical') {
     return {
       height: 'calc((100% - ' + PAD * 2 + 'px - ' + (n - 1) * GAP + 'px) / ' + n + ')',
-      transform: 'translate3d(0, calc(' + index + ' * (100% + ' + GAP + 'px)), 0)'
+      /* 不要写 calc(index * (100% + gap))：CSS calc 不支持「和式再乘」，
+         会被整条忽略，指示器就卡在起点不动。拆成两项相加。 */
+      transform: 'translate3d(0, calc(' + index + ' * 100% + ' + index * GAP + 'px), 0)'
     }
   }
   return {
     width: 'calc((100% - ' + PAD * 2 + 'px - ' + (n - 1) * GAP + 'px) / ' + n + ')',
-    transform: 'translate3d(calc(' + index + ' * (100% + ' + GAP + 'px)), 0, 0)'
+    transform: 'translate3d(calc(' + index + ' * 100% + ' + index * GAP + 'px), 0, 0)'
   }
 })
 
@@ -84,10 +86,7 @@ function onStepClick(index) {
   go(index)
 }
 
-onBeforeUnmount(() => {
-  if (observer) observer.disconnect()
-  window.removeEventListener('resize', measure)
-})
+onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清理 */ })
 </script>
 
 <template>

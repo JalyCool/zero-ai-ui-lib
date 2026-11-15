@@ -98,15 +98,21 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
       :key="item.label + index"
       :ref="el => setItemEl(el, index)"
       class="ui-tooltip-group__trigger"
-      :class="{ 'is-active': hovered === index }"
+      :class="{ 'is-active': hovered === index, 'is-icon': !!item.icon }"
       tabindex="0"
       role="button"
+      :aria-label="item.icon ? item.label : undefined"
       :aria-describedby="hovered === index ? 'ui-tooltip-group-bubble' : undefined"
       @mouseenter="enter(index)"
       @mouseleave="leave"
       @focus="onFocus(index)"
       @blur="onBlur"
-    >{{ item.label }}</span>
+    >
+      <span v-if="item.icon" class="ui-tooltip-group__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" v-html="item.icon"></svg>
+      </span>
+      <span v-else>{{ item.label }}</span>
+    </span>
 
     <Teleport to="body">
       <Transition name="ui-tip">
@@ -134,6 +140,22 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   transition: color var(--t-fade), border-color var(--t-fade);
 }
 .ui-tooltip-group__trigger.is-active { color: var(--primary); border-color: var(--primary); }
+/* 图标按钮触发：主要是给工具栏图标用的，做成方形按钮。 */
+.ui-tooltip-group__trigger.is-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(10px * var(--radius-scale));
+  background: var(--surface-container-low);
+  border-bottom-width: var(--border-w);
+  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-feedback);
+}
+.ui-tooltip-group__trigger.is-icon:active { transform: scale(var(--press-scale)); }
+.ui-tooltip-group__trigger.is-icon:hover { background: var(--surface-container); }
+.ui-tooltip-group__icon { display: grid; place-items: center; }
+.ui-tooltip-group__icon svg { width: 17px; height: 17px; }
 .ui-tooltip-group__trigger:focus-visible { outline: var(--focus-w) solid var(--primary); outline-offset: 3px; border-radius: 4px; }
 
 /* 气泡：一项共用，位置由 JS 写，本身只做位移 + 模糊过渡。 */

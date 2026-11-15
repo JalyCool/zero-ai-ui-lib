@@ -261,11 +261,12 @@ const stepFlowSteps = [
   { label: '选择方案', description: '按月或按年' },
   { label: '确认支付', description: '核对金额' }
 ]
+/* 提示词组主要给工具栏图标用：这里是图标按钮，不是文字链接。 */
 const tooltipItems = [
-  { label: '步频', tip: '每分钟步数，180 以上为高强度' },
-  { label: '配速', tip: '每公里用时，越小越快' },
-  { label: '心率区间', tip: '按最大心率百分比划分的五档' },
-  { label: '恢复时间', tip: '训练后建议的休息时长' }
+  { label: '搜索', tip: '搜索记录（⌘K）', icon: '<circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/>' },
+  { label: '筛选', tip: '按类型 / 时间筛选', icon: '<path d="M4 5h16l-6 7v6l-4 2v-8z"/>' },
+  { label: '导出', tip: '导出为 CSV', icon: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 19h14"/>' },
+  { label: '设置', tip: '训练目标与提醒', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 3l1.4 2.5 2.8-.7 1.1 2.7 2.7 1.1-.7 2.8L21 12l-1.7 2.6.7 2.8-2.7 1.1-1.1 2.7-2.8-.7L12 21l-1.4-2.5-2.8.7-1.1-2.7-2.7-1.1.7-2.8L3 12l1.7-2.6-.7-2.8 2.7-1.1 1.1-2.7 2.8.7z"/>' }
 ]
 const swipeLog = ref('尚未操作')
 const swipeActions = [
@@ -853,7 +854,7 @@ onMounted(() => {
           <div class="lib-cell__stage">
             <UiTooltipGroup :items="tooltipItems" />
           </div>
-          <span class="lib-cell__note">第一次悬停要等 520ms，热了之后兄弟项瞬开。</span>
+          <span class="lib-cell__note">图标按钮组（工具栏场景）：第一次悬停要等 520ms，热了之后兄弟项瞬开；气泡只渲染一个，跟着指针走。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">媒体查看 <small>MediaViewer</small></span>

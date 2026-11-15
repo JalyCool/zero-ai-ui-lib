@@ -31,6 +31,7 @@ const emit = defineEmits(['update:modelValue'])
 /* 删除线：用伪元素从左到右扫过（scaleX 0 -> 1），
    而不是直接给文字加 text-decoration —— 那样没有「划」的过程。 */
 .ui-check.is-strike .ui-check__label { position: relative; display: inline-block; }
+/* 画线时从左往右；取消勾选时改成从右往左擦掉（origin 切换）。 */
 .ui-check.is-strike .ui-check__label::after {
   content: '';
   position: absolute;
@@ -45,6 +46,7 @@ const emit = defineEmits(['update:modelValue'])
   transition: transform var(--t-panel) var(--spring-view), opacity var(--t-fade);
   opacity: 0;
 }
+.ui-check.is-strike:not(.is-on) .ui-check__label::after { transform-origin: right center; }
 .ui-check.is-strike.is-on .ui-check__label::after { transform: scaleX(1); opacity: .78; }
 .ui-check.is-strike.is-on .ui-check__label { color: var(--on-surface-variant); }
 .ui-check.is-strike.is-on .ui-check__desc { text-decoration: line-through; text-decoration-thickness: 1px; opacity: .6; }

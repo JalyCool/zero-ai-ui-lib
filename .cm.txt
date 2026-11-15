@@ -1,0 +1,22 @@
+修 7 处回归/对齐问题（CardGroup 与底部面板的剩余项已列 todo）
+
+1. StepFlow 指示器不动：transform 写成 calc(index * (100% + 6px))，
+   CSS calc 不支持「和式再乘」，整条声明被丢弃 → 指示器永远卡在起点。
+   改成 calc(index * 100% + index * 6px)；同时清掉卸载时对已删除变量的引用。
+2. MediaViewer 点关闭无效：舞台在 pointerdown 时 setPointerCapture，
+   后续 click 落到舞台而不是按钮。pointerdown 遇到 .ui-media-viewer__close 直接让路。
+3. StatusMark：补一条「永远完整一圈」的浅色槽（track），进度弧叠在上面；
+   none 改成只留底槽、隐藏主描边（之前是半圈弧，语义不对）。
+4. 保险丝一开始就显示：rim 在 idle 时 opacity 0，只有 is-armed 才亮；
+   svg 改成用实测宽高做尺寸（去掉 100% 拉伸与 preserveAspectRatio=none，
+   否则 viewBox 与实际尺寸不一致会把圆角拉成椭圆、描边粗细不均）。
+5. slide 圆角对齐：容器显式用 --r-button；滑块圆角 = 容器圆角 - 4px（不再是胶囊）；
+   完成态把手 inset 0 / 宽高 100% / border-radius: inherit，真正铺满整个按钮。
+6. Checkbox 删除线：画线 origin 在左，取消勾选时 origin 切到右 —— 画上去 / 擦掉
+   方向相反，不再「原路缩回」。
+7. TooltipGroup 支持图标按钮触发（is-icon：34×34 方形按钮 + 图标），
+   示例改成工具栏图标组（搜索 / 筛选 / 导出 / 设置），符合它的主要使用场景。
+
+CardGroup（gallery 居中、depth 触控、wall 堆叠、scroll-stack 阈值与透明度、
+stack/swap 甩出补间、bounce 重做、键盘动画）与 BottomSheet 锚点规则、
+Button hold 完整动画，已写入 todo，下一步继续。
