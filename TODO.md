@@ -53,6 +53,12 @@
 
 ## C. 进度记录（最近提交）
 
+- 本轮（第十一段）：清理重复组件 —— 删除 UiNumberInput（UiStepper）、UiDateInput/UiTimeInput
+  （日期 / 时间选择器自带字段）、UiFileUpload（UiFileDropzone）、UiToastQueue（UiToastHost）、
+  UiVirtualScroll（UiVirtualList）、UiBanner（UiAlert），保留原有实现；其余第二批组件从
+  「更多组件」拆回 8 个正式分类（表单 / 操作 / 日期时间 / 工程 / 可视化 / 浮层反馈），
+  UiTour / UiCommandPalette 真正挂到页面里。
+
 - 本轮（第十段）：滑轨把「只缩放把手本身」做彻底 —— 环形 / 仪表盘把圆点拆出
   `.ui-*-thumb-body`，位移层不再带 scale；线性 / 范围的光晕层 `pointer-events: none`，
   命中范围不随放大变大。新增 nuxt-ui 风格的 `UiCard`（页眉 / 主体 / 页脚 + actions）。

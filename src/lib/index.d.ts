@@ -386,10 +386,6 @@ declare const UiColorPicker: DefineComponent<{ modelValue?: string; label?: stri
 declare const UiAutocomplete: DefineComponent<{ modelValue?: string; label?: string; placeholder?: string; options?: { label: string; value: string | number; hint?: string }[]; free?: boolean; max?: number }, AnyProps, unknown>
 declare const UiForm: DefineComponent<{ validateOnSubmit?: boolean }, AnyProps, unknown>
 declare const UiFormField: DefineComponent<{ label?: string; hint?: string; rules?: ((value: unknown) => true | string)[]; value?: unknown; required?: boolean }, AnyProps, unknown>
-declare const UiNumberInput: DefineComponent<{ modelValue?: number; min?: number; max?: number; step?: number; precision?: number; unit?: string; label?: string; disabled?: boolean }, AnyProps, unknown>
-declare const UiDateInput: DefineComponent<{ modelValue?: string; label?: string; min?: string; max?: string; disabled?: boolean }, AnyProps, unknown>
-declare const UiTimeInput: DefineComponent<{ modelValue?: string; label?: string; precision?: 'h' | 'm' | 's'; disabled?: boolean }, AnyProps, unknown>
-declare const UiFileUpload: DefineComponent<{ modelValue?: File[]; label?: string; accept?: string; maxSize?: number; multiple?: boolean; max?: number; progress?: Record<string, number>; disabled?: boolean }, AnyProps, unknown>
 declare const UiBreadcrumb: DefineComponent<{ items?: { label: string }[]; separator?: string }, AnyProps, unknown>
 declare const UiPagination: DefineComponent<{ modelValue?: number; total?: number; pageSize?: number; siblings?: number }, AnyProps, unknown>
 declare const UiSidebar: DefineComponent<{ modelValue?: boolean; collapsedWidth?: number; width?: number; label?: string }, AnyProps, unknown>
@@ -404,11 +400,8 @@ declare const UiContextMenu: DefineComponent<{ items?: { label: string; value?: 
 declare const UiCommandPalette: DefineComponent<{ modelValue?: boolean; items?: { label: string; value: string; hint?: string; icon?: string; keywords?: string }[]; placeholder?: string; shortcut?: string }, AnyProps, unknown>
 declare const UiTour: DefineComponent<{ modelValue?: boolean; steps?: { target: string; title: string; text: string; placement?: 'top' | 'bottom' }[]; startAt?: number }, AnyProps, unknown>
 declare const UiPopover: DefineComponent<{ modelValue?: boolean; placement?: 'top' | 'bottom' | 'left' | 'right'; trigger?: string; offset?: number; label?: string }, AnyProps, unknown>
-declare const UiBanner: DefineComponent<{ title?: string; tone?: 'info' | 'warning' | 'danger' | 'success'; closable?: boolean; icon?: boolean }, AnyProps, unknown>
-declare const UiToastQueue: DefineComponent<{ max?: number; duration?: number }, AnyProps, unknown>
 declare const UiKbd: DefineComponent<{ keys?: string | string[]; size?: 'sm' | 'md' }, AnyProps, unknown>
 declare const UiIcon: DefineComponent<{ name: string; size?: number | string; filled?: boolean; strokeWidth?: number | string; label?: string }, AnyProps, unknown>
-declare const UiVirtualScroll: DefineComponent<{ items?: unknown[]; estimate?: number; height?: number; buffer?: number; keyField?: string }, AnyProps, unknown>
 declare const UiCalendar: DefineComponent<{ modelValue?: string; events?: Record<string, { title: string; tone?: string }[]>; view?: 'month' | 'week' }, AnyProps, unknown>
 declare const UiTimeline: DefineComponent<{ items?: { title: string; time?: string; text?: string; tone?: 'primary' | 'success' | 'warning' | 'danger' | 'muted' }[] }, AnyProps, unknown>
 declare const UiCarousel: DefineComponent<{ items?: { title?: string; text?: string; image?: string }[]; modelValue?: number; autoplay?: boolean; interval?: number; loop?: boolean; height?: number }, AnyProps, unknown>
@@ -416,7 +409,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 
 /* ---------- components ---------- */
 export {
-  UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiNumberInput, UiDateInput, UiTimeInput, UiFileUpload, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiBanner, UiToastQueue, UiKbd, UiIcon, UiVirtualScroll, UiCalendar, UiTimeline, UiCarousel, UiMarquee,
+  UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiMarquee,
   UiCard, UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,

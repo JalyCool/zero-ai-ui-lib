@@ -12,11 +12,11 @@ import {
   UiSlider, UiSparkline, UiSpinner, UiStepper, UiSwitch, UiTagInput,
   UiTerminalOutput, UiTextarea, UiTimePicker, UiToastHost, UiToolMenu, UiTooltip,
   UiTreeView, UiVirtualList, UiWheelDatePicker,
-  UiAutocomplete, UiBanner, UiBreadcrumb, UiCalendar, UiCarousel, UiCol, UiColorPicker,
-  UiCommandPalette, UiContextMenu, UiDateInput, UiFileUpload, UiForm, UiFormField,
-  UiGrid, UiIcon, UiKbd, UiMarquee, UiNavigationMenu, UiNumberInput, UiPagination,
-  UiPopover, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter, UiTimeInput,
-  UiTimeline, UiToastQueue, UiTour, UiVirtualScroll
+  UiAutocomplete, UiBreadcrumb, UiCalendar, UiCarousel, UiCol, UiColorPicker,
+  UiCommandPalette, UiContextMenu, UiForm, UiFormField,
+  UiGrid, UiIcon, UiKbd, UiMarquee, UiNavigationMenu, UiPagination,
+  UiPopover, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter,
+  UiTimeline, UiTour
 } from '../components/ui'
 import { confirmDialog } from '../lib'
 
@@ -36,8 +36,7 @@ const sections = [
   { id: 'sec-dev', label: '工程' },
   { id: 'sec-viz', label: '可视化' },
   { id: 'sec-overlay', label: '浮层反馈' },
-  { id: 'sec-motion', label: '动效手势' },
-  { id: 'sec-more', label: '更多组件' }
+  { id: 'sec-motion', label: '动效手势' }
 ]
 activeSection.value = sections[0].id
 const sectionOptions = sections.map(section => ({ label: section.label, value: section.id }))
@@ -350,18 +349,14 @@ const buttonLog = ref('')
 const strikeDone = ref(false)
 const jellyPick = ref('a')
 
-/* ---------- 更多组件（第二批：表单 / 布局 / 导航 / 浮层 / 数据展示） ---------- */
+/* ---------- 第二批组件（表单 / 布局 / 导航 / 浮层 / 数据展示） ---------- */
 const colorPick = ref('#3f5f90')
-const qty = ref(3)
-const dateIn = ref('2026-03-18')
-const timeIn = ref('09:30')
 const autoPick = ref('')
 const autoOptions = [
   { label: '晨跑', value: 'run' },
   { label: '骑行', value: 'ride' },
   { label: '游泳', value: 'swim' }
 ]
-const uploadFiles = ref([])
 const pageNo = ref(2)
 const sidebarOpen = ref(true)
 const slideoverOpen = ref(false)
@@ -397,8 +392,8 @@ const tourSteps = [
   { target: '.lib-picker', title: '分区选择器', text: '一次只展示一个分区，避免把全部组件排开。' }
 ]
 const popOpen = ref(false)
-const bannerOpen = ref(true)
-const vsItems = Array.from({ length: 400 }, (_, i) => '第 ' + (i + 1) + ' 行 · 虚拟滚动只渲染窗口内')
+const demoNotify = ref(true)
+const demoNotify2 = ref(false)
 const todayIso = new Date().toISOString().slice(0, 10)
 const calDate = ref(todayIso)
 const calEvents = { [todayIso]: [{ title: '晨跑', tone: 'primary' }, { title: '喝水', tone: 'success' }] }
@@ -413,11 +408,6 @@ const carouselItems = [
   { title: '游泳', text: '800 米 · 自由泳' }
 ]
 const carouselIndex = ref(0)
-const toastq = ref(null)
-function pushToastQueue(tone) {
-  const copy = { success: '导出完成', danger: '导出失败', warning: '还没有今天的记录', info: '同步已完成' }
-  toastq.value?.push({ text: copy[tone], tone, action: tone === 'danger' ? { label: '重试', onClick: () => {} } : null })
-}
 
 const viewerMotion = ref(false)
 const viewerOverlay = ref(false)
@@ -524,7 +514,7 @@ onMounted(() => {
   <section class="view active lib" data-view="components">
     <div class="lib-hero">
       <h2 class="lib-hero__title">组件库</h2>
-      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。9 个分区、99 个组件，窄屏单列、宽屏自动多列。</p>
+      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。8 个分区、93 个组件，窄屏单列、宽屏自动多列。</p>
     </div>
 
     <!-- 分类选择器：一次只展示一个分区，避免把几十个组件全排在一页里 -->
@@ -540,6 +530,29 @@ onMounted(() => {
     <section v-show="activeSection === sections[0].id" :id="sections[0].id" class="lib-sec">
       <h3 class="lib-sec__title">操作与选择</h3>
       <div class="lib-cells">
+        <div class="lib-cell">
+          <span class="lib-cell__label">按键提示 / 图标 <small>Kbd / Icon</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div class="lib-demo-row">
+              <UiKbd keys="⌘K" />
+              <UiKbd :keys="['Shift', 'Enter']" size="sm" />
+              <UiIcon name="heart" :size="20" label="喜欢" />
+              <UiIcon name="star" :size="20" filled />
+            </div>
+          </div>
+          <span class="lib-cell__note">按键提示用等宽字符；图标来自库内 ICONS 注册表。</span>
+        </div>
+
+        <div class="lib-cell">
+          <span class="lib-cell__label">面包屑 / 分页 / 导航菜单</span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiBreadcrumb :items="[{ label: '首页' }, { label: '记录' }, { label: '晨跑' }]" />
+            <UiPagination v-model="pageNo" :total="120" :page-size="10" />
+            <UiNavigationMenu v-model="navPick" :items="navItems" />
+          </div>
+          <span class="lib-cell__note">面包屑最后一项为当前页；导航菜单悬停 / 聚焦展开子面板。</span>
+        </div>
+
         <div class="lib-cell">
           <span class="lib-cell__label">按钮变体 <small>UiButton</small></span>
           <div class="lib-cell__stage">
@@ -615,6 +628,27 @@ onMounted(() => {
     <section v-show="activeSection === sections[1].id" :id="sections[1].id" class="lib-sec">
       <h3 class="lib-sec__title">表单</h3>
       <div class="lib-cells">
+        <div class="lib-cell">
+          <span class="lib-cell__label">取色 / 自动完成</span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiColorPicker v-model="colorPick" label="主题色" />
+            <UiAutocomplete v-model="autoPick" label="运动" :options="autoOptions" placeholder="输入筛选" />
+          </div>
+          <span class="lib-cell__note">取色有预设色板；自动完成边输边筛，Enter 选第一项。</span>
+        </div>
+
+        <div class="lib-cell">
+          <span class="lib-cell__label">表单与校验 <small>Form / FormField</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiForm :validate-on-submit="true">
+              <UiFormField label="目标名称" hint="必填，至少 2 个字" :value="autoPick">
+                <UiInput v-model="autoPick" placeholder="例如：每天喝水 8 杯" />
+              </UiFormField>
+            </UiForm>
+          </div>
+          <span class="lib-cell__note">Form 管提交与校验，FormField 提供 label / hint / rules。</span>
+        </div>
+
         <div class="lib-cell">
           <span class="lib-cell__label">通用形变面板 <small>UiMorphPanel</small></span>
           <div class="lib-cell__stage">
@@ -699,6 +733,14 @@ onMounted(() => {
     <section v-show="activeSection === sections[3].id" :id="sections[3].id" class="lib-sec">
       <h3 class="lib-sec__title">日期与时间</h3>
       <div class="lib-cells">
+        <div class="lib-cell lib-cell--span">
+          <span class="lib-cell__label">日历 <small>Calendar</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiCalendar v-model="calDate" :events="calEvents" />
+          </div>
+          <span class="lib-cell__note">月视图 + 事件点；点日期回传 ISO 字符串。</span>
+        </div>
+
         <div class="lib-cell">
           <span class="lib-cell__label">日历 / 时间滚轮</span>
           <div class="lib-cell__stage lib-cell__stage--col">
@@ -732,6 +774,38 @@ onMounted(() => {
     <section v-show="activeSection === sections[4].id" :id="sections[4].id" class="lib-sec">
       <h3 class="lib-sec__title">工程控件</h3>
       <div class="lib-cells lib-cells--wide">
+        <div class="lib-cell">
+          <span class="lib-cell__label">栅格 / 行列 / 分隔条</span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiGrid :min="110" :gap="8">
+              <div class="lib-tile">自适应</div>
+              <div class="lib-tile">按最小宽</div>
+              <div class="lib-tile">自动换行</div>
+            </UiGrid>
+            <UiRow :gap="8">
+              <UiCol :span="5"><div class="lib-tile">span 5 / 12</div></UiCol>
+              <UiCol :span="5"><div class="lib-tile">span 5 / 12</div></UiCol>
+            </UiRow>
+            <UiSplitter v-model="splitRatio" :min="20" :max="80" :handle="16">
+              <template #first><div class="lib-tile">上</div></template>
+              <div class="lib-tile">下</div>
+            </UiSplitter>
+          </div>
+          <span class="lib-cell__note">Grid 按最小列宽铺满；Splitter 拖动分隔条实时改比例。</span>
+        </div>
+
+        <div class="lib-cell">
+          <span class="lib-cell__label">滚动区 <small>ScrollArea</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiScrollArea max-height="120px">
+              <div class="lib-sheet-long">
+                <p v-for="n in 8" :key="n">第 {{ n }} 行 —— 自定义滚动条 + 贴边阴影。</p>
+              </div>
+            </UiScrollArea>
+          </div>
+          <span class="lib-cell__note">只接管滚动外观，不改变内容布局。</span>
+        </div>
+
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">代码编辑器 <small>UiCodeEditor</small></span>
           <UiCodeEditor v-model="code" language="json" label="配置 JSON" :lines="7" format-json hint="Tab 缩进 / 失焦自动格式化" />
@@ -812,6 +886,16 @@ onMounted(() => {
     <section v-show="activeSection === sections[5].id" :id="sections[5].id" class="lib-sec">
       <h3 class="lib-sec__title">数据与可视化</h3>
       <div class="lib-cells">
+        <div class="lib-cell lib-cell--span">
+          <span class="lib-cell__label">时间线 / 轮播 / 跑马灯</span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiTimeline :items="timelineItems" />
+            <UiCarousel v-model="carouselIndex" :items="carouselItems" :height="120" :autoplay="true" />
+            <UiMarquee text="跑马灯：记录不中断 · 数据自己会说话 · 每天一点点" :speed="60" />
+          </div>
+          <span class="lib-cell__note">时间线按时间轴铺点；轮播可拖拽翻页；跑马灯悬停暂停。</span>
+        </div>
+
         <div class="lib-cell">
           <span class="lib-cell__label">迷你图 <small>Sparkline / Progress</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
@@ -861,6 +945,48 @@ onMounted(() => {
     <section v-show="activeSection === sections[6].id" :id="sections[6].id" class="lib-sec">
       <h3 class="lib-sec__title">浮层与反馈</h3>
       <div class="lib-cells">
+        <div class="lib-cell">
+          <span class="lib-cell__label">侧栏 / 抽屉</span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div class="lib-demo-row">
+              <UiButton size="sm" variant="outline" @click="sidebarOpen = !sidebarOpen">侧栏 {{ sidebarOpen ? '展开' : '收起' }}</UiButton>
+              <UiButton size="sm" variant="outline" @click="slideoverOpen = true">打开抽屉</UiButton>
+            </div>
+            <div class="lib-sidebar-demo">
+              <UiSidebar v-model="sidebarOpen" label="示例侧栏" :width="196" :collapsed-width="56">
+                <template #head><b>目录</b></template>
+                <div class="lib-muted">菜单项</div>
+              </UiSidebar>
+            </div>
+          </div>
+          <span class="lib-cell__note">侧栏收起只留图标；抽屉从右侧推入。</span>
+        </div>
+
+        <div class="lib-cell">
+          <span class="lib-cell__label">右键菜单 / 命令面板 / 巡览</span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiContextMenu :items="ctxItems" @select="ctxLog = '选中：' + $event.label">
+              <div class="lib-ctx">{{ ctxLog }}</div>
+            </UiContextMenu>
+            <div class="lib-demo-row">
+              <UiButton size="sm" variant="tonal" @click="cmdOpen = true">命令面板</UiButton>
+              <UiButton size="sm" variant="tonal" @click="tourOpen = true">开始巡览</UiButton>
+            </div>
+          </div>
+          <span class="lib-cell__note">右键 / 长按弹菜单；命令面板可输入筛选；巡览高亮真实目标。</span>
+        </div>
+
+        <div class="lib-cell">
+          <span class="lib-cell__label">气泡 <small>Popover</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiPopover v-model="popOpen" placement="bottom">
+              <template #trigger><UiButton size="sm" variant="outline">气泡</UiButton></template>
+              <div class="lib-tile">气泡内容</div>
+            </UiPopover>
+          </div>
+          <span class="lib-cell__note">#trigger 放触发器，默认插槽放任意面板内容。</span>
+        </div>
+
         <div class="lib-cell">
           <span class="lib-cell__label">Toast 语义 API <small>success / error / warning / info</small></span>
           <div class="lib-cell__stage">
@@ -1055,149 +1181,17 @@ onMounted(() => {
       </div>
     </section>
 
-    <section v-show="activeSection === sections[8].id" :id="sections[8].id" class="lib-sec">
-      <h3 class="lib-sec__title">更多组件</h3>
-      <div class="lib-cells">
-        <div class="lib-cell">
-          <span class="lib-cell__label">颜色 / 数字 / 日期 / 时间输入</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiColorPicker v-model="colorPick" label="主题色" />
-            <UiNumberInput v-model="qty" label="次数" :min="0" :max="20" unit="次" />
-            <UiDateInput v-model="dateIn" label="日期" />
-            <UiTimeInput v-model="timeIn" label="时间" precision="m" />
-          </div>
-          <span class="lib-cell__note">ColorPicker 有预设色板；NumberInput 步进带滚动数字；日期 / 时间输入点击弹波轮。</span>
-        </div>
-
-        <div class="lib-cell">
-          <span class="lib-cell__label">自动完成 / 文件上传</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiAutocomplete v-model="autoPick" label="运动" :options="autoOptions" placeholder="输入筛选" />
-            <UiFileUpload v-model="uploadFiles" label="附件" accept="image/*" :multiple="true" :max="3" />
-          </div>
-          <span class="lib-cell__note">Autocomplete 边输边筛，Enter 选第一项；FileUpload 超出数量/体积走 reject。</span>
-        </div>
-
-        <div class="lib-cell">
-          <span class="lib-cell__label">表单与校验 / 滚动区</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiForm :validate-on-submit="true">
-              <UiFormField label="目标名称" hint="必填，至少 2 个字" :value="autoPick">
-                <UiInput v-model="autoPick" placeholder="例如：每天喝水 8 杯" />
-              </UiFormField>
-            </UiForm>
-            <UiScrollArea max-height="120px">
-              <div class="lib-sheet-long">
-                <p v-for="n in 8" :key="n">第 {{ n }} 行 —— 自定义滚动条 + 贴边阴影。</p>
-              </div>
-            </UiScrollArea>
-          </div>
-          <span class="lib-cell__note">Form 管提交与校验；ScrollArea 只接管滚动外观，不改变内容布局。</span>
-        </div>
-
-        <div class="lib-cell">
-          <span class="lib-cell__label">栅格 / 行列 / 分隔条</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiGrid :min="110" :gap="8">
-              <div class="lib-tile">自适应</div>
-              <div class="lib-tile">按最小宽</div>
-              <div class="lib-tile">自动换行</div>
-            </UiGrid>
-            <UiRow :gap="8">
-              <UiCol :span="5"><div class="lib-tile">span 5 / 12</div></UiCol>
-              <UiCol :span="5"><div class="lib-tile">span 5 / 12</div></UiCol>
-            </UiRow>
-            <UiSplitter v-model="splitRatio" :min="20" :max="80" :handle="16">
-              <template #first><div class="lib-tile">上</div></template>
-              <div class="lib-tile">下</div>
-            </UiSplitter>
-          </div>
-          <span class="lib-cell__note">Grid 按最小列宽铺满；Splitter 拖动分隔条实时改比例。</span>
-        </div>
-
-        <div class="lib-cell">
-          <span class="lib-cell__label">面包屑 / 分页 / 侧栏 / 抽屉</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiBreadcrumb :items="[{ label: '首页' }, { label: '记录' }, { label: '晨跑' }]" />
-            <UiPagination v-model="pageNo" :total="120" :page-size="10" />
-            <div class="lib-demo-row">
-              <UiButton size="sm" variant="outline" @click="sidebarOpen = !sidebarOpen">侧栏 {{ sidebarOpen ? '展开' : '收起' }}</UiButton>
-              <UiButton size="sm" variant="outline" @click="slideoverOpen = true">打开抽屉</UiButton>
-            </div>
-            <UiNavigationMenu v-model="navPick" :items="navItems" />
-          </div>
-          <span class="lib-cell__note">侧栏收起只留图标；抽屉从右侧推入；导航菜单悬停展开子项。</span>
-        </div>
-
-        <div class="lib-cell">
-          <span class="lib-cell__label">右键菜单 / 命令面板 / 巡览</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiContextMenu :items="ctxItems" @select="ctxLog = '选中：' + $event.label">
-              <div class="lib-ctx">{{ ctxLog }}</div>
-            </UiContextMenu>
-            <div class="lib-demo-row">
-              <UiButton size="sm" variant="tonal" @click="cmdOpen = true">命令面板</UiButton>
-              <UiButton size="sm" variant="tonal" @click="tourOpen = true">开始巡览</UiButton>
-            </div>
-          </div>
-          <span class="lib-cell__note">右键 / 长按弹菜单；命令面板可输入筛选；巡览高亮真实目标。</span>
-        </div>
-
-        <div class="lib-cell">
-          <span class="lib-cell__label">气泡 / 横幅 / 通知队列</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiPopover v-model="popOpen" placement="bottom">
-              <template #trigger><UiButton size="sm" variant="outline">气泡</UiButton></template>
-              <div class="lib-tile">气泡内容</div>
-            </UiPopover>
-            <UiBanner v-if="bannerOpen" title="本周目标 4/5" tone="info" closable @close="bannerOpen = false">再运动一次就达标。</UiBanner>
-            <div class="lib-demo-row">
-              <UiButton size="sm" variant="tonal" @click="pushToastQueue('success')">成功</UiButton>
-              <UiButton size="sm" variant="outline" @click="pushToastQueue('danger')">失败</UiButton>
-            </div>
-            <UiToastQueue ref="toastq" :max="2" :duration="2600" />
-          </div>
-          <span class="lib-cell__note">通知队列最多 2 条、悬停暂停计时，可带一个动作按钮。</span>
-        </div>
-
-        <div class="lib-cell">
-          <span class="lib-cell__label">Kbd / Icon / 虚拟滚动</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <div class="lib-demo-row">
-              <UiKbd keys="⌘K" />
-              <UiKbd :keys="['Shift', 'Enter']" size="sm" />
-              <UiIcon name="heart" :size="20" label="喜欢" />
-              <UiIcon name="star" :size="20" filled />
-            </div>
-            <UiVirtualScroll :items="vsItems" :estimate="32" :height="140">
-              <template #default="{ item }"><span class="lib-muted">{{ item }}</span></template>
-            </UiVirtualScroll>
-          </div>
-          <span class="lib-cell__note">虚拟滚动 400 行只渲染窗口内；图标来自库内 ICONS 注册表。</span>
-        </div>
-
-        <div class="lib-cell">
-          <span class="lib-cell__label">日历 / 时间线 / 轮播 / 跑马灯</span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiCalendar v-model="calDate" :events="calEvents" />
-            <UiTimeline :items="timelineItems" />
-            <UiCarousel v-model="carouselIndex" :items="carouselItems" :height="120" :autoplay="true" />
-            <UiMarquee text="跑马灯：记录不中断 · 数据自己会说话 · 每天一点点" :speed="60" />
-          </div>
-          <span class="lib-cell__note">日历带事件点；轮播可拖拽翻页；跑马灯悬停暂停。</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- 侧栏：放在抽屉里看更直观（本身就是普通布局组件） -->
+    <!-- 抽屉内容：放几个真实控件，演示遮罩 / 关闭 / Esc -->
     <UiSlideover v-model="slideoverOpen" title="通知设置">
       <div class="lib-cell__stage lib-cell__stage--col">
-        <UiSidebar v-model="sidebarOpen" label="示例侧栏">
-          <template #head><b>目录</b></template>
-          <div class="lib-muted">菜单项</div>
-        </UiSidebar>
+        <UiSwitch v-model="demoNotify" label="每日提醒" />
+        <UiSwitch v-model="demoNotify2" label="周报摘要" />
+        <span class="lib-muted">点遮罩或按 Esc 收起；抽屉从右侧推入。</span>
       </div>
     </UiSlideover>
+
+    <UiCommandPalette v-model="cmdOpen" :items="cmdItems" @select="item => { cmdOpen = false; toast?.show('命令：' + item.label, 'info') }" />
+    <UiTour v-model="tourOpen" :steps="tourSteps" @finish="tourOpen = false" />
 
     <UiModal v-model="modalOpen" title="编辑目标">
       <UiInput label="目标名称" model-value="每天 8 杯水" />
@@ -1319,8 +1313,19 @@ onMounted(() => {
 .lib-cell__on { color: var(--on-primary-container); font-weight: var(--w-label); }
 .lib-row { display: flex; flex-direction: column; gap: 2px; padding: 13px 14px; }
 .lib-row b { font-size: var(--fs-small); font-weight: var(--w-strong); }
-/* 「更多组件」分区的小工具类：横排按钮 / 示例面块 / 右键区域 */
+/* 小工具类：横排按钮 / 示例面块 / 右键区域 */
 .lib-demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lib-sidebar-demo {
+  display: flex;
+  height: 190px;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(12px * var(--radius-scale));
+  background: var(--surface-container-low);
+}
+.lib-sidebar-demo .ui-sidebar { height: 100%; }
 .lib-tile {
   display: grid;
   place-items: center;

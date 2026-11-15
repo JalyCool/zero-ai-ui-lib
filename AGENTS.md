@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 0.75px 细描边 + 圆角分档」，不用阴影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：99 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：93 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -177,9 +177,6 @@ import {
 | `UiColorPicker` | `v-model` 颜色 + `label` `swatches`；预设色板点选，选中的环用主色描边 |
 | `UiAutocomplete` | `v-model` + `options`；输入即时过滤，Enter 选第一项，`free` 允许自由输入 |
 | `UiForm` / `UiFormField` | Form 管提交与校验（`validate-on-submit`、`@submit` / `@invalid`）；FormField 提供 label / hint / rules / required，错误直接显示在 hint 行 |
-| `UiNumberInput` | `v-model` 数字 + `min max step precision unit`；步进按钮的数字变化走统一滚动动效 |
-| `UiDateInput` / `UiTimeInput` | `v-model`（`YYYY-MM-DD` / `HH:mm[:ss]`）；点字段原地弹对应波轮，`precision` 决定时分秒 |
-| `UiFileUpload` | `v-model` File 数组；`accept` `maxSize`(MB) `multiple` `max`；不合格走 `@reject`，单个文件可 `@remove` |
 | `UiBreadcrumb` | `items` 为 `[{ label, value? }]`；最后一项是当前页，点击 `@select` 回传 |
 | `UiPagination` | `v-model` 页码 + `total` `page-size` `siblings`；中间用省略号折叠 |
 | `UiSidebar` | `v-model` 展开态；`width` / `collapsed-width`；`#head` + 默认插槽（作用域带 `collapsed`） |
@@ -193,11 +190,8 @@ import {
 | `UiCommandPalette` | `v-model` 开关 + `items`；输入过滤、上下键移动、Enter 执行，Esc 关闭 |
 | `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让 |
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
-| `UiBanner` | `tone` `title` `closable` `icon`；正文走默认插槽，关闭时 `@close` |
-| `UiToastQueue` | `ref` 上调用 `push / success / error / warning / info`；`max` 条数、`duration` 停留，可带 `action` |
 | `UiKbd` | `keys` 字符串或数组，`size` sm / md |
 | `UiIcon` | `name` 取自库内 ICONS 注册表，`size` `filled` `stroke-width` `label` |
-| `UiVirtualScroll` | `items` + `height` + `estimate`；`#default="{ item, index }"`，行高实测后校正 |
 | `UiCalendar` | `v-model` 日期 + `events`（按 ISO 日期给数组）；`view` month / week |
 | `UiTimeline` | `items` 为 `[{ title, time?, text?, tone? }]` |
 | `UiCarousel` | `items` + `v-model` 索引；`autoplay` `interval` `loop` `height`，可拖拽翻页 |
