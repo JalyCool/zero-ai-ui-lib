@@ -833,7 +833,7 @@ onMounted(() => showToast('info'))
       </div>
     </UiBottomSheet>
 
-    <UiImageViewer v-model="viewer" :src="viewerSrc" alt="示例图片" />
+    <UiMediaViewer v-model="viewer" :src="viewerSrc" alt="示例图片" />
     <UiToastHost ref="toast" />
   </section>
 </template>
