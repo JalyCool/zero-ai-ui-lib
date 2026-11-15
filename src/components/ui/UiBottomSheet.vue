@@ -77,8 +77,11 @@ function viewportHeight() {
 }
 
 /* 全内容锚点：把手 + 头部 + 内容完整高度 + 底部，夹在视口上限内。 */
+let measuring = false
 function fullFraction() {
   const body = bodyEl.value
+  /* 注意：局部不能叫 panel —— 会遮蔽同名 ref，右侧 panel.value 落进自己的 TDZ。 */
+  const node = panel.value
   if (!body) return 0.9
   /* chrome = 把手 + 头部 + 底部（都是 flex-shrink:0 的固定段）。
      面板自身高度在收起态是 0，不能用 offsetHeight - clientHeight 反推。 */
@@ -86,7 +89,20 @@ function fullFraction() {
     (handleEl.value?.offsetHeight || 0) +
     (headEl.value?.offsetHeight || 0) +
     (footerEl.value?.offsetHeight || 0)
-  const needed = chrome + body.scrollHeight
+  /* 关键：body 是 flex:1，面板一被拖高，body 的 scrollHeight 会跟着长，
+     锚点于是被「拖大」——松手就落到一个虚的高度上。
+     量锚点时把面板高度临时设成 auto，量到的是内容的自然高度。 */
+  let needed = chrome + body.scrollHeight
+  if (node && node.style.height && !measuring) {
+    measuring = true
+    const before = node.style.height
+    node.style.height = 'auto'
+    void node.offsetHeight
+    needed = chrome + body.scrollHeight
+    node.style.height = before
+    void node.offsetHeight
+    measuring = false
+  }
   /* maxHeight 上限（px / dvh 都折算成视口比例） */
   const capMatch = /^(\d+(?:\.\d+)?)(dvh|vh|px|%)$/.exec(props.maxHeight)
   let cap = 0.9
