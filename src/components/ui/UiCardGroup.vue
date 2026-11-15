@@ -234,9 +234,30 @@ function circularNearest() {
 }
 
 /* ---------------- depth：Z 轴轨道 ---------------- */
+/* depthDrag 的单位是「卡」，不是像素：拖动 1 张卡宽 = 1 格，
+   松手按速度投射后吸附到整格。跟手和惯性都用同一套弹簧，所以
+   拖得越远冲得越远，落点又是整格 —— 之前按固定阈值换一张，手感是木的。 */
 const depthDrag = ref(0)
 const depthActive = computed(() => active.value)
 let depthStart = 0
+const depthStepPx = computed(() => Math.max(88, props.cardWidth * 0.86))
+
+function depthCommit(steps, velocity = 0) {
+  if (!count.value) return
+  const next = Math.max(0, Math.min(count.value - 1, active.value + steps))
+  const moved = next - active.value
+  if (!moved) {
+    /* 到头了：把残余的越界量弹回 0，给一个「碰壁」的回弹。 */
+    animateTo(() => depthDrag.value, value => { depthDrag.value = value }, 0, null, { kind: 'settle', velocity })
+    return
+  }
+  /* 先让轨道滑到目标格，再在同一帧里把 active 加上去、depthDrag 减回来：
+     两张卡的位置完全连续，不会「先归零再切卡」。 */
+  animateTo(() => depthDrag.value, value => { depthDrag.value = value }, moved, () => {
+    pick(next)
+    depthDrag.value -= moved
+  }, { kind: 'settle', velocity })
+}
 
 function depthStyle(index, item) {
   const raw = index - depthActive.value - depthDrag.value
@@ -244,7 +265,7 @@ function depthStyle(index, item) {
   const abs = Math.abs(d)
   return {
     '--card-tone': item.tone || 'primary',
-    transform: 'translate3d(' + d * 34 + 'px,' + abs * -8 + 'px,' + -abs * 130 + 'px) scale(' + (1 - abs * 0.13) + ')',
+    transform: 'translate3d(' + d * depthStepPx.value + 'px,' + abs * -8 + 'px,' + -abs * 130 + 'px) scale(' + (1 - Math.min(0.34, abs * 0.13)) + ')',
     opacity: String(Math.max(0, 1 - abs * 0.3)),
     filter: abs > 0.6 ? 'blur(' + ((abs - 0.6) * 2.4).toFixed(2) + 'px)' : '',
     zIndex: String(30 - Math.round(abs * 8))
@@ -253,27 +274,36 @@ function depthStyle(index, item) {
 
 function depthStep(delta) {
   if (!count.value) return
-  const next = Math.max(0, Math.min(count.value - 1, active.value + delta))
-  if (next === active.value) return
-  pick(next)
+  depthCommit(delta)
 }
 
 /* ---------------- wall：透视墙 ---------------- */
+/* 整面墙由「同一组卡 × 3 份」拼成，位移在 -loop .. 0 之间循环，
+   走到 -loop 就无缝接到 0 —— 之前按固定 620px 取模，卡片走到头会闪一下，
+   而且内容只铺了上半屏，下半屏是空的。 */
 const driftY = ref(0)
 let wallLast = 0
+const wallPlaneEl = ref(null)
+const wallLoop = ref(240)
 const wallTiles = computed(() => {
   if (!count.value) return []
-  const total = Math.max(12, count.value * 4)
+  const total = Math.max(18, count.value * 3)
   return Array.from({ length: total }, (_, i) => ({ item: props.items[i % count.value], index: i % count.value }))
 })
+
+function wrapDrift() {
+  const loop = wallLoop.value || 1
+  while (driftY.value <= -loop) driftY.value += loop
+  while (driftY.value > 0) driftY.value -= loop
+}
+
 let wallFrame = 0
 function wallTick(now) {
   const dt = wallLast ? Math.min(48, now - wallLast) : 16
   wallLast = now
-  if (props.variant === 'wall' && dragging && axis === 'y') {
-    /* 拖动时由手势写位置，自动漂移暂停。 */
-  } else {
-    driftY.value = (driftY.value - dt * 0.028) % 620
+  if (props.variant === 'wall' && !(dragging && axis === 'y')) {
+    driftY.value -= dt * 0.03
+    wrapDrift()
   }
   wallFrame = requestAnimationFrame(wallTick)
 }
@@ -451,14 +481,20 @@ let spreadStart = 0
 function bounceStyle(index, item) {
   const mid = (count.value - 1) / 2
   const o = index - mid
-  const spreadScale = 1 + spread.value / 240
-  const x = o * 54 * spreadScale
-  const y = o * 8 - Math.abs(o) * 2
+  /* 拖动改变张开角度：往右拖 = 扇子展开，往左拖 = 收拢。 */
+  const openScale = 1 + spread.value / 180
+  const angle = o * 9 * openScale
+  const spreadX = o * 34 * openScale
+  /* 沿一段很浅的圆弧排布：中间的卡最高，两侧略低。 */
+  const y = Math.abs(o) * Math.abs(o) * 2.2
+  const scale = 1 - Math.abs(o) * 0.035
   return {
     '--card-tone': item.tone || 'primary',
     '--i': index,
-    transform: 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + o * 6 * (1 + spread.value / 400) + 'deg) scale(' + (1 - Math.abs(o) * 0.04) + ')',
-    zIndex: String(20 - Math.round(Math.abs(o)))
+    '--bx': spreadX + 'px',
+    '--by': y + 'px',
+    transform: 'translate3d(' + spreadX + 'px,' + y + 'px,0) rotate(' + angle + 'deg) scale(' + scale + ')',
+    zIndex: String(index === active.value ? 42 : 30 - Math.round(Math.abs(o) * 2))
   }
 }
 
@@ -467,8 +503,17 @@ function applyDrag(dx, dy) {
   const v = props.variant
   if (v === 'gallery') galleryIndex.value = galleryIndexStart - dx / Math.max(1, span.value)
   else if (v === 'circular') rotation.value = rotationStart + dx * 0.3
-  else if (v === 'depth') depthDrag.value = depthStart - dx / 110
-  else if (v === 'wall') driftY.value += dy * 0.6
+  else if (v === 'depth') {
+    const step = depthStepPx.value
+    let raw = depthStart - dx / step
+    /* 两端越界走橡皮筋：拖到头还能再拉一点，但拉不远。 */
+    const lowest = -active.value
+    const highest = count.value - 1 - active.value
+    if (raw < lowest) raw = lowest - (lowest - raw) * 0.32
+    else if (raw > highest) raw = highest + (raw - highest) * 0.32
+    depthDrag.value = raw
+  }
+  else if (v === 'wall') { driftY.value += dy * 0.6; wrapDrift() }
   else if (v === 'stack' || v === 'swap') {
     const width = props.cardWidth * 0.92
     /* lean：横向甩 → 绕 Y 倾斜，纵向拉 → 绕 X 倾斜（上限 14°）。 */
@@ -507,13 +552,21 @@ function endDrag(dx, dy) {
       pick(index)
     }, { kind: 'settle', velocity })
   } else if (v === 'depth') {
-    const overflow = depthDrag.value
-    const moved = Math.abs(overflow) > 0.22 || Math.abs(vx) > 0.6
-    if (moved) depthStep(overflow < 0 ? 1 : -1)
-    animateTo(() => depthDrag.value, value => { depthDrag.value = value }, 0)
+    const step = depthStepPx.value
+    /* 速度换算成「每秒几张」，作为初速度注入；0.14s 的投射窗口。 */
+    const projected = depthDrag.value + (-vx / step) * 140
+    let steps = Math.round(projected)
+    /* 明确甩了一下但没到半格：也认一格，不然「甩不动」。 */
+    if (!steps && Math.abs(projected) > 0.28) steps = Math.sign(projected)
+    const velocity = (-vx / step) * 1000
+    depthCommit(steps, Math.max(-6, Math.min(6, velocity)))
   } else if (v === 'wall') {
-    /* 惯性再飘一点，然后继续自动漂移。 */
-    animateTo(() => driftY.value, value => { driftY.value = value }, driftY.value + vy * 220)
+    /* 惯性再飘一点，然后继续自动漂移；目标先折进 -loop..0，避免绕一整屏。 */
+    const loop = wallLoop.value || 1
+    let target = driftY.value + Math.max(-260, Math.min(260, vy * 220))
+    while (target <= -loop) target += loop
+    while (target > 0) target -= loop
+    animateTo(() => driftY.value, value => { driftY.value = value }, target)
   } else if (v === 'stack' || v === 'swap') {
     const width = props.cardWidth * 0.92
     const reach = Math.max(56, width * 0.3)
@@ -539,7 +592,7 @@ function hitCard(index) {
     const step = stepAngle.value || 1
     pick(index)
     animateTo(() => rotation.value, value => { rotation.value = value }, -index * step)
-  } else if (v === 'depth') pick(index)
+  } else if (v === 'depth') depthCommit(index - active.value)
   else if (v === 'wall' || v === 'bounce') pick(index)
   else if (v === 'scroll-stack') scrollToCard(index)
   else if (v === 'stack' || v === 'swap') {
@@ -565,7 +618,8 @@ function onKeydown(event) {
   event.preventDefault()
   const delta = right ? 1 : -1
   if (v === 'gallery') hitCard(Math.max(0, Math.min(count.value - 1, active.value + delta)))
-  else if (v === 'circular' || v === 'depth') depthStep(delta)
+  else if (v === 'circular') depthStep(delta)
+  else if (v === 'depth') depthCommit(delta)
   else if (v === 'stack' || v === 'swap') {
     if (delta > 0) advancePile()
     else {
@@ -618,9 +672,17 @@ function recenterGallery() {
   galleryIndex.value = active.value
 }
 
+function measureWall() {
+  const el = wallPlaneEl.value
+  if (!el) return
+  const height = el.scrollHeight || el.offsetHeight || 0
+  if (height > 0) wallLoop.value = Math.max(80, height / 3)
+}
+
 onMounted(() => {
   startAuto()
-  nextTick(recenterGallery)
+  nextTick(() => { recenterGallery(); measureWall() })
+  window.addEventListener('resize', measureWall)
   window.addEventListener('resize', recenterGallery)
   wallFrame = requestAnimationFrame(wallTick)
   nextTick(() => { if (props.variant === 'scroll-stack' && scrollerEl.value) scrollerEl.value.scrollTop = 0 })
@@ -630,6 +692,7 @@ onBeforeUnmount(() => {
   stopTuck()
   clearInterval(autoTimer)
   window.removeEventListener('resize', recenterGallery)
+  window.removeEventListener('resize', measureWall)
   if (wallFrame) cancelAnimationFrame(wallFrame)
 })
 
@@ -707,8 +770,9 @@ watch(() => props.modelValue, value => {
       <!-- ---------- wall ---------- -->
       <div v-else-if="variant === 'wall'" class="ui-card-group__wall">
         <div
+          ref="wallPlaneEl"
           class="ui-card-group__wall-plane"
-          :style="{ transform: 'rotateX(24deg) rotateZ(-6deg) translate3d(0,' + driftY + 'px,0)' }"
+          :style="{ transform: 'rotateX(18deg) rotateZ(-4deg) translate3d(0,' + driftY + 'px,0)' }"
         >
           <div
             v-for="(tile, index) in wallTiles"
@@ -902,19 +966,24 @@ watch(() => props.modelValue, value => {
 
 /* ---------- wall ---------- */
 .ui-card-group__wall {
+  position: relative;
   height: var(--cg-height);
   overflow: hidden;
   perspective: 900px;
-  mask-image: radial-gradient(130% 120% at 50% 50%, #000 48%, transparent 100%);
+  mask-image: radial-gradient(130% 120% at 50% 50%, #000 55%, transparent 100%);
 }
+/* 平面比舞台更宽更高，旋转后仍然铺满；translateY 在 -1/3 高度处循环。 */
 .ui-card-group__wall-plane {
+  position: absolute;
+  left: -22%;
+  top: -42%;
+  width: 144%;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  height: 170%;
   align-content: start;
   will-change: transform;
-  transform-origin: center top;
+  transform-origin: 50% 0;
 }
 .ui-card-group__tile {
   position: relative;
@@ -1035,9 +1104,13 @@ watch(() => props.modelValue, value => {
   animation-delay: calc(var(--i, 0) * 60ms);
 }
 /* 悬停的那张扶正并抬起来，其它保持扇形倾斜。 */
+.ui-card-group__bounce-card {
+  /* 扇形以卡片下缘外的共同圆心为轴：旋转自然向外张开，不再像随机歪斜。 */
+  transform-origin: 50% 150%;
+}
 .ui-card-group__bounce-card:hover,
 .ui-card-group__bounce-card.is-active {
-  transform: translate3d(var(--bx, 0px), calc(var(--by, 0px) - 16px), 0) rotate(0deg) scale(1.06) !important;
+  transform: translate3d(var(--bx, 0px), calc(var(--by, 0px) - 14px), 0) rotate(0deg) scale(1.08) !important;
   z-index: 40;
   box-shadow: var(--elev-tip);
 }

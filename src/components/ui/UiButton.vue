@@ -324,10 +324,14 @@ defineExpose({
         :style="{ '--p': holdProgress }"
         aria-hidden="true"
       ></span>
-      <span class="ui-btn__label">
-        <slot>{{ holdLabel }}</slot>
+      <!-- 填充前缘的辉光：单独一层，位置按进度写 left，不会被 scaleX 拉变形 -->
+      <span class="ui-btn__hold-edge" :style="{ '--p': holdProgress }" aria-hidden="true"></span>
+      <span class="ui-btn__label" :style="{ color: holdPhase === 'done' ? 'var(--on-primary)' : '' }">
+        <slot>{{ holdPhase === 'done' ? doneLabel : holdLabel }}</slot>
       </span>
-      <span class="ui-btn__hold-hint" aria-hidden="true">{{ holdPhase === 'done' ? doneLabel : '' }}</span>
+      <span v-if="holdPhase === 'done'" class="ui-btn__hold-check" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.4 4.4L19 7" /></svg>
+      </span>
     </template>
 
     <!-- ============ slide：轨道 + 把手 ============ -->
@@ -461,20 +465,71 @@ defineExpose({
 }
 
 /* ---------- hold ---------- */
-.ui-btn--hold { overflow: hidden; }
+.ui-btn--hold { overflow: hidden; isolation: isolate; }
 .ui-btn__hold-fill {
   position: absolute;
   inset: 0;
-  background: color-mix(in oklab, currentColor 22%, transparent);
+  background: linear-gradient(90deg,
+    color-mix(in oklab, var(--primary) 26%, transparent),
+    color-mix(in oklab, var(--primary) 46%, transparent) 72%,
+    color-mix(in oklab, var(--primary) 62%, transparent));
   pointer-events: none;
 }
 .ui-btn__hold-fill.is-right { transform-origin: left center; transform: scaleX(var(--p, 0)); }
 .ui-btn__hold-fill.is-up { transform-origin: bottom center; transform: scaleY(var(--p, 0)); }
-/* 松手回弹比按住时更短、更软：按住是线性的，回弹是减速的。 */
-.ui-btn--hold:not(.is-holding) .ui-btn__hold-fill { transition: transform var(--release-time) cubic-bezier(.25,.1,.25,1); }
+/* 按住时的「波纹」：从中心荡开一圈，提醒还在持续按压。 */
+.ui-btn--hold.is-holding::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side,
+    color-mix(in oklab, var(--primary) 26%, transparent), transparent 70%);
+  animation: uiHoldWave 1.1s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes uiHoldWave {
+  from { transform: scale(.35); opacity: .9; }
+  to { transform: scale(1.1); opacity: 0; }
+}
+.ui-btn__hold-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 34px;
+  left: calc(var(--p, 0) * 100% - 17px);
+  background: radial-gradient(closest-side,
+    color-mix(in oklab, var(--primary) 75%, transparent), transparent);
+  opacity: calc(var(--p, 0) * .95);
+  filter: blur(1px);
+  pointer-events: none;
+}
+.ui-btn__hold-fill.is-up + .ui-btn__hold-edge { display: none; }
+.ui-btn--hold:not(.is-holding) .ui-btn__hold-fill { transition: transform var(--spring-exit-dur) var(--spring-exit); }
 .ui-btn--hold.is-holding .ui-btn__hold-fill { transition: none; }
-.ui-btn--hold .ui-btn__label { position: relative; }
+/* 完成：填充整颗、换成主色上的字色，再「弹」一下。 */
+.ui-btn--hold.is-done .ui-btn__hold-fill {
+  transform: none !important;
+  background: var(--primary);
+}
+.ui-btn--hold.is-done { animation: uiHoldDone calc(var(--spring-pop-dur) * 1.2) var(--spring-pop) both; }
+@keyframes uiHoldDone {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.ui-btn--hold .ui-btn__label { position: relative; z-index: 1; }
 .ui-btn__hold-hint { position: relative; margin-left: 6px; font-size: var(--fs-micro); opacity: .7; }
+.ui-btn__hold-check {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+}
+.ui-btn__hold-check svg { width: 14px; height: 14px; }
 
 /* ---------- slide ---------- */
 .ui-btn--slide {
