@@ -262,6 +262,34 @@ export declare function renderMode(formats: string[]): 'icon' | 'text'
 export declare function fallbackCandidates(formats: string[], text: string): string[]
 export declare function familyOf(format: string): 'qr' | 'bar' | null
 
+/* ---------- 动效气质（产品调性，非用户偏好） ---------- */
+export declare const MOTION_TONES: Record<'calm' | 'lively', { value: 'calm' | 'lively'; label: string; hint: string }>
+export declare function setMotionTone(tone: 'calm' | 'lively'): 'calm' | 'lively'
+export declare function getMotionTone(): 'calm' | 'lively'
+export declare function toggleMotionTone(): 'calm' | 'lively'
+export declare function isLively(): boolean
+export declare function motionFactor(name?: 'scale' | 'bounce' | 'distance', fallback?: number): number
+export declare function springDuration(name?: string, fallback?: number): number
+
+/* ---------- zero.config.yaml / json ---------- */
+export interface ZeroUiConfig {
+  motion?: 'calm' | 'lively'
+  appearance?: 'light' | 'dark' | 'auto' | string
+  radiusScale?: number
+  density?: number
+  pressScale?: number
+  fontScale?: number
+  colors?: Record<string, string>
+  tokens?: Record<string, string | number>
+}
+export interface ZeroConfig { ui?: ZeroUiConfig }
+export declare function parseSimpleYaml(text: string): ZeroConfig
+export declare function applyZeroConfig(config: ZeroConfig): { ui: ZeroUiConfig; keys: string[] }
+export declare function initZeroConfig(options?: { base?: string }): Promise<{ source: string | null; ui: ZeroUiConfig; keys: string[] } | null>
+export declare function useZeroConfig(config?: ZeroConfig): { ui: ZeroUiConfig; keys: string[] }
+export declare function getZeroConfig(): ZeroConfig | null
+export declare function getAppliedZeroConfig(): { source: string | null; ui: ZeroUiConfig; keys: string[] } | null
+
 /* ---------- components ---------- */
 export {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,

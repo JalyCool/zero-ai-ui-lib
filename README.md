@@ -78,6 +78,19 @@ const options = [
 
 > 类型：包自带 `dist/index.d.ts`（手写声明，exports.types 已接好），TS 项目直接获得 props 提示，无需 declare module 兜底。
 
+## 应用级配置与动效气质
+
+根目录放 `zero.config.yaml`（或 json），库启动时读取根部 `ui`：
+
+```yaml
+ui:
+  motion: lively   # calm（默认）| lively —— 产品调性，不是用户偏好，别做成设置项
+  colors:
+    primary: "#3f5f90"
+```
+
+代码里也可以直接 `setMotionTone('lively')`；完整字段见 `zero.config.example.yaml`。
+
 ## 主题
 
 样式通过 CSS 变量驱动，库自带 `tokens.css` 的默认浅色令牌。

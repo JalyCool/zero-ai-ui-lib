@@ -191,6 +191,8 @@ import {
 - **返回只有一种写法**：Tab 用 replace、展开用 push、收起用 back()（动画播完再退），见 4.5。
 - **弧线宽度只有两档**：`--arc-stroke-thin`(10) / `--arc-stroke-bold`(12)，圆环族与仪表盘族共用，配合 `non-scaling-stroke` 保证宽度是 CSS 像素、与组件尺寸无关。
 - **动效令牌**：不要写死 duration，用 `--t-fade` / `--t-panel` / `--t-sheet` / `--t-exit`；弹簧曲线是 `--spring-*`。`prefers-reduced-motion` 时库内已自动降级。
+- **动效气质（motion tone）——产品调性，不是用户偏好**：两档 `calm`（默认，稳、短、几乎不过冲）与 `lively`（弹簧更陡、回弹与缩放幅度更大、位移更远、模糊更重）。它只换一组令牌：`--spring-*` / `--spring-*-dur`、`--motion-scale|bounce|distance|blur`、`--pop-scale`、`--press-scale`。
+  **按应用定位在代码里预置**：`setMotionTone('lively')`，或写进 `zero.config.yaml` 的 `ui.motion`。**不要做成设置项暴露给终端用户**（示例应用里的切换控件仅用于演示）。
 
 ## 4. 可展开卡片（列表 → 详情）
 
@@ -295,6 +297,40 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 深色：`--background` 取很深的色、`--on-surface` 取浅色、`--surface-container-*` 依次调亮一档，并给 `<html>` 设 `color-scheme: dark`。
 首帧防闪：在 `<head>` 里同步读 localStorage 落 `--background` 与 `data-appearance`，别等模块脚本。
 
+## 5.1 应用级配置：zero.config.yaml / zero.config.json
+
+应用根目录（与 `index.html` 同级）放一份配置，库启动时读 **根部 `ui`** 段并落成令牌；文件不存在时全部走默认，不算错。查找顺序：`zero.config.yaml` → `zero.config.yml` → `zero.config.json`。
+
+```yaml
+ui:
+  motion: lively          # calm | lively（动效气质，产品调性）
+  appearance: light       # light | dark | auto
+  radiusScale: 1          # → --radius-scale
+  density: 0.93           # → --density / --space-*
+  pressScale: 0.97        # → --press-scale
+  fontScale: 1            # → html 字号基准（rem 整体缩放）
+  colors:                 # camelCase 或 kebab-case 均可，未知键忽略
+    primary: "#3f5f90"
+    primaryContainer: "#d7e2ff"
+    background: "#faf9fd"
+  tokens:                 # 逃生口：任意 CSS 变量
+    --focus-w: 2px
+```
+
+用法（二选一）：
+
+```js
+// 1) 库自动读：应用启动时调一次即可
+import { initZeroConfig } from 'zero-ai-ui-lib'
+initZeroConfig()          // 默认从 BASE_URL 取配置；可传 { base: '/sub/' }
+
+// 2) 已经自己拿到配置对象（SSR 注入 / 远程下发）
+import { useZeroConfig } from 'zero-ai-ui-lib'
+useZeroConfig({ ui: { motion: 'lively', colors: { primary: '#0f766e' } } })
+```
+
+组件库内的模块会读取解析结果：`getZeroConfig()` 拿原始对象，`getAppliedZeroConfig()` 拿「实际写入了哪些键」，便于调试。完整字段注释见仓库根目录 `zero.config.example.yaml`。
+
 ## 6. 响应式 / 桌面端
 
 库内组件本身是响应式的，页面布局自己写：
@@ -330,7 +366,8 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 9. 调试用的无头 Chrome profile 目录（`.chrome-p*/`）会被写大量文件，`vite.config.js` 已用 `server.watch.ignored` 排除，否则 dev/preview 会被热更风暴拖垮。
 10. 给展开卡片做「滑出式关闭」时，动画必须**从当前跟手位置续接**（先 `void offsetWidth` 提交当前帧再写 transition），并在路由切换绘制后才清内联样式；否则完成动画会像从原位重新开始。
 11. 媒体查看器的舞台必须是整个视口、不能有 max-width / max-height：一旦按「合适尺寸」限制舞台，放大后的图片会被舞台裁掉。缩略态与展开态之间靠 left/top/width/height 过渡保持几何连续。
-12. 手势组件里的 `setPointerCapture` 必须 try/catch：指针在回调前已失效时（系统取消、合成事件）会抛 `NotFoundError`，一旦抛在回调中间，后续的吸附 / 收尾逻辑会被整段跳过。
+12. 动效气质不要做成用户设置：它是产品定位（工具类用 `calm`、娱乐社交类用 `lively`），应在代码或 `zero.config` 里预置。做成「设置 → 动效风格」会让同一产品的手感随用户漂移，动效语言就散了。
+13. 手势组件里的 `setPointerCapture` 必须 try/catch：指针在回调前已失效时（系统取消、合成事件）会抛 `NotFoundError`，一旦抛在回调中间，后续的吸附 / 收尾逻辑会被整段跳过。
 
 ## 9. 交付前自查
 

@@ -14,6 +14,17 @@ export { usePress } from '../core/pressFeedback'
 export { useMorphWindow } from '../core/morphWindow'
 /* iOS 侧滑跟手接管（宿主 WebView 需关闭系统滑动返回并让出左边缘手势）。 */
 export { useEdgeSwipeBack } from '../core/edgeSwipeBack'
+/* 动效气质（calm / lively）：产品调性，代码里预置，不做用户设置。 */
+export {
+  MOTION_TONES, setMotionTone, getMotionTone, toggleMotionTone, isLively,
+  motionFactor, springDuration
+} from '../core/motionTone'
+/* zero.config.yaml / json 的根部 ui 段解析与应用。 */
+export {
+  initZeroConfig, useZeroConfig, getZeroConfig, getAppliedZeroConfig,
+  applyZeroConfig, parseSimpleYaml
+} from '../core/zeroConfig'
+
 /* 时长文本（00h00m00s 规则）与时刻解析。 */
 export { formatDuration, formatDurationBetween, parseClockTime } from '../core/duration'
 /* 库级确认对话框：await confirmDialog({ title, message }) -> boolean。 */

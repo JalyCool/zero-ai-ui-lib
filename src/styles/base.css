@@ -9,6 +9,8 @@
 }
 
 html {
+  /* 字号基准：ui.fontScale 通过 --font-scale 整体缩放文本（1 = 16px）。 */
+  font-size: calc(16px * var(--font-scale, 1));
   -webkit-touch-callout: none;
   touch-action: manipulation; /* 去掉双击缩放等待 */
   -webkit-text-size-adjust: 100%;

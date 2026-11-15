@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SettingsSheet from './components/SettingsSheet.vue'
 import { UiTabBar } from './components/ui'
+import { initZeroConfig } from './lib'
 import { state } from './core/state'
 import * as spring from './core/spring'
 import * as typography from './core/typography'
@@ -75,6 +76,9 @@ const isDesktopLayout = () =>
   window.matchMedia && window.matchMedia('(min-width: 900px)').matches
 
 onMounted(() => {
+  /* 应用级配置：根部 ui.motion / ui.density / ui.colors 等，缺文件不影响默认。 */
+  initZeroConfig()
+
   swipeBack = useEdgeSwipeBack({
     container: () => document,
     target: () => getActive()?.card || document.getElementById('viewRoot'),

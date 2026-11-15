@@ -57,6 +57,20 @@
   --press-scale: 0.97;
   --press-card-scale: 0.985;
 
+  /* ============================================================
+     动效气质（motion tone）：克制 calm（默认）/ 活泼 lively
+     下面这组是「幅度倍率」，组件里所有放大、回弹、位移、模糊的
+     数值都乘它们；切换气质只需要换这组值 + 弹簧曲线与时长。
+     ⚠️ 这是产品调性，不是用户偏好：按应用定位在代码里预置
+        （setMotionTone('lively')）或写进 zero.config 的 ui.motion，
+        不要做成设置项暴露给终端用户。
+     ============================================================ */
+  --motion-scale: 1;         /* 放大 / 缩放类幅度倍率 */
+  --motion-bounce: 1;        /* 回弹 / 过冲幅度倍率 */
+  --motion-distance: 1;      /* 位移 / 惯性 / 甩动幅度倍率 */
+  --motion-blur: 10px;       /* 内容替换时的起始模糊半径 */
+  --pop-scale: 1.06;         /* 小元素「弹一下」的峰值缩放 */
+
   --spring-feedback: cubic-bezier(.25,.1,.25,1);
   --spring-feedback-dur: 0.5s;
   --spring-view: cubic-bezier(.25,.1,.25,1);
@@ -169,3 +183,51 @@
 }
 [data-icon="plain"] { --icon-bg: transparent; --icon-fg: var(--on-surface-variant); }
 [data-icon="subtle"] { --icon-bg: var(--surface-container); --icon-fg: var(--on-surface-variant); }
+
+/* ============================================================
+   活泼模式（data-motion="lively"）
+   · 弹簧更「竖直」：曲线中段更陡、带明显过冲（y > 1），时长更短；
+   · 回弹更大：--motion-bounce 1.4，按下 / 弹入的缩放幅度也随之加大；
+   · 位移更远、模糊更重：--motion-distance 1.22 / --motion-blur 12px。
+   适用：年轻化、娱乐、儿童、社交类应用；克制模式（默认）适用工具、
+   效率、金融、企业类应用。
+   ============================================================ */
+[data-motion="lively"] {
+  --press-scale: 0.93;
+  --press-card-scale: 0.96;
+  --pop-scale: 1.12;
+
+  --motion-scale: 1.12;
+  --motion-bounce: 1.4;
+  --motion-distance: 1.22;
+  --motion-blur: 12px;
+
+  /* 弹簧：更陡 + 过冲；时长整体缩短，手感更「脆」。 */
+  --spring-feedback: cubic-bezier(.22, 1.4, .36, 1);
+  --spring-feedback-dur: 0.4s;
+  --spring-view: cubic-bezier(.2, 1.32, .32, 1);
+  --spring-view-dur: 0.44s;
+  --spring-sheet: cubic-bezier(.2, 1.28, .34, 1);
+  --spring-sheet-dur: 0.48s;
+  --spring-expand: cubic-bezier(.2, 1.35, .34, 1);
+  --spring-expand-dur: 0.48s;
+  --spring-fade: cubic-bezier(.3, 1.15, .4, 1);
+  --spring-fade-dur: 0.24s;
+  --spring-exit: cubic-bezier(.35, 1.2, .4, 1);
+  --spring-exit-dur: 0.32s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 无障碍优先：系统要求减弱动效时，活泼模式也退回近似线性、无过冲。 */
+  [data-motion="lively"] {
+    --spring-feedback: linear;
+    --spring-view: linear;
+    --spring-sheet: linear;
+    --spring-expand: linear;
+    --spring-fade: linear;
+    --spring-exit: linear;
+    --motion-scale: 1;
+    --motion-bounce: 1;
+    --motion-distance: 1;
+  }
+}

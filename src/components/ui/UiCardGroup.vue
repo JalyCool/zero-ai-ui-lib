@@ -679,6 +679,8 @@ watch(() => props.modelValue, value => {
 .ui-card-group__card {
   position: relative;
   flex: 0 0 auto;
+  /* 入场位移随气质放大（活泼模式更远一点）。 */
+  animation-name: cgCardIn;
   overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(16px * var(--radius-scale));
@@ -898,7 +900,11 @@ watch(() => props.modelValue, value => {
 
 /* ---------- 入场 / 提示 ---------- */
 @keyframes cgCardIn {
-  from { opacity: 0; transform: translateY(18px) scale(.94); filter: blur(10px); }
+  from {
+    opacity: 0;
+    transform: translateY(calc(18px * var(--motion-distance, 1))) scale(calc(1 - 0.06 * var(--motion-scale, 1)));
+    filter: blur(var(--motion-blur, 10px));
+  }
   to { opacity: 1; filter: blur(0); }
 }
 @keyframes cgBounceIn {

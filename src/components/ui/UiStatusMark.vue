@@ -130,7 +130,7 @@ const sizeStyle = computed(() => ({ width: props.size + 'px', height: props.size
   transform-origin: 50% 50%;
   transition: transform var(--t-panel) var(--spring-view);
 }
-.ui-status-mark.is-morphing svg { transform: scale(1.06); }
+.ui-status-mark.is-morphing svg { transform: scale(var(--pop-scale, 1.06)); }
 
 /* 轨道：虚环只在 idle 明显，其它状态淡到底环。 */
 .ui-status-mark__track {
@@ -181,7 +181,7 @@ const sizeStyle = computed(() => ({ width: props.size + 'px', height: props.size
 .ui-status-mark.is-error .ui-status-mark__arc { opacity: .5; }
 @keyframes uiStatusSpin { to { transform: rotate(360deg); } }
 @keyframes uiStatusPop {
-  from { transform: scale(.82); }
+  from { transform: scale(calc(1 - 0.18 * var(--motion-scale, 1))); }
   to { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {

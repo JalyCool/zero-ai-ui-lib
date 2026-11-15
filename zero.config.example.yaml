@@ -1,0 +1,38 @@
+# ============================================================
+# zero.config.yaml —— 应用级配置（库启动时读取根部的 ui 段）
+#
+# 放在应用根目录（与 index.html 同级），库会依次尝试：
+#   zero.config.yaml → zero.config.yml → zero.config.json
+# 只认根部 ui；没有该文件时全部走默认值。
+# ============================================================
+
+ui:
+  # 动效气质：calm（默认，稳）| lively（活泼，陡且回弹明显）
+  # ⚠️ 这是产品调性，不是用户偏好。按应用定位写死在这里（或代码里调
+  #    setMotionTone('lively')），不要做成设置项暴露给终端用户。
+  motion: calm
+
+  # 外观：light | dark | auto（auto 交给应用自己按系统偏好决定即可）
+  appearance: light
+
+  # 圆角 / 密度 / 按压缩放 / 字号基准
+  radiusScale: 1
+  density: 0.93
+  pressScale: 0.97
+  fontScale: 1
+
+  # 颜色令牌（camelCase 或 kebab-case 都可以；未知键忽略）
+  colors:
+    primary: "#3f5f90"
+    primaryContainer: "#d7e2ff"
+    onPrimaryContainer: "#001b3c"
+    background: "#faf9fd"
+    surfaceContainerLow: "#f4f3f7"
+    onSurface: "#1b1b1f"
+    onSurfaceVariant: "#46464f"
+    outlineVariant: "#c7c5d0"
+
+  # 逃生口：直接写任意 CSS 变量（组件内部都从这里取）
+  tokens:
+    --focus-w: 2px
+    --border-w: 0.75px
