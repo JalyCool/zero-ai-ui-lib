@@ -130,7 +130,7 @@ import {
 | `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；时间 / 日期波轮都基于它 |
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起 |
 | `UiModal` | `v-model`；插槽 `#header` / `#title` / 默认 / `#footer`，作用域都带 `close`；遮罩压暗 + 5px 模糊 |
-| `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽 |
+| `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽；**把手可拖拽**：拖把手实时改高度（跟手、禁 transition），松手按位移 + 速度吸附锚点；`anchors`（默认 `[0.2, 0.6]`）+ 自动追加「全内容」档，全内容不足 60% 时 60% 档不出现；拖到最低锚点之下直接关闭；`scrim=false` 为无背景版（不压暗不模糊，但透明拦截层 + Esc + 锁滚动 + aria-modal 的模态性质保持） |
 | `UiFloatingMenu` | `v-model`(当前值) + `:items` + `@select`；按钮原地长成浮动面板 |
 | `UiToolMenu` | 只有 `@select`，**回传整个 item 对象**（不是 value），无 v-model，选中值自己同步到 `label` |
 | `UiGauge` | `:value` 0–100 + `label`；220° 圆弧，大数字居中（数字变化走统一滚动动效） |
@@ -172,6 +172,7 @@ import {
 - **滚轮**（`UiWheel`，时间 / 日期波轮共用）：高亮块固定在中间不动，点击和滑动移动的是背后的数字层；字段数量由列配置决定。
 - **按钮 ⇄ 组件的形变泛用化**：`UiMorphPanel` 把「点一下切换成另一个组件」做成通用容器，不再局限于「按钮变输入框」；`UiSearchField` 也走同一语言（图标平移到尾部作动作按钮）。
 - **确认统一走 `confirmDialog`**：应用里不要再调 `window.confirm`，样式断层且阻塞；`await` 拿到布尔结果即可。
+- **返回只有一种写法**：Tab 用 replace、展开用 push、收起用 back()（动画播完再退），见 4.5。
 - **动效令牌**：不要写死 duration，用 `--t-fade` / `--t-panel` / `--t-sheet` / `--t-exit`；弹簧曲线是 `--spring-*`。`prefers-reduced-motion` 时库内已自动降级。
 
 ## 4. 可展开卡片（列表 → 详情）
@@ -213,6 +214,43 @@ import { EmptyRoute } from 'zero-ai-ui-lib'
 - 卡片内可交互元素（按钮、输入框、图表）默认已被忽略，不会误触发展开；额外元素加 `data-no-expand`。
 - 桌面端（≥900px）展开成居中模态 + 背景压暗模糊；移动端铺满整屏。
 - 更多细节见仓库 `docs/route-expand-card.md`。
+
+## 4.5 历史栈与返回（硬规则）
+
+- **底部 Tab 切换用 `replace`**：Tab 是平级视图，不往历史里堆（`router.replace({ name: id })`）。
+- **卡片展开用 `push`**：产生一条历史记录，系统返回 = 收起卡片。
+- **卡片内返回按钮和系统返回统一 `back()`**：不要 `push('/父')`、也不要 `replace('/父')`（后者会把展开历史抹掉，返回语义断裂）。
+- **先播弹簧收起动画，动画完成后再 `back()`**：`ExpandableCard` 内部已按 `--spring-exit-dur` + 缓冲等待后再退历史。
+- 例外：深链直达展开态时没有我们压入的历史条目，`back()` 会退出应用，此时才允许 `replace` 回父路由。
+
+## 4.6 iOS 侧滑跟手（core/edgeSwipeBack）
+
+完全由 JS 接管左边缘手势，**不依赖任何返回拦截插件**：
+
+```js
+import { useEdgeSwipeBack } from 'zero-ai-ui-lib'
+
+const swipe = useEdgeSwipeBack({
+  container: () => document,
+  target: () => getActive()?.card || document.getElementById('viewRoot'),
+  shouldHandle: () => !!getActive(),   // 只在有展开卡片时接管
+  onBack: () => router.back()
+})
+```
+
+- `touchstart` 只落在左边缘 `edgeWidth`（默认 26px）内才开始拖拽；明显纵向滑动立即让位给页面滚动。
+- `touchmove` 按 `deltaX` 实时写 `scale / translateX`，期间 `transition: none` 完全跟手。
+- `touchend` 按位移比例（默认 34%）+ 速度（默认 0.62px/ms）判断：过阈值播完完成动画后 `back()`；未过阈值恢复 transition 弹回原位。
+- 手感参数（阈值 / 阻尼 / 缩放 / 时长）全部可配，见 `DEFAULTS`。
+
+**宿主（原生 WebView 壳）必须配套两件事**，否则手势会被系统抢走：
+
+```rust
+// 1) 关掉系统自带的前进 / 后退滑动（WKWebView allowsBackForwardNavigationGestures = false）
+webview.set_navigation_gestures_enabled(false);
+// 2) 左边缘系统手势优先交给 WebView
+window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
+```
 
 ## 5. 主题
 

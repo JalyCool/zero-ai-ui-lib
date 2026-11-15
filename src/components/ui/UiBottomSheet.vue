@@ -1,40 +1,59 @@
 <script setup>
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 /* ============================================================
    置底面板
    动效与设置面板（SettingsSheet / .sheet）保持一致：
    面板只做 transform 位移（打开 --t-sheet、关闭 --t-exit），
-   不做整体透明度淡入淡出；遮罩用全局 .ui-scrim（压暗 + 模糊 0px ↔ 15px）。
-   组件内部用 is-open / is-closing 驱动，关闭时保留挂载到退场结束后再卸载。
+   不做整体透明度淡入淡出；遮罩用全局 .ui-scrim（压暗 + 模糊）。
+
+   本轮新增：
+   · 把手可拖拽：拖把手实时改面板高度（禁用 transition 跟手），
+     松手按 位移 + 速度 吸附到锚点；最低锚点之下继续拖 -> 关闭。
+   · anchors 吸附档位：20%、60%，以及「能显示全部内容的最小高度」。
+     若最小高度不足全屏 60%，60% 档自动不出现（去重）。
+   · scrim=false 版本：不加背景、不模糊背景，但模态性质保持
+     （透明拦截层挡住背景交互 + Esc 关闭 + 锁页面滚动 + aria-modal）。
    ============================================================ */
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   title: { type: String, default: '面板' },
+  /* 兼容旧参数：作为「全内容锚点」的上限 */
   maxHeight: { type: String, default: '90dvh' },
-  closeOnBackdrop: { type: Boolean, default: true }
+  closeOnBackdrop: { type: Boolean, default: true },
+  /* 是否压暗 + 模糊背景；false = 透明拦截层的无背景模态 */
+  scrim: { type: Boolean, default: true },
+  /* 固定锚点（视口比例），全内容锚点自动追加 */
+  anchors: { type: Array, default: () => [0.2, 0.6] }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'anchor-change'])
 
 const CLOSE_BUFFER = 80
-// .ui-scrim 的背景模糊过渡固定为 420ms（见 ui.css），
-// 遮罩必须先跑完这段过渡，卸载才不会把模糊半径截断在半途。
 const SCRIM_FADE = 420
+/* 拖拽松手后的速度投射时长（ms），模拟惯性。 */
+const FLING_MS = 140
+/* 低于最低锚点这么多像素 -> 判定关闭意图。 */
+const DISMISS_PX = 72
 
 const panel = ref(null)
+const bodyEl = ref(null)
 const rendered = ref(false)
 const open = ref(false)
 const closing = ref(false)
+const dragging = ref(false)
+
+const anchorList = ref([])
+const heightPx = ref(0)
 
 let scrollEl = null
 let previousOverflow = ''
 let closeTimer = null
 let frameA = 0
 let frameB = 0
-// 本次挂载是否真的露出过面板；只影响「打开后立刻关闭」是否可以免动画卸载。
 let paintedOpen = false
+let resizeObserver = null
 
 function readDuration(name, fallback) {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
@@ -50,17 +69,76 @@ function reduceMotion() {
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function cancelFrames() {
-  if (frameA) cancelAnimationFrame(frameA)
-  if (frameB) cancelAnimationFrame(frameB)
-  frameA = 0
-  frameB = 0
+function viewportHeight() {
+  return window.innerHeight || document.documentElement.clientHeight || 640
 }
 
-function close() {
-  if (!props.modelValue || closing.value) return
-  emit('update:modelValue', false)
+/* 全内容锚点：把手 + 头部 + 内容完整高度 + 底部，夹在视口上限内。 */
+function fullFraction() {
+  const panelEl = panel.value
+  const body = bodyEl.value
+  if (!panelEl || !body) return 0.9
+  const chrome = panelEl.offsetHeight - body.clientHeight
+  const needed = chrome + body.scrollHeight
+  /* maxHeight 上限（px / dvh 都折算成视口比例） */
+  const capMatch = /^(\d+(?:\.\d+)?)(dvh|vh|px|%)$/.exec(props.maxHeight)
+  let cap = 0.9
+  if (capMatch) {
+    const value = Number(capMatch[1])
+    cap = capMatch[2] === 'px' ? value / viewportHeight() : value / 100
+  }
+  return Math.min(cap, needed / viewportHeight())
 }
+
+/* 组装锚点：固定档里只保留 <= 全内容档的；全内容档永远存在；
+   全内容档不足 60% 时 60% 档不出现（去重 + 就近合并）。 */
+function computeAnchors() {
+  const full = fullFraction()
+  const list = props.anchors
+    .map(Number)
+    .filter(value => Number.isFinite(value) && value > 0 && value <= full + 0.001)
+  list.push(full)
+  const unique = []
+  for (const value of list.sort((a, b) => a - b)) {
+    if (!unique.length || value - unique[unique.length - 1] > 0.02) unique.push(value)
+    else unique[unique.length - 1] = Math.max(unique[unique.length - 1], value)
+  }
+  return unique
+}
+
+function refreshAnchors() {
+  const next = computeAnchors()
+  anchorList.value = next
+  if (!next.length) return
+  /* 当前高度越界（内容变少）时夹回最近的锚点。 */
+  const current = heightPx.value / viewportHeight()
+  if (open.value && !dragging.value) {
+    if (current > next[next.length - 1] + 0.01) setHeight(next[next.length - 1])
+    else if (current < next[0] - 0.01) setHeight(next[0])
+  }
+}
+
+function nearestAnchor(fraction, projected) {
+  const list = anchorList.value
+  if (!list.length) return fraction
+  const probe = projected === undefined ? fraction : projected
+  let best = list[0]
+  for (const value of list) {
+    if (Math.abs(value - probe) < Math.abs(best - probe)) best = value
+  }
+  return best
+}
+
+function setHeight(fraction, { silent = false } = {}) {
+  const clamped = Math.min(Math.max(fraction, 0.08), 1)
+  heightPx.value = Math.round(clamped * viewportHeight())
+  if (!silent) {
+    const nearest = nearestAnchor(clamped)
+    if (Math.abs(nearest - clamped) < 0.005) emit('anchor-change', nearest)
+  }
+}
+
+/* ---------- 打开 / 关闭（沿用原有 transform 流程） ---------- */
 
 function lockPage() {
   if (scrollEl) return
@@ -76,6 +154,11 @@ function unlockPage() {
   scrollEl = null
 }
 
+function close() {
+  if (!props.modelValue || closing.value) return
+  emit('update:modelValue', false)
+}
+
 function onKeydown(event) {
   if (event.key === 'Escape' && props.modelValue) {
     event.preventDefault()
@@ -83,13 +166,18 @@ function onKeydown(event) {
   }
 }
 
+function cancelFrames() {
+  if (frameA) cancelAnimationFrame(frameA)
+  if (frameB) cancelAnimationFrame(frameB)
+  frameA = 0
+  frameB = 0
+}
+
 function beginOpen() {
   clearTimeout(closeTimer)
   closeTimer = null
   cancelFrames()
 
-  // 退场途中重新打开：面板已经在屏幕上，直接把目标交回 is-open，
-  // 过渡会从当前位置反向续上，不再重走一遍首帧流程。
   if (rendered.value && paintedOpen && !open.value) {
     closing.value = false
     open.value = true
@@ -99,7 +187,6 @@ function beginOpen() {
 
   rendered.value = true
   closing.value = false
-  // 先以 translateY(105%) 渲染，等浏览器提交这一帧后再加 is-open。
   open.value = false
   lockPage()
 
@@ -107,8 +194,12 @@ function beginOpen() {
     const el = panel.value
     if (!props.modelValue || !el) return
     el.focus({ preventScroll: true })
+    /* 先量锚点：打开落在「全内容」这一档。 */
+    refreshAnchors()
+    const full = anchorList.value[anchorList.value.length - 1] || 0.9
+    setHeight(full, { silent: true })
+    observeContent()
 
-    // 强制一帧，确保起始位移已经生效，随后的 is-open 一定产生过渡。
     void el.offsetHeight
     frameA = requestAnimationFrame(() => {
       frameA = 0
@@ -127,6 +218,8 @@ function teardown() {
   open.value = false
   closing.value = false
   paintedOpen = false
+  dragging.value = false
+  disconnectObserver()
   unlockPage()
 }
 
@@ -135,25 +228,76 @@ function beginClose() {
   clearTimeout(closeTimer)
   closeTimer = null
 
-  if (!paintedOpen) {
-    // 例如刚打开就在首帧前被关掉：面板从未露出过，不需要退场。
-    teardown()
-    return
-  }
+  if (!paintedOpen) { teardown(); return }
 
-  // is-closing 把过渡切换为 --t-exit，同时移除 is-open 让面板继续下滑；
-  // 遮罩同步移除 is-open，模糊半径 15px → 0。
   closing.value = true
   open.value = false
 
   const exitMs = reduceMotion() ? 0 : readDuration('--spring-exit-dur', 650)
-  const scrimMs = reduceMotion() ? 0 : SCRIM_FADE
+  const scrimMs = reduceMotion() ? 0 : (props.scrim ? SCRIM_FADE : 0)
   const holdMs = reduceMotion() ? 0 : Math.max(exitMs, scrimMs) + CLOSE_BUFFER
 
-  closeTimer = setTimeout(() => {
-    closeTimer = null
-    teardown()
-  }, holdMs)
+  closeTimer = setTimeout(() => { closeTimer = null; teardown() }, holdMs)
+}
+
+/* ---------- 内容变化监听（锚点跟着重算） ---------- */
+function observeContent() {
+  disconnectObserver()
+  if (!bodyEl.value || typeof ResizeObserver === 'undefined') return
+  resizeObserver = new ResizeObserver(() => {
+    if (open.value && !dragging.value) refreshAnchors()
+  })
+  resizeObserver.observe(bodyEl.value)
+}
+function disconnectObserver() {
+  if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null }
+}
+
+/* ---------- 把手拖拽 ---------- */
+let dragStartY = 0
+let dragStartHeight = 0
+let dragLastY = 0
+let dragLastT = 0
+let dragVelocity = 0
+
+function onHandleDown(event) {
+  if (!open.value || closing.value) return
+  event.preventDefault()
+  dragging.value = true
+  dragStartY = event.clientY
+  dragStartHeight = heightPx.value
+  dragLastY = event.clientY
+  dragLastT = event.timeStamp
+  dragVelocity = 0
+  event.currentTarget.setPointerCapture?.(event.pointerId)
+}
+
+function onHandleMove(event) {
+  if (!dragging.value) return
+  const dy = event.clientY - dragStartY
+  /* 向上拖 = 变高，向下拖 = 变矮；允许拖到最低锚点之下表达关闭意图。 */
+  const next = dragStartHeight - dy
+  heightPx.value = Math.max(0, Math.round(next))
+  dragVelocity = (event.clientY - dragLastY) / Math.max(1, event.timeStamp - dragLastT)
+  dragLastY = event.clientY
+  dragLastT = event.timeStamp
+}
+
+function onHandleUp() {
+  if (!dragging.value) return
+  dragging.value = false
+  const vp = viewportHeight()
+  const lowest = anchorList.value[0] || 0.2
+  const current = heightPx.value / vp
+  /* 关闭意图：拖到最低锚点之下足够多，或向下快甩。 */
+  if (heightPx.value < lowest * vp - DISMISS_PX ||
+      (dragVelocity > 0.8 && current < lowest - 0.02)) {
+    close()
+    return
+  }
+  /* 速度投射后吸附最近锚点。 */
+  const projected = current + (-dragVelocity * FLING_MS) / vp
+  setHeight(nearestAnchor(current, projected))
 }
 
 watch(() => props.modelValue, value => {
@@ -161,12 +305,14 @@ watch(() => props.modelValue, value => {
   else if (rendered.value || paintedOpen) beginClose()
 }, { immediate: true })
 
+watch(() => props.anchors, () => { if (open.value) refreshAnchors() }, { deep: true })
+
 document.addEventListener('keydown', onKeydown)
 
 onBeforeUnmount(() => {
   clearTimeout(closeTimer)
-  closeTimer = null
   cancelFrames()
+  disconnectObserver()
   unlockPage()
   document.removeEventListener('keydown', onKeydown)
 })
@@ -175,30 +321,48 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div v-if="rendered" class="ui-sheet-root">
+      <!-- 有背景版：压暗 + 模糊遮罩；无背景版：透明拦截层，照样挡住背景交互。 -->
       <div
+        v-if="scrim"
         class="ui-scrim ui-sheet-scrim"
         :class="{ 'is-open': open, 'is-static': !closeOnBackdrop }"
         aria-hidden="true"
         @click="closeOnBackdrop && close()"
       ></div>
+      <div
+        v-else
+        class="ui-sheet-veil"
+        :class="{ 'is-static': !closeOnBackdrop }"
+        aria-hidden="true"
+        @click="closeOnBackdrop && close()"
+      ></div>
+
       <section
         ref="panel"
         class="ui-sheet-panel"
-        :class="{ 'is-open': open, 'is-closing': closing }"
-        :style="{ maxHeight }"
+        :class="{ 'is-open': open, 'is-closing': closing, 'is-dragging': dragging, 'no-scrim': !scrim }"
+        :style="{ height: heightPx + 'px' }"
         role="dialog"
         aria-modal="true"
         :aria-label="title"
         tabindex="-1"
       >
-        <div class="ui-sheet-handle" aria-hidden="true"></div>
+        <div
+          class="ui-sheet-handle"
+          :class="{ 'is-grabbing': dragging }"
+          aria-hidden="true"
+          @pointerdown="onHandleDown"
+          @pointermove="onHandleMove"
+          @pointerup="onHandleUp"
+          @pointercancel="onHandleUp"
+        ></div>
         <header class="ui-sheet-head">
           <h2>{{ title }}</h2>
           <button type="button" class="ui-sheet-close" aria-label="关闭面板" @click="close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </header>
-        <div class="ui-sheet-body">
+        <div ref="bodyEl" class="ui-sheet-body">
           <slot />
         </div>
         <footer v-if="$slots.footer" class="ui-sheet-footer">
@@ -219,9 +383,16 @@ onBeforeUnmount(() => {
   justify-content: center;
   overflow: hidden;
 }
-/* 压暗与背景模糊全部来自全局 .ui-scrim，这里只保证遮罩在面板之下。 */
 .ui-sheet-scrim { z-index: 0; }
 .ui-sheet-scrim.is-static { pointer-events: none; }
+/* 无背景版：完全透明，但仍然盖住背景（模态拦截）。 */
+.ui-sheet-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: transparent;
+}
+.ui-sheet-veil.is-static { pointer-events: none; }
 .ui-sheet-panel {
   position: relative;
   z-index: 1;
@@ -237,20 +408,40 @@ onBeforeUnmount(() => {
   outline: none;
   transform: translateY(105%);
   will-change: transform;
-  transition: transform var(--t-sheet), box-shadow var(--t-fade);
+  /* 打开位移走 sheet，高度吸附走 view：两段同时可过渡互不干扰。 */
+  transition: transform var(--t-sheet), height var(--t-view), box-shadow var(--t-fade);
 }
-/* 展开态彻底去掉 transform 与 will-change：它们会变成固定定位子元素的
-   包含块，让面板里的日期/时间选择窗口被困在面板里并被裁剪。 */
-.ui-sheet-panel.is-open { transform: none; will-change: auto; }
+.ui-sheet-panel.is-open { transform: none; }
 .ui-sheet-panel.is-closing {
   will-change: transform;
-  transition: transform var(--t-exit);
+  transition: transform var(--t-exit), height var(--t-exit);
+}
+/* 拖拽中彻底禁用过渡，位移完全跟手。 */
+.ui-sheet-panel.is-dragging {
+  transition: none;
+  will-change: transform, height;
+}
+/* 无背景版给一点离地阴影，保证与内容的分层仍然可读。 */
+.ui-sheet-panel.no-scrim {
+  box-shadow: 0 -8px 32px color-mix(in oklab, var(--on-surface) 14%, transparent);
 }
 .ui-sheet-handle {
   padding: 10px 0 4px;
   display: flex;
   justify-content: center;
   flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.ui-sheet-handle.is-grabbing { cursor: grabbing; }
+/* 扩大把手命中区域：拖动更从容。 */
+.ui-sheet-handle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  height: 22px;
+  left: 0;
+  right: 0;
 }
 .ui-sheet-handle::after {
   content: '';
@@ -258,6 +449,11 @@ onBeforeUnmount(() => {
   height: 4px;
   border-radius: 2px;
   background: var(--outline-variant);
+  transition: background var(--t-fade), width var(--t-feedback);
+}
+.ui-sheet-handle.is-grabbing::after {
+  width: 44px;
+  background: var(--primary);
 }
 .ui-sheet-head {
   display: flex;

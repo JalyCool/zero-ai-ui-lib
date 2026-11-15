@@ -43,7 +43,10 @@ watch(
   ([name, recordId, loaded]) => {
     if (name !== 'activity-record' || !loaded) return
     const exists = activityState.records.some(record => record.id === String(recordId))
-    if (!exists) router.replace({ name: 'activity' })
+    /* 历史栈规则：清理无效的展开子路由统一用 back()，
+       不用 replace('/父')——replace 会把「展开记录」这条历史抹掉，
+       后退语义就断了。 */
+    if (!exists) router.back()
   },
   { immediate: true }
 )

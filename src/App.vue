@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SettingsSheet from './components/SettingsSheet.vue'
 import { state } from './core/state'
@@ -9,6 +9,8 @@ import * as visual from './core/visual'
 import * as theme from './core/theme'
 import { initPress } from './core/press'
 import { activityState } from './core/activityStore'
+import { useEdgeSwipeBack } from './core/edgeSwipeBack'
+import { getActive } from './core/expandManager'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,7 +30,9 @@ const pageSub = computed(() => {
 function selectTab(id) {
   if (document.body.classList.contains('locked')) return
   if (id === activeTab.value && route.name === id) return
-  router.push({ name: id })
+  /* 历史栈规则：底部 Tab 切换用 replace —— Tab 是平级视图，
+     不该往历史里堆；系统返回应该退到「上一页」或收起展开的卡片。 */
+  router.replace({ name: id })
 }
 
 function toggleSheet() {
@@ -46,7 +50,25 @@ watch(() => route.meta.tab, (value, oldValue) => {
 
 watch(state, () => theme.apply({ animate: true }), { deep: true })
 
+onBeforeUnmount(() => {
+  if (swipeBack) swipeBack.unmount()
+  swipeBack = null
+})
+
+/* iOS 侧滑跟手：完全接管左边缘手势（原生层需关闭系统滑动返回，
+   并把左边缘系统手势优先交给 WebView）。只在有展开卡片时接管，
+   拖的是那张卡片；过阈值 -> 完成动画后统一 back()，
+   未过阈值 -> 恢复 transition 弹回。 */
+let swipeBack = null
+
 onMounted(() => {
+  swipeBack = useEdgeSwipeBack({
+    container: () => document,
+    target: () => getActive()?.card || document.getElementById('viewRoot'),
+    shouldHandle: () => !!getActive(),
+    onBack: () => router.back()
+  })
+
   spring.apply()
   typography.apply()
   visual.apply()

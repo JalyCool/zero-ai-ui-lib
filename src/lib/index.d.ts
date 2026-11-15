@@ -12,7 +12,7 @@ declare const UiAlert: DefineComponent<{ tone?: 'warning' | 'danger' | 'success'
 declare const UiAvatar: DefineComponent<{ name?: string; src?: string; size?: number }, AnyProps, unknown>
 declare const UiBadge: DefineComponent<{ tone?: 'primary' | 'success' | 'warning' | 'danger'; dot?: boolean; label?: string }, AnyProps, unknown>
 declare const UiBarChart: DefineComponent<{ data?: number[]; labels?: string[]; height?: number }, AnyProps, unknown>
-declare const UiBottomSheet: DefineComponent<{ modelValue?: boolean; title?: string; maxHeight?: number; closeOnBackdrop?: boolean }, AnyProps, unknown>
+declare const UiBottomSheet: DefineComponent<{ modelValue?: boolean; title?: string; maxHeight?: string; closeOnBackdrop?: boolean; scrim?: boolean; anchors?: number[] }, AnyProps, unknown>
 declare const UiButton: DefineComponent<{
   variant?: 'primary' | 'tonal' | 'outline' | 'text' | 'danger' | 'icon'
   size?: 'sm' | 'md' | 'lg'
@@ -144,6 +144,28 @@ export interface MorphWindowReturn {
   toggleWindow(): void
 }
 export declare function useMorphWindow(options?: MorphWindowOptions): MorphWindowReturn
+export interface EdgeSwipeBackOptions {
+  target?: HTMLElement | null | (() => HTMLElement | null | undefined)
+  container?: () => EventTarget | null
+  shouldHandle?: () => boolean
+  onBack?: () => void
+  onProgress?: (progress: number) => void
+  edgeWidth?: number
+  distanceRatio?: number
+  velocityThreshold?: number
+  minTravel?: number
+  maxScale?: number
+  startDeadZone?: number
+  finishDuration?: number
+  revertDuration?: number
+}
+export interface EdgeSwipeBackHandle {
+  unmount(): void
+  complete(): void
+  isTracking(): boolean
+  config: Required<EdgeSwipeBackOptions>
+}
+export declare function useEdgeSwipeBack(options?: EdgeSwipeBackOptions): EdgeSwipeBackHandle
 export declare function usePress(element?: HTMLElement | null): { pressed: { value: boolean } }
 
 /* ---------- utils ---------- */

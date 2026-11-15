@@ -181,6 +181,7 @@ const heat = Array.from({ length: 42 }, (_, i) => Math.round(Math.abs(Math.sin(i
 const toast = ref(null)
 const modalOpen = ref(false)
 const bottomSheetOpen = ref(false)
+const sheetBareOpen = ref(false)
 const sheetNote = ref('')
 const alertOpen = ref(true)
 const accordionA = ref(true)
@@ -521,6 +522,7 @@ onMounted(() => showToast('info'))
           <div class="lib-cell__stage">
             <UiButton variant="outline" @click="modalOpen = true">对话框</UiButton>
             <UiButton variant="outline" @click="bottomSheetOpen = true">底部面板</UiButton>
+            <UiButton variant="outline" @click="sheetBareOpen = true">无背景面板</UiButton>
           </div>
           <span class="lib-cell__note">遮罩只压暗 16%，同时模糊 0→5px 连续过渡。</span>
         </div>
@@ -552,6 +554,12 @@ onMounted(() => showToast('info'))
       <template #footer>
         <UiButton block @click="bottomSheetOpen = false; showToast('success')">保存</UiButton>
       </template>
+    </UiBottomSheet>
+
+    <UiBottomSheet v-model="sheetBareOpen" title="拖把手试试" :scrim="false">
+      <div class="lib-sheet-long">
+        <p v-for="n in 14" :key="n">第 {{ n }} 行内容 —— 上下拖动顶部把手，松手会吸附到 20% / 60% / 全内容三个锚点；拖到最低锚点之下直接关闭。无背景版本不压暗、不模糊，但背景依旧不可交互。</p>
+      </div>
     </UiBottomSheet>
 
     <UiImageViewer v-model="viewer" :src="viewerSrc" alt="示例图片" />

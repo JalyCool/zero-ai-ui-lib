@@ -68,8 +68,11 @@ onBeforeUnmount(() => clearTimeout(closeTimer))
 function closeSheet() {
   if (!open.value) return
   open.value = false
+  /* 历史栈规则：先播完面板的弹簧收起动画，再 back()。
+     不用 replace('/activity')——那会让「打开新增面板」这条历史残留，
+     返回键行为与视觉方向相反。 */
   closeTimer = setTimeout(() => {
-    router.replace({ name: 'activity' })
+    router.back()
   }, 620)
 }
 

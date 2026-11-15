@@ -12,6 +12,8 @@ export { default as RouteExpandCard } from '../components/expand/RouteExpandCard
 export { default as EmptyRoute } from '../router/EmptyRoute.js'
 export { usePress } from '../core/pressFeedback'
 export { useMorphWindow } from '../core/morphWindow'
+/* iOS 侧滑跟手接管（宿主 WebView 需关闭系统滑动返回并让出左边缘手势）。 */
+export { useEdgeSwipeBack } from '../core/edgeSwipeBack'
 /* 时长文本（00h00m00s 规则）与时刻解析。 */
 export { formatDuration, formatDurationBetween, parseClockTime } from '../core/duration'
 /* 库级确认对话框：await confirmDialog({ title, message }) -> boolean。 */

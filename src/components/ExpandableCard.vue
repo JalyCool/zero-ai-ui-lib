@@ -63,6 +63,14 @@ function expandedTarget() {
   }
 }
 
+/* 历史栈规则：
+   · 卡片展开用 push 产生历史记录（见 onClick / onKeydown）。
+   · 卡片内返回与系统返回统一走 back()，不用 push / replace 到父路由。
+   · 收起要先播完弹簧动画，再 back()。
+   expandDepth 记录「本组件实例压入过几次展开历史」：
+   深链直达时我们没有压入历史，back() 会退出应用，只能 replace 回父路由。 */
+let expandDepth = 0
+
 let closeTimer = null
 let settleTimer = null
 let mounted = false
@@ -71,6 +79,7 @@ let scrollPrevOverflow = ''
 let backdropTimer = null
 let pendingMethod = 'pointer'
 let reopenAfterClose = false
+let closingPromise = null
 
 const rootEl = ref(null)
 const innerEl = ref(null)
@@ -176,14 +185,33 @@ function restoreAria(card, state) {
   else card.setAttribute('aria-modal', state.originalAriaModal)
 }
 
-/* 关闭动作先回到父路由，由路由变化统一收起卡片。 */
+/* 等待弹簧收起动画播完（--spring-exit-dur + 缓冲）。 */
+function awaitCollapse() {
+  if (!expanded.value && !closing.value) return Promise.resolve()
+  const exitMs = reduceMotion() ? 0 : readDuration('--spring-exit-dur', 400)
+  return new Promise(resolve => setTimeout(resolve, exitMs + CLOSE_BUFFER))
+}
+
 async function requestClose() {
-  if (routeActive.value) {
-    const failure = await router.push({ name: props.parentRouteName })
-    if (failure && routeActive.value) closeCard()
-  } else {
-    closeCard()
-  }
+  if (closingPromise) return closingPromise
+  closingPromise = (async () => {
+    try {
+      /* 先播收起动画，动画完成后再改历史，避免路由切换打断弹簧。 */
+      if (routeActive.value || getActive()) closeCard()
+      await awaitCollapse()
+      if (expandDepth > 0) {
+        expandDepth -= 1
+        /* 统一用 back()：卡片内返回按钮和系统返回走同一条路。 */
+        router.back()
+      } else if (routeActive.value) {
+        /* 深链直达：没有我们压入的历史条目，只能替换回父路由。 */
+        await router.replace({ name: props.parentRouteName })
+      }
+    } finally {
+      closingPromise = null
+    }
+  })()
+  return closingPromise
 }
 
 async function openCard(method = 'pointer') {
@@ -404,7 +432,9 @@ async function onClick(event) {
   const method = event.detail === 0 ? 'keyboard' : 'pointer'
   pendingMethod = method
   const failure = await router.push({ name: props.routeName, params: props.routeParams })
-  if (failure && routeActive.value && !getActive() && !closing.value) openCard(method)
+  /* push 成功即产生一条展开历史。 */
+  if (!failure) expandDepth += 1
+  else if (failure && routeActive.value && !getActive() && !closing.value) openCard(method)
 }
 
 async function onKeydown(event) {
@@ -415,7 +445,8 @@ async function onKeydown(event) {
   event.preventDefault()
   pendingMethod = 'keyboard'
   const failure = await router.push({ name: props.routeName, params: props.routeParams })
-  if (failure && routeActive.value && !getActive() && !closing.value) openCard('keyboard')
+  if (!failure) expandDepth += 1
+  else if (failure && routeActive.value && !getActive() && !closing.value) openCard('keyboard')
 }
 
 function scrollCardIntoView() {
@@ -453,6 +484,8 @@ watch(routeActive, value => {
     pendingMethod = 'pointer'
   } else {
     reopenAfterClose = false
+    /* 路由已离开展开子页：这条展开历史已经被消费（系统返回 / back()）。 */
+    expandDepth = 0
     const current = getActive()
     if (current && current.card === rootEl.value) closeCard()
     pendingMethod = 'pointer'
