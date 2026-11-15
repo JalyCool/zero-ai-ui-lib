@@ -37,15 +37,16 @@ const props = defineProps({
 })
 
 /* ---------- 情绪层：状态配方表（参数即状态，状态即参数向量） ---------- */
-/* open 开合 / openL·openR 单眼开合 / spread 眼距变化 / tilt 外挑角度 /
+/* open 开合（两眼同值）/ spread 眼距变化 / tilt 外挑角度 /
    eyeY 整体高度偏移 / blink 眨眼频率倍率（0 = 不眨）/
    kickY 进入状态时的速度冲击 / bias 注视偏置 / spring 该状态的过渡弹簧 */
+/* 两只眼睛永远同宽同高：情绪只靠开合 / 眼距 / 倾斜 / 高度表达，不做大小眼。 */
 const STATES = {
   idle:      { open: 1,    spread: 0,    tilt: 0, eyeY: 0,    blink: 1 },
   listening: { open: 1.06, spread: -0.5, tilt: 0, eyeY: 0,    blink: 0.5 },
-  thinking:  { openL: 0.8, openR: 0.95, spread: 0, tilt: 0, eyeY: -0.7, blink: 0.35, bias: { x: 0.5, y: -1.1 } },
+  thinking:  { open: 0.88, spread: 0,    tilt: 0, eyeY: -0.7, blink: 0.35, bias: { x: 0.5, y: -1.1 } },
   happy:     { open: 0.6,  spread: 1.2,  tilt: 4, eyeY: -0.9, blink: 0.4, kickY: -9 },
-  confused:  { openL: 0.75, openR: 0.95, spread: 0, tilt: 5, eyeY: 0.5, blink: 0.7 },
+  confused:  { open: 0.92, spread: 0.2,  tilt: 5, eyeY: 0.5,  blink: 0.7 },
   surprised: { open: 1.3,  spread: 2.2,  tilt: 0, eyeY: -1.2, blink: 0, kickY: -14, spring: { k: 420, c: 30 } },
   sleepy:    { open: 0.6,  spread: -0.6, tilt: 0, eyeY: 0.9,  blink: 2.4, spring: { k: 40, c: 11 } },
   speaking:  { open: 1,    spread: 0.3,  tilt: 0, eyeY: 0,    blink: 0.8, talk: true }
@@ -60,7 +61,7 @@ function stepSpring(s, dt) {
 }
 const DEFAULT_SPRING = { k: 140, c: 17 }
 const springs = {
-  open: makeSpring(140, 17), openL: makeSpring(140, 17), openR: makeSpring(140, 17),
+  open: makeSpring(140, 17),
   spread: makeSpring(120, 16), tilt: makeSpring(90, 14), eyeY: makeSpring(140, 17)
 }
 let curSpring = DEFAULT_SPRING
@@ -149,14 +150,18 @@ const BASE_W = 2
 const BASE_H = 4.8
 const BASE_GAP = 4.6
 
+/* 圆角矩形：四角同半径（= 宽度一半，再被高度夹住）。
+   绝不用 scale 缩放 —— 宽 / 高 / 圆角都是直接写属性，
+   高度变化时角半径同步变化，永远不会被拉成椭圆。 */
 function renderEye(rect, cx, cy, w, h, angle) {
+  const radius = Math.min(w / 2, h / 2)
   rect.setAttribute('transform', `translate(${cx} ${cy}) rotate(${angle.toFixed(2)})`)
   rect.setAttribute('width', w.toFixed(3))
   rect.setAttribute('height', h.toFixed(3))
   rect.setAttribute('x', (-w / 2).toFixed(3))
   rect.setAttribute('y', (-h / 2).toFixed(3))
-  rect.setAttribute('rx', (h / 2).toFixed(3))
-  rect.setAttribute('ry', (h / 2).toFixed(3))
+  rect.setAttribute('rx', radius.toFixed(3))
+  rect.setAttribute('ry', radius.toFixed(3))
 }
 
 let rafId = 0
@@ -210,17 +215,16 @@ function frame(now) {
     stepSpring(springs[key], dt)
   }
 
-  /* 说话：小幅音量微缩放（外部 level 优先，否则平滑噪声模拟） */
-  let talkL = 0
-  let talkR = 0
+  /* 说话：小幅音量微缩放（外部 level 优先，否则平滑噪声模拟）；两只眼同参数 */
+  let talk = 0
   if (talkMode) {
     const level = props.level >= 0 ? props.level : smoothNoise(now, 2.3)
-    talkL = (level - 0.5) * 0.24
-    talkR = (level - 0.5) * 0.22
+    talk = (level - 0.5) * 0.24
   }
 
-  const openL = Math.max(0.08, springs.openL.pos * (1 - closedL) + talkL + (smoothNoise(now, 0.9) - 0.5) * 0.02)
-  const openR = Math.max(0.08, springs.openR.pos * (1 - closedR) + talkR + (smoothNoise(now, 4.2) - 0.5) * 0.02)
+  /* 两眼同尺寸：差异只在眨眼时序（左眼先 15ms），稳态永远一样大 */
+  const openL = Math.max(0.08, springs.open.pos * (1 - closedL) + talk + (smoothNoise(now, 0.9) - 0.5) * 0.02)
+  const openR = Math.max(0.08, springs.open.pos * (1 - closedR) + talk + (smoothNoise(now, 0.9) - 0.5) * 0.02)
 
   const hL = Math.max(0.45, BASE_H * openL)
   const hR = Math.max(0.45, BASE_H * openR)
@@ -252,10 +256,9 @@ function frame(now) {
 function renderStatic() {
   if (!eyeL.value || !eyeR.value) return
   const half = BASE_GAP / 2 + springs.spread.target / 2
-  const openL = springs.openL.target
-  const openR = springs.openR.target
-  renderEye(eyeL.value, 12 - half, props.eyesY + springs.eyeY.target, BASE_W, Math.max(0.45, BASE_H * openL), -springs.tilt.target)
-  renderEye(eyeR.value, 12 + half, props.eyesY + springs.eyeY.target, BASE_W, Math.max(0.45, BASE_H * openR), springs.tilt.target)
+  const open = springs.open.target
+  renderEye(eyeL.value, 12 - half, props.eyesY + springs.eyeY.target, BASE_W, Math.max(0.45, BASE_H * open), -springs.tilt.target)
+  renderEye(eyeR.value, 12 + half, props.eyesY + springs.eyeY.target, BASE_W, Math.max(0.45, BASE_H * open), springs.tilt.target)
   if (svgEl.value) svgEl.value.setAttribute('transform', 'translate(0 0)')
 }
 
@@ -303,8 +306,8 @@ const label = computed(() => `智能体头像（${props.state}）`)
   >
     <g class="ui-agent-avatar__body">
       <g class="ui-agent-avatar__shape" v-html="shape"></g>
-      <rect ref="eyeL" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="-1" :y="eyesY - 2.4" rx="2.4" ry="2.4" />
-      <rect ref="eyeR" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="3.6" :y="eyesY - 2.4" rx="2.4" ry="2.4" />
+      <rect ref="eyeL" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="-1" :y="eyesY - 2.4" rx="1" ry="1" />
+      <rect ref="eyeR" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="3.6" :y="eyesY - 2.4" rx="1" ry="1" />
     </g>
   </svg>
 </template>
