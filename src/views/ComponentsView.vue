@@ -172,6 +172,7 @@ const dropped = ref([])
 const search = ref('')
 /* ---- 动效 / 手势演示用的状态 ---- */
 /* 演示用的气质切换：正式应用不要暴露给用户。 */
+const statusText = ref('')
 const motionTone = ref(getMotionTone())
 const motionToneOptions = [{ label: '克制', value: 'calm' }, { label: '活泼', value: 'lively' }]
 function applyTone(value) { motionTone.value = setMotionTone(value) }
@@ -187,22 +188,25 @@ function runTool(demo) {
   toolTimer = setTimeout(() => { toolStatus.value = demo === 'error' ? 'error' : 'success' }, 2600)
 }
 
-const statusStep = ref('idle')
-const statusProgress = ref(0)
+const statusStep = ref('none')
+/* null = 没有实际进度（转圈）；数字 = 实际进度 0~1 */
+const statusProgress = ref(null)
 const statusAuto = ref(true)
 let statusTimer = 0
 let statusTick = 0
 let statusRunId = 0
 
-/* 演示用的状态机：idle -> progress -> done -> idle -> progress -> error -> 回到 idle。
-   任意两个状态之间都能直接跳（手动按钮），组件内部靠同一套图层过渡，
-   所以 done -> progress、error -> done 这类反向切换也不会闪。 */
+/* 演示用的状态机：none → pending → progress(实际进度) → done →
+   progress(没有实际进度，转圈) → failed → 回到 none。
+   任意两态都能直接跳（手动按钮），组件里是同一圈描边在变形，所以不闪。 */
 const statusSequence = [
+  { status: 'none', wait: 600 },
   { status: 'idle', wait: 700 },
-  { status: 'progress', wait: 1700, ramp: true },
-  { status: 'done', wait: 1100 },
-  { status: 'idle', wait: 500 },
-  { status: 'progress', wait: 900, ramp: true },
+  { status: 'progress', wait: 1600, ramp: true },
+  { status: 'done', wait: 1000 },
+  { status: 'none', wait: 400 },
+  { status: 'progress', wait: 1400, indeterminate: true },
+  { status: 'done', wait: 800 },
   { status: 'error', wait: 1100 }
 ]
 
@@ -225,8 +229,10 @@ async function playStatus() {
     for (const step of statusSequence) {
       if (!statusAuto.value || runId !== statusRunId) return
       statusStep.value = step.status
+      clearInterval(statusTick)
       if (step.ramp) rampProgress(step.wait, runId)
-      else statusProgress.value = step.status === 'done' ? 1 : 0
+      else if (step.indeterminate) statusProgress.value = null
+      else statusProgress.value = step.status === 'done' ? 1 : null
       await sleep(step.wait)
     }
   }
@@ -237,13 +243,13 @@ function setStatus(status) {
   statusRunId++
   clearInterval(statusTick)
   statusStep.value = status
-  statusProgress.value = status === 'progress' ? 0.64 : status === 'done' ? 1 : 0
+  statusProgress.value = status === 'progress' ? 0.64 : status === 'done' ? 1 : null
 }
 
 function toggleStatusAuto() {
   statusAuto.value = !statusAuto.value
   if (statusAuto.value) {
-    statusProgress.value = 0
+    statusProgress.value = null
     playStatus()
   }
 }
@@ -783,23 +789,26 @@ onMounted(() => {
           <div class="lib-cell__stage lib-cell__stage--col">
             <div class="lib-cell__stage">
               <UiStatusMark :status="statusStep" :progress="statusProgress" :size="34" />
-              <span class="lib-muted">{{ statusStep }} · {{ Math.round(statusProgress * 100) }}%</span>
+              <span class="lib-muted">{{ statusStep }} · {{ statusProgress === null ? '不定进度（转圈）' : Math.round(statusProgress * 100) + '%' }}</span>
             </div>
             <div class="lib-cell__stage">
-              <UiButton size="sm" variant="tonal" @click="setStatus('idle')">idle</UiButton>
+              <UiButton size="sm" variant="tonal" @click="setStatus('none')">none</UiButton>
+              <UiButton size="sm" variant="tonal" @click="setStatus('idle')">pending</UiButton>
               <UiButton size="sm" variant="tonal" @click="setStatus('progress')">progress</UiButton>
               <UiButton size="sm" variant="tonal" @click="setStatus('done')">done</UiButton>
-              <UiButton size="sm" variant="tonal" @click="setStatus('error')">error</UiButton>
+              <UiButton size="sm" variant="tonal" @click="setStatus('error')">failed</UiButton>
               <UiButton size="sm" :variant="statusAuto ? 'primary' : 'outline'" @click="toggleStatusAuto">{{ statusAuto ? '自动中' : '自动播放' }}</UiButton>
             </div>
             <div class="lib-cell__stage">
-              <UiStatusMark status="idle" :size="22" />
+              <UiStatusMark status="none" :size="22" />
+              <UiStatusMark status="pending" :size="22" />
               <UiStatusMark status="progress" :progress="0.68" :size="22" />
+              <UiStatusMark status="progress" :progress="null" :size="22" />
               <UiStatusMark status="done" :size="22" />
-              <UiStatusMark status="error" :size="22" />
+              <UiStatusMark status="failed" :size="22" />
             </div>
           </div>
-          <span class="lib-cell__note">同一套图层在任意两态之间过渡：弧收满再画勾、勾反向抽笔再入场、叉与勾互转都不跳帧。</span>
+          <span class="lib-cell__note">none 只留底部一段空槽；progress 有实际进度就长弧、没有就转圈（两种不会互相乱跳）；任意两态互转都是同一条描边在变形。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">一次性验证码 <small>CodeSlots</small></span>

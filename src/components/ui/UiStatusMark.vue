@@ -1,143 +1,124 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed } from 'vue'
 
 const props = defineProps({
-  /* pending | running | done | failed（progress 只在 running 时有意义） */
+  /* none | pending | progress | done | failed
+     （兼容旧名：idle → pending，running → progress，error / cancelled → failed） */
   status: { type: String, default: 'pending' },
-  progress: { type: Number, default: 0 },
+  /* 实际进度 0~1；传 null / undefined = 没有实际进度（转圈的不定进度）。
+     注意默认值是 null：以前默认 0 会让「不定进度」被误判成 0%，弧长突然收缩。 */
+  progress: { type: Number, default: null },
   size: { type: Number, default: 26 },
-  /* 待机虚环的段数 */
+  /* pending 虚环的段数 */
   dashes: { type: Number, default: 8 },
   /* 不定进度时弧占整圈的比例 */
-  arcLength: { type: Number, default: 0.68 },
-  /* 自转一圈时长（ms） */
+  arcLength: { type: Number, default: 0.22 },
+  /* 不定进度转一圈的时长（ms） */
   spinDuration: { type: Number, default: 1100 },
   /* 勾 / 叉抽笔时长（ms） */
   drawDuration: { type: Number, default: 240 }
 })
 
 /* ============================================================
-   任务状态标记（按 react-bits 的 StatusMark 手法移植）
-   关键点：圆环只有 **一个 circle**，它既不是「虚环」也不是「进度弧」，
-   而是靠 stroke-dasharray 的 dash / gap 数值在两者之间**插值**：
-     · pending：dashes 段等分虚线（dash:gap ≈ 3:7）
-     · running：一段弧（不定进度 = 固定 0.68 圈；定进度 = progress）
-     · done / failed：整圈（弧长 1）
-   mode 0→1 与 arc 各自做补间，所以任意状态互转都是同一条描边的连续形变，
-   不会出现「两个图形互相淡入」。自转用 dashoffset 的循环动画实现；
-   勾 / 叉用 stroke-dashoffset 抽笔，进入时才可见（延迟 = 弧到位之后）。
+   任务状态标记
+   ------------------------------------------------------------
+   五个状态，全部由**同一圈描边**演化而来（不切换、不重建图形）：
+   · none      只有底部一段弧（一个「空槽」的暗示），上半部分什么都没有；
+   · pending   整圈虚线（8 段），安静待命；
+   · progress  分两种：
+               - 有实际进度（progress 是数字）：弧长 = 进度，静止不转；
+               - 没有实际进度（progress 为 null）：一小段弧持续转圈，
+                 像真的在跑，不给假的百分比；
+   · done      弧收满 + 勾号描边画出；
+   · failed    弧淡出 + 叉号描边画出。
+   dasharray 是连续量，CSS 直接过渡，所以任意两态互转都是同一条描边在变形。
    ============================================================ */
 
-/* 兼容旧调用方：idle / progress / error 三个别名映射到标准状态名。 */
-const ALIASES = { idle: 'pending', progress: 'running', error: 'failed' }
-const state = computed(() => ALIASES[props.status] || props.status || 'pending')
+const ALIASES = { idle: 'pending', running: 'progress', error: 'failed', cancelled: 'failed' }
+const state = computed(() => ALIASES[props.status] || props.status || 'none')
 
-const C = computed(() => 2 * Math.PI * 9)          /* r = 9 */
-const period = computed(() => C.value / Math.max(1, props.dashes))
-const clamped = computed(() => Math.max(0, Math.min(1, props.progress)))
+const R = 9
+const CIRC = 2 * Math.PI * R
+/* pathLength=100 归一之后的周长，方便算 dash。 */
+const LEN = 100
 
-const isRunning = computed(() => state.value === 'running')
-const determinate = computed(() => isRunning.value && Number.isFinite(props.progress) && props.progress !== 0 || isRunning.value)
-const solid = computed(() => isRunning.value || state.value === 'done' || state.value === 'failed')
-const targetArc = computed(() => {
-  if (state.value === 'pending') return 0.3
-  if (state.value === 'running') return Math.max(0.0001, clamped.value || props.arcLength)
-  return 1
-})
+const isNumeric = value => typeof value === 'number' && Number.isFinite(value)
+/* 有实际进度：progress 是数字（0 也算）。 */
+const determinate = computed(() => state.value === 'progress' && isNumeric(props.progress))
+/* 没实际进度：progress 状态下 progress 为 null。 */
+const indeterminate = computed(() => state.value === 'progress' && !isNumeric(props.progress))
 
-/* 用一份本地状态做补间：mode 0..1、arc 0..1、spin。 */
-const mode = ref(0)
-const arc = ref(targetArc.value)
-const spin = ref(0)
-let raf = 0
-let spinRaf = 0
-let last = 0
+const clamped = computed(() => Math.max(0, Math.min(1, isNumeric(props.progress) ? props.progress : 0)))
+const filled = computed(() => state.value === 'done' || state.value === 'failed')
 
-const smooth = (from, to, speed) => from + (to - from) * speed
-
-function tick(now) {
-  const speed = last ? Math.min(0.34, (now - last) / 240) : 0.18
-  last = now
-  mode.value = smooth(mode.value, solid.value ? 1 : 0, speed)
-  arc.value = smooth(arc.value, targetArc.value, speed)
-  const settled = Math.abs(mode.value - (solid.value ? 1 : 0)) < 0.002 && Math.abs(arc.value - targetArc.value) < 0.002
-  if (settled) {
-    mode.value = solid.value ? 1 : 0
-    arc.value = targetArc.value
-    raf = 0
-    last = 0
-    return
+/* 主描边的 dash：none 只留底部半圈、pending 是虚线、progress 是弧、完成是整圈。 */
+const ringDash = computed(() => {
+  if (state.value === 'none') return '50 50'
+  if (state.value === 'pending') {
+    const dash = (0.3 * LEN) / props.dashes
+    const gap = (0.7 * LEN) / props.dashes
+    return dash.toFixed(3) + ' ' + gap.toFixed(3)
   }
-  raf = requestAnimationFrame(tick)
-}
-
-function startTween() {
-  if (raf) return
-  last = 0
-  raf = requestAnimationFrame(tick)
-}
-
-watch([state, targetArc], () => startTween(), { immediate: true })
-
-/* 自转：只有 running 时需要，靠 dashoffset 连续递减。 */
-function spinTick(now) {
-  if (!last && now) { /* noop */ }
-  spin.value = (spin.value + 1.6) % C.value
-  spinRaf = requestAnimationFrame(spinTick)
-}
-watch(isRunning, value => {
-  if (value && !spinRaf) spinRaf = requestAnimationFrame(spinTick)
-  if (!value && spinRaf) { cancelAnimationFrame(spinRaf); spinRaf = 0; spin.value = 0 }
-}, { immediate: true })
-
-onBeforeUnmount(() => {
-  if (raf) cancelAnimationFrame(raf)
-  if (spinRaf) cancelAnimationFrame(spinRaf)
+  if (state.value === 'progress') {
+    if (!determinate.value) return '22 78'
+    const dash = clamped.value * LEN
+    return Math.max(0.001, dash).toFixed(3) + ' ' + Math.max(0.001, LEN - dash).toFixed(3)
+  }
+  /* done / failed：整圈，留给勾叉当底色 */
+  return '100 0.001'
 })
-
-/* 单条描边的 dash 数值：虚环 ↔ 弧的插值。 */
-const dashArray = computed(() => {
-  const c = C.value
-  const p = period.value
-  const idleDash = 0.3 * p
-  const idleGap = 0.7 * p
-  const arcDash = arc.value * c
-  const arcGap = (1 - arc.value) * c
-  const m = mode.value
-  const dash = idleDash + (arcDash - idleDash) * m
-  const gap = idleGap + (arcGap - idleGap) * m
-  return Math.max(0.01, dash) + ' ' + Math.max(0.01, gap)
-})
-
-const dashOffset = computed(() => (isRunning.value ? -spin.value : 0))
+/* none 的底部半圈：从 3 点钟方向开始画 50，正好是下半圈。 */
+const ringOffset = computed(() => (state.value === 'none' ? -25 : 0))
 
 const spinDuration = computed(() => props.spinDuration + 'ms')
-const checkStyle = computed(() => ({ '--draw': props.drawDuration + 'ms' }))
+const drawDuration = computed(() => props.drawDuration + 'ms')
+const rootStyle = computed(() => ({
+  width: props.size + 'px',
+  height: props.size + 'px',
+  '--spin-dur': spinDuration.value,
+  '--draw-dur': drawDuration.value
+}))
 </script>
 
 <template>
   <span
     class="ui-status-mark"
-    :class="`is-${state}`"
-    :style="{ width: size + 'px', height: size + 'px', ...checkStyle }"
+    :class="[`is-${state}`, { 'is-indeterminate': indeterminate }]"
+    :style="rootStyle"
     role="status"
-    :aria-label="state === 'done' ? '已完成' : state === 'failed' ? '失败' : state === 'running' ? '进行中' : '待处理'"
+    :aria-label="state === 'none' ? '无状态'
+      : state === 'done' ? '已完成'
+      : state === 'failed' ? '失败'
+      : indeterminate ? '进行中（不定进度）'
+      : determinate ? '进行中 ' + Math.round(clamped * 100) + '%'
+      : '待处理'"
   >
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <!-- 轨道：极淡的底环，给弧一个参照 -->
-      <circle class="ui-status-mark__track" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" opacity=".14" />
-      <!-- 主角：一条描边，虚环 ↔ 弧靠 dasharray 插值 -->
+      <!-- 主描边：none 底部残弧 / pending 虚线 / progress 实弧 / done·failed 整圈 -->
       <circle
         class="ui-status-mark__ring"
-        cx="12" cy="12" r="9"
+        cx="12" cy="12" :r="R"
+        pathLength="100"
         transform="rotate(-90 12 12)"
         stroke="currentColor"
         stroke-width="2.2"
         stroke-linecap="round"
-        :stroke-dasharray="dashArray"
-        :stroke-dashoffset="dashOffset"
+        :stroke-dasharray="ringDash"
+        :stroke-dashoffset="ringOffset"
       />
-      <!-- 勾 / 叉：pathLength=1 的抽笔，进入时才可见 -->
+      <!-- 不定进度的转圈：固定一小段弧，靠 dashoffset 匀速走 -->
+      <circle
+        v-if="indeterminate"
+        class="ui-status-mark__spin"
+        cx="12" cy="12" :r="R"
+        pathLength="100"
+        transform="rotate(-90 12 12)"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        :stroke-dasharray="(arcLength * 100).toFixed(2) + ' ' + ((1 - arcLength) * 100).toFixed(2)"
+      />
+      <!-- 勾 / 叉：pathLength=1 抽笔 -->
       <path class="ui-status-mark__check" d="M7.5 12.25 10.5 15.25 16.75 8.75" pathLength="1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
       <path class="ui-status-mark__cross" d="M8.6 8.6l6.8 6.8M15.4 8.6l-6.8 6.8" pathLength="1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
     </svg>
@@ -156,26 +137,38 @@ const checkStyle = computed(() => ({ '--draw': props.drawDuration + 'ms' }))
 }
 .ui-status-mark svg { width: 100%; height: 100%; display: block; overflow: visible; }
 
-/* 描边：颜色与线宽随状态过渡；自转用 dashoffset 循环（不是 transform，圆心不会动）。 */
-/* 注意：旋转由 SVG 属性 transform="rotate(-90 12 12)" 负责（自带原点）。
-   这里不要再写 CSS transform-origin，否则原点会被应用两次，圆环整体偏移。 */
+/* 主描边：dasharray / dashoffset 都是连续量，状态互转时自然过渡。
+   注意这里不写 CSS transform-origin —— 旋转原点由 rotate(-90 12 12) 自带，
+   再写一次会让圆环整体偏移（踩过这个坑）。 */
 .ui-status-mark__ring {
-  transition: stroke 200ms ease, stroke-width 200ms ease;
-}
-.ui-status-mark.is-running .ui-status-mark__ring {
-  animation: uiStatusRotate v-bind(spinDuration) linear infinite;
-}
-@keyframes uiStatusRotate {
-  to { stroke-dashoffset: calc(var(--spin, 0) - 100); }
+  transition: stroke-dasharray 320ms cubic-bezier(.23,1,.32,1),
+              stroke-dashoffset 320ms cubic-bezier(.23,1,.32,1),
+              stroke 200ms ease, opacity 200ms ease;
 }
 
-.ui-status-mark.is-running { color: var(--primary); }
+/* 各态配色 */
+.ui-status-mark.is-progress { color: var(--primary); }
 .ui-status-mark.is-pending { color: var(--on-surface-variant); }
 .ui-status-mark.is-pending .ui-status-mark__ring { opacity: .62; }
+.ui-status-mark.is-none { color: var(--outline-variant); }
+.ui-status-mark.is-none .ui-status-mark__ring { opacity: .8; }
 .ui-status-mark.is-done { color: var(--ui-success, #15803d); }
 .ui-status-mark.is-failed { color: var(--error); }
+/* 完成 / 失败：整圈退成淡底，让勾叉当主角 */
+.ui-status-mark.is-done .ui-status-mark__ring,
+.ui-status-mark.is-failed .ui-status-mark__ring { opacity: .26; }
 
-/* 勾 / 叉：默认抽笔（dashoffset 1），进入完成 / 失败时画出来。 */
+/* 不定进度：只显示转圈那条弧，主描边隐去，避免两段弧叠在一起乱跳。 */
+.ui-status-mark.is-indeterminate .ui-status-mark__ring { opacity: 0; }
+.ui-status-mark__spin {
+  animation: uiStatusSpin var(--spin-dur, 1100ms) linear infinite;
+}
+@keyframes uiStatusSpin {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -100; }
+}
+
+/* 勾 / 叉：默认抽笔隐藏，进入对应状态才画出来。 */
 .ui-status-mark__check,
 .ui-status-mark__cross {
   stroke-dasharray: 1;
@@ -185,21 +178,19 @@ const checkStyle = computed(() => ({ '--draw': props.drawDuration + 'ms' }))
   transform-origin: center;
 }
 .ui-status-mark.is-done .ui-status-mark__check {
-  animation: uiStatusDraw var(--draw) cubic-bezier(.23,1,.32,1) forwards;
+  animation: uiStatusDraw var(--draw-dur, 240ms) cubic-bezier(.23,1,.32,1) forwards;
 }
 .ui-status-mark.is-failed .ui-status-mark__cross {
-  animation: uiStatusDraw var(--draw) cubic-bezier(.23,1,.32,1) forwards;
+  animation: uiStatusDraw var(--draw-dur, 240ms) cubic-bezier(.23,1,.32,1) forwards;
 }
 @keyframes uiStatusDraw {
   from { stroke-dashoffset: 1; opacity: 1; }
   to { stroke-dashoffset: 0; opacity: 1; }
 }
-/* 完成 / 失败时圆环退成淡背景，让勾叉成为主角。 */
-.ui-status-mark.is-done .ui-status-mark__ring,
-.ui-status-mark.is-failed .ui-status-mark__ring { opacity: .28; transition: opacity 200ms ease 120ms; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-status-mark__ring { animation: none !important; }
+  .ui-status-mark__ring { transition-duration: .01ms; }
+  .ui-status-mark__spin { animation: none; }
   .ui-status-mark__check,
   .ui-status-mark__cross { animation-duration: .01ms !important; }
 }

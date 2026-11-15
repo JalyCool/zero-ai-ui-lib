@@ -1,0 +1,21 @@
+StatusMark 增加 none 状态，并把 progress 拆成「实际进度 / 不定进度转圈」
+
+1. none：只画底部一段空槽（pathLength=100 里 dash 50 / gap 50、offset -25，
+   正好是下半圈），上半部分什么都没有，用来表示「还没有状态」。
+2. progress 之前无论有没有实际进度都显示同一条弧（而且 progress 默认 0 会把
+   null 误判成 0%），所以看起来会乱跳。现在拆成两种：
+   · progress 是数字 → 弧长 = 实际进度，静止不转；
+   · progress 为 null → 单独一条 22% 的弧匀速转圈（dashoffset 走 0 → -100），
+     主描边隐藏，两种形态不会互相干扰。
+   顺带把 progress 默认值改成 null（不是 0），并把线性插值换成 CSS 过渡，
+   dasharray 是连续量，状态互转不再跳。
+3. 状态名规范化：none / pending / progress / done / failed；旧名 idle / running /
+   error / cancelled 继续兼容。
+
+演示页：状态按钮补齐 none / pending / progress / done / failed；自动序列加入
+none 与「不定进度转圈」两段；底部静态示例改为 6 枚（none / pending /
+progress 68% / progress 转圈 / done / failed）。
+
+实测（390x844 @2x）：none dash 50/50 offset -25（底部半圈）、pending 3.75/8.75 虚线、
+progress 64/36 实弧且无转圈、done/failed 整圈；transparent 转圈元素在动
+（dashoffset -20.45 → -57.56）；6 枚标记环心偏移全为 0；console 零错误。

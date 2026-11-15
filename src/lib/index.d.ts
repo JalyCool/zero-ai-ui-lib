@@ -26,7 +26,15 @@ declare const UiScrubField: DefineComponent<{
   unit?: string; label?: string; pixelsPerRange?: number; rubber?: number; disabled?: boolean
 }, AnyProps, unknown>
 declare const UiStatusMark: DefineComponent<{
-  status?: 'idle' | 'progress' | 'done' | 'error'; progress?: number; size?: number
+  /** none（只有底部空槽）/ pending / progress / done / failed；兼容旧名 idle / running / error */
+  status?: 'none' | 'pending' | 'progress' | 'done' | 'failed' | 'idle' | 'running' | 'error'
+  /** 实际进度 0~1；传 null = 没有实际进度，显示转圈 */
+  progress?: number | null
+  size?: number
+  dashes?: number
+  arcLength?: number
+  spinDuration?: number
+  drawDuration?: number
 }, AnyProps, unknown>
 declare const UiStepFlow: DefineComponent<{
   steps?: { label: string; description?: string; icon?: string }[]
