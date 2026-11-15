@@ -4,7 +4,7 @@ import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
-  UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
+  UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
   UiText, UiToolCallChip, UiTooltipGroup,
   UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
   UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
@@ -25,6 +25,11 @@ import supabaseSvg from '../assets/figma/supabase.svg?raw'
 const supabaseGlyph = supabaseSvg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '')
 /* ZERO 头像（黑底两只白眼睛），作为「SVG 图标无遮罩」的示例 */
 const zeroFace = '<rect width="24" height="24" rx="12" fill="#111"/><rect x="8.4" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/><rect x="13" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/>'
+/* AgentAvatar 的底层形状：纯剪影（组件负责上色 / 描边 / 眼睛） */
+const agentCircle = '<circle cx="12" cy="12" r="10"/>'
+const agentTriangle = '<path d="M5.77 4.01C8.09 0 13.41 0 15.72 4.01L21.49 14C24 18.16 21.18 24 16.53 24H4.98C0.32 24-2.5 18.16 0 14Z"/>'
+/* Frame 11 的 Guide 头像：圆角三角形 + 两只眼睛（无遮罩） */
+const guideFace = '<path d="M5.77 4.01C8.09 0 13.41 0 15.72 4.01L21.49 14C24 18.16 21.18 24 16.53 24H4.98C0.32 24-2.5 18.16 0 14Z" fill="#7438FF" stroke="white" stroke-opacity=".3"/><rect x="8.4" y="8.4" width="2.4" height="5.2" rx="1.2" fill="white"/><rect x="14.3" y="8.4" width="2.4" height="5.2" rx="1.2" fill="white"/>'
 /* 任意形状的 SVG：五角星，不套遮罩，露出的就是星形本身 */
 const starGlyph = '<path d="M12 2l2.9 6.2 6.8.9-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.9z" fill="#f59e0b"/>'
 
@@ -521,7 +526,7 @@ onMounted(() => {
   <section class="view active lib" data-view="components">
     <div class="lib-hero">
       <h2 class="lib-hero__title">组件库</h2>
-      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。8 个分区、94 个组件，窄屏单列、宽屏自动多列。</p>
+      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。8 个分区、96 个组件，窄屏单列、宽屏自动多列。</p>
     </div>
 
     <!-- 分类选择器：一次只展示一个分区，避免把几十个组件全排在一页里 -->
@@ -615,6 +620,10 @@ onMounted(() => {
               <UiAvatarTag name="菱形" :src="viewerSrc" shape="diamond" />
             </div>
             <div class="lib-demo-row">
+              <UiAvatarTag name="ZERO" :icon="zeroFace" />
+              <UiAvatarTag name="Guide" :icon="guideFace" accent="#7438ff" />
+            </div>
+            <div class="lib-demo-row">
               <UiAvatarTag name="图标 · 无遮罩" :icon="zeroFace" />
               <UiAvatarTag name="星形" :icon="starGlyph" />
               <UiAvatarTag name="星形 · md" :icon="starGlyph" size="md" />
@@ -622,7 +631,45 @@ onMounted(() => {
               <UiAvatarTag name="自定义形状" :src="viewerSrc" shape="blob" size="lg" />
             </div>
           </div>
-          <span class="lib-cell__note">图片按 shape 裁切；icon 模式不套遮罩，保留 SVG 自身形状。</span>
+          <span class="lib-cell__note">图片按 shape 裁切；icon 模式不套遮罩，保留 SVG 自身形状。药丸底色上下各内缩 1px，头像比底色探出 1px（对齐 Frame 11）。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">智能体头像 <small>AgentAvatar</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div class="lib-demo-row">
+              <UiAgentAvatar :shape="agentCircle" color="#3f5f90" state="idle" :size="44" />
+              <UiAgentAvatar :shape="agentTriangle" color="#7438ff" state="listening" :eyes-y="15" :size="44" />
+              <UiAgentAvatar :shape="agentCircle" color="#0f766e" state="thinking" :size="44" />
+              <UiAgentAvatar :shape="agentTriangle" color="#b45309" state="happy" :eyes-y="15" :size="44" />
+            </div>
+            <div class="lib-demo-row">
+              <UiAgentAvatar :shape="agentCircle" color="#ba1a1a" state="confused" :size="44" />
+              <UiAgentAvatar :shape="agentTriangle" color="#7b5294" state="surprised" :eyes-y="15" :size="44" />
+              <UiAgentAvatar :shape="agentCircle" color="#46464f" state="sleepy" :size="44" />
+              <UiAgentAvatar :shape="agentTriangle" color="#249361" state="speaking" :eyes-y="15" :size="44" />
+            </div>
+          </div>
+          <span class="lib-cell__note">传剪影 SVG + 颜色，自动描边 + 胶囊眼；状态机驱动（呼吸 / 随机眨眼 / 弹簧注视 / 微扫视 / 左右眼 15ms 延迟），任意状态之间弹簧过渡。眼睛会跟着鼠标看。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">头像组 <small>AvatarGroup</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiAvatarGroup>
+              <UiAvatar name="Alex Chen" :src="viewerSrc" />
+              <UiAvatar name="B" :src="viewerSrc" />
+              <UiAvatar name="Coco Li" />
+              <UiAvatar name="D" :src="viewerSrc" status />
+              <UiAvatar name="Eve Wang" />
+            </UiAvatarGroup>
+            <UiAvatarGroup size="sm" :max="3">
+              <UiAvatar name="A" :src="viewerSrc" />
+              <UiAvatar name="B" />
+              <UiAvatar name="C" :src="viewerSrc" />
+              <UiAvatar name="D" />
+              <UiAvatar name="E" :src="viewerSrc" />
+            </UiAvatarGroup>
+          </div>
+          <span class="lib-cell__note">src 支持 base64 data URL / 在线地址；size 统一继承，单项可覆盖；max 超出折叠成 +N。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">分段 / 步进 / 评分</span>

@@ -60,6 +60,12 @@
 
 ## D. 进度记录（最近提交）
 
+- 2026-11-15（第十三段）：新增 **UiAgentAvatar**（剪影 SVG + 颜色 → 自动描边 + 胶囊眼；状态机
+  idle / listening / thinking / happy / confused / surprised / sleepy / speaking，任意状态间弹簧过渡；
+  呼吸 / 随机眨眼快闭慢开过冲 1.02 / 弹簧注视 / 微扫视 / 左右眼 15ms 延迟 / 闭眼细线）与
+  **UiAvatarGroup**（叠放 + surface 描环 + max 折叠 +N，size 组内继承）；UiAvatar 支持
+  base64 data URL / 在线地址且 size 可继承组。UiAvatarTag 药丸底色上下内缩 1px、头像探出
+  1px（对齐 Frame 11），新增 accent。
 - 2026-11-15 发布 npm **0.2.0**：新增 UiAvatarTag / UiPagerDots / 卡片 product 变体，取色盘 / 自动完成 / 动效与布局修复；包内已无 UiMediaViewer。
 
 - 本轮（第十一段）：清理重复组件 —— 删除 UiNumberInput（UiStepper）、UiDateInput/UiTimeInput

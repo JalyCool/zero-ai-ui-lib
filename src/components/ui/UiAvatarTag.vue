@@ -2,13 +2,14 @@
 import { computed } from 'vue'
 
 /* ============================================================
-   AvatarTag（参考 Figma NameTag 5:52）
+   AvatarTag（参考 Figma NameTag 5:52 / Frame 11）
    ------------------------------------------------------------
-   · 一枚小药丸 + 左侧探出的头像；头像可以是任意形状遮罩的图片，
-     也可以直接是一枚 SVG 图标 —— 图标模式不做任何遮罩 / 裁切，
-     保留 SVG 原本形状。
+   · 药丸底色比组件盒高**上下各小 1px**（用 ::before 内缩绘制），
+     头像与组件盒同高 —— 所以头像会超出药丸背景 1px，和设计稿一致。
+   · 头像可以是任意形状遮罩的图片，也可以是任意 SVG 图标：
+     图标模式不做任何遮罩 / 裁切，保留 SVG 原本形状。
    · shape 只作用于图片：circle / squircle / square / hexagon /
-     diamond / blob；图标模式会忽略 shape（无遮罩）。
+     diamond / blob；图标模式忽略 shape（无遮罩）。
    ============================================================ */
 
 const props = defineProps({
@@ -21,14 +22,20 @@ const props = defineProps({
   /* circle | squircle | square | hexagon | diamond | blob */
   shape: { type: String, default: 'circle' },
   /* sm | md | lg */
-  size: { type: String, default: 'sm' }
+  size: { type: String, default: 'sm' },
+  /* 品牌强调色：药丸底色用它的 10%，文字用它调暗后的颜色（参考 Frame 11 的 Guide） */
+  accent: { type: String, default: '' }
 })
 
 const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCase())
 </script>
 
 <template>
-  <span class="ui-avatar-tag" :class="['ui-avatar-tag--' + size]">
+  <span
+    class="ui-avatar-tag"
+    :class="['ui-avatar-tag--' + size, { 'has-accent': !!accent }]"
+    :style="accent ? { '--tag-accent': accent } : undefined"
+  >
     <span
       class="ui-avatar-tag__avatar"
       :class="['is-' + shape, { 'is-icon': !!icon, 'is-image': !!src }]"
@@ -56,31 +63,44 @@ const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCas
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  padding: 0 8px 0 19px;
+  padding: 0 8px 0 20px;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--on-surface) 10%, transparent);
   color: var(--on-surface);
   font-weight: var(--w-strong);
   white-space: nowrap;
+  isolation: isolate;
 }
-.ui-avatar-tag--sm { height: 18px; padding: 0 8px 0 19px; font-size: var(--fs-micro); letter-spacing: .04em; }
+/* 药丸底色：上下各内缩 1px。头像和组件盒同高，于是头像正好探出底色 1px。 */
+.ui-avatar-tag::before {
+  content: '';
+  position: absolute;
+  inset: 1px 0;
+  z-index: 0;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--tag-accent, var(--on-surface)) 10%, transparent);
+  pointer-events: none;
+}
+.ui-avatar-tag--sm { height: 18px; font-size: var(--fs-micro); letter-spacing: .04em; }
 .ui-avatar-tag--md { height: 24px; padding: 0 9px 0 26px; font-size: var(--fs-tiny); }
-.ui-avatar-tag--lg { height: 30px; padding: 0 11px 0 33px; font-size: var(--fs-small); }
+.ui-avatar-tag--lg { height: 30px; padding: 0 11px 0 32px; font-size: var(--fs-small); }
 
+/* 头像：左缘比药丸再探出 1px；圆角环画在头像内侧，和设计稿一致。 */
 .ui-avatar-tag__avatar {
   position: absolute;
   left: -1px;
   top: 50%;
+  z-index: 2;
   width: 18px;
   height: 18px;
   transform: translateY(-50%);
   overflow: hidden;
   background: var(--surface-container-highest);
-  border: 1px solid color-mix(in oklab, var(--surface) 70%, transparent);
-  box-shadow: 0 1px 2px color-mix(in oklab, var(--on-surface) 18%, transparent);
+  border: 1px solid color-mix(in oklab, #fff 30%, transparent);
 }
 .ui-avatar-tag--md .ui-avatar-tag__avatar { width: 24px; height: 24px; }
 .ui-avatar-tag--lg .ui-avatar-tag__avatar { width: 30px; height: 30px; }
+
+.ui-avatar-tag__label { position: relative; z-index: 1; }
 
 .ui-avatar-tag__avatar img,
 .ui-avatar-tag__glyph,
@@ -118,11 +138,20 @@ const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCas
 /* 图标：无遮罩 —— 背景、描边、裁切全部去掉，保留 SVG 自身形状 */
 .ui-avatar-tag__avatar.is-icon {
   background: transparent;
-  border-color: transparent;
-  box-shadow: none;
+  /* 图标模式不要边框占位：SVG 要铺满 18px 头像盒，才能和设计一样探出药丸 1px。 */
+  border: 0;
   overflow: visible;
   border-radius: 0;
   clip-path: none;
 }
 .ui-avatar-tag__avatar.is-icon .ui-avatar-tag__glyph { overflow: visible; }
+
+/* 品牌色：底色取 accent 的 10%，文字往 on-surface 方向压暗 / 提亮，深色主题也可读。 */
+.ui-avatar-tag.has-accent {
+  color: color-mix(in oklab, var(--tag-accent) 70%, var(--on-surface));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-avatar-tag__avatar { transition: none; }
+}
 </style>

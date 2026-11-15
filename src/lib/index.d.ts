@@ -65,7 +65,32 @@ declare const UiButton: DefineComponent<{
 }, AnyProps, unknown>
 declare const UiAccordion: DefineComponent<{ title?: string; open?: boolean; modelValue?: boolean }, AnyProps, unknown>
 declare const UiAlert: DefineComponent<{ tone?: 'warning' | 'danger' | 'success' | 'info'; title?: string }, AnyProps, unknown>
-declare const UiAvatar: DefineComponent<{ name?: string; src?: string; size?: number }, AnyProps, unknown>
+declare const UiAvatar: DefineComponent<{ name?: string; src?: string; size?: 'sm' | 'md' | 'lg' | ''; status?: boolean }, AnyProps, unknown>
+declare const UiAvatarGroup: DefineComponent<{
+  /** 统一给组内头像设置尺寸；单项自己写了 size 就以单项为准 */
+  size?: 'sm' | 'md' | 'lg' | ''
+  /** 超出 max 折叠成 +N；0 = 全部显示 */
+  max?: number
+}, AnyProps, unknown>
+declare const UiAgentAvatar: DefineComponent<{
+  /** 纯剪影 SVG 内部标记（24x24 viewBox）；组件自动上色 + 描边 + 胶囊眼 */
+  shape: string
+  /** 形状主色 */
+  color?: string
+  eyeColor?: string
+  /** px */
+  size?: number | string
+  /** idle | listening | thinking | happy | confused | surprised | sleepy | speaking */
+  state?: string
+  /** mouse 跟随指针 | none 只做微扫视 */
+  gaze?: 'mouse' | 'none'
+  /** false 时摆出当前状态的静止姿势，不跑动画循环 */
+  animated?: boolean
+  /** speaking 状态的外部音量包络 0~1（可选） */
+  level?: number
+  /** 眼睛基准高度（viewBox 24 内） */
+  eyesY?: number
+}, AnyProps, unknown>
 declare const UiBadge: DefineComponent<{ tone?: 'primary' | 'success' | 'warning' | 'danger'; dot?: boolean; label?: string }, AnyProps, unknown>
 declare const UiBarChart: DefineComponent<{ data?: number[]; labels?: string[]; height?: number }, AnyProps, unknown>
 declare const UiBottomSheet: DefineComponent<{ modelValue?: boolean; title?: string; maxHeight?: string; closeOnBackdrop?: boolean; scrim?: boolean; anchors?: number[] }, AnyProps, unknown>
@@ -78,6 +103,8 @@ declare const UiAvatarTag: DefineComponent<{
   iconViewBox?: string
   shape?: 'circle' | 'squircle' | 'square' | 'hexagon' | 'diamond' | 'blob'
   size?: 'sm' | 'md' | 'lg'
+  /** 品牌强调色：药丸底色取 10%，文字压暗 / 提亮 */
+  accent?: string
 }, AnyProps, unknown>
 declare const UiCard: DefineComponent<{
   title?: string
@@ -433,7 +460,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 /* ---------- components ---------- */
 export {
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
-  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
+  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,

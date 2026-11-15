@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 0.75px 细描边 + 圆角分档」，不用阴影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：94 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：96 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -124,7 +124,9 @@ import {
 | `UiButton` | `variant`: primary / tonal / outline / text / danger / icon；`size`: sm / md / lg；`block` `loading` `disabled` |
 | `UiCard` | 三段卡片：`#header`（也可用 `title` / `description` / `icon` 快速生成，`#actions` 在右侧）/ 默认插槽主体 / `#footer`；`divider` 控制分隔线，`variant` outline / filled / plain，`size` sm / md / lg，`clickable` 只做悬停与按下的表现。`variant="product"` 是产品授权卡：`product-name` + `product-icon`（任意 viewBox 的 SVG 标记）+ `accent` 品牌色，卡片底部带同色光晕、不分段画线、页脚动作按钮跟随品牌色（主按钮实心 accent、tonal 按钮 accent 淡底） |
 | `UiChip` / `UiBadge` | chip 可 `selected` `removable` `dot`；badge `tone`: primary / success / warning / danger |
-| `UiAvatarTag` | 头像标签：左侧探出一枚头像 + 右侧药丸文字；`src` 按 `shape`（circle / squircle / square / hexagon / diamond / blob）裁成不同形状，`icon` 直接放任意 SVG 标记 —— **图标模式不套任何遮罩 / 裁切**，保留 SVG 自身形状；`icon-view-box` 可自定义（品牌图标多半不是 24×24），`size` sm / md / lg |
+| `UiAvatar` / `UiAvatarGroup` | 头像 + 头像组：`name` 取首字母、`src` 支持 base64 data URL / 在线地址、`status` 在线点。Group 叠放（后一个压前一个、surface 色描环、悬停抬起），`size` 统一给组内头像设置尺寸（单项自己写了以单项为准），`max` 超出折叠成 **+N** |
+| `UiAgentAvatar` | 智能体头像：传一段**纯剪影 SVG**（`shape`，24 viewBox）+ `color`，组件自动上色、白 30% 外圈描边（paint-order: stroke）并叠加**两只胶囊眼**。眼睛由状态机驱动：`state` = idle / listening / thinking / happy / confused / surprised / sleepy / speaking，**任意状态→任意状态都是同一组参数（开合 / 眼距 / 倾斜 / 高度）的弹簧过渡**，没有硬切；生命层（呼吸 3–5s、随机眨眼快闭慢开过冲 1.02、平滑噪声微动）永远在，注意力层（`gaze="mouse"` 弹簧注视 / 微扫视每 2–5s 换目标 / 左右眼 15ms 延迟）叠加其上；闭眼是一条宽度略增的细线不消失；`eyesY` 调眼睛基准高度（三角脸往下调），`level` 给说话状态接外部音量包络，`animated=false` 摆静止姿势 |
+| `UiAvatarTag` | 头像标签：左侧探出一枚头像 + 右侧药丸文字；`src` 按 `shape`（circle / squircle / square / hexagon / diamond / blob）裁成不同形状，`icon` 直接放任意 SVG 标记 —— **图标模式不套任何遮罩 / 裁切**，保留 SVG 自身形状；`icon-view-box` 可自定义（品牌图标多半不是 24×24），`size` sm / md / lg；药丸底色上下各内缩 **1px**、头像与组件盒同高，所以头像天然探出底色 1px（对齐 Frame 11）；`accent` 给药丸底色 10% 品牌色、文字用压暗后的品牌色 |
 | `UiSegmented` | `v-model` + `options`（`{ label, value, disabled?, icon? }`）；`label` 在左上角，`layout="one-line"` 标签与控件同行；`icon-placement="leading\|top"`（图标在文字前端 / 上方卡片式）、`show-labels="false"` 只留图标、`auto-multiline`（默认开）在**真实内容宽度**放不下时切成网格多行——列数用 canvas measureText 量文字宽度算，不靠猜固定最小宽度；控件本身 `width:100%`，避免「量一次→变窄→再量更窄」的收缩循环 |
 | `UiStepper` | `v-model` 数字 + `unit` `min` `max` `step`；`size`(sm/md/lg/xl)、`controls`(sides/bottom)、`roll`(standard/reverse)、`fieldLabel` |
 | `UiSelect` | 自绘下拉：`v-model` + `:options="[{ label, value, icon?, disabled? }]"`；点输入框原地展开成列表；`icon-placement="leading\|top"`——leading 图标在文字前端（列表行布局不变，选中项图标也会显示在字段里），top 把面板变成图标卡片网格；`disabled` 整体禁用，单项 `disabled` 可见不可选；**`multiple` 多选模式**：`v-model` 为数组，勾选不收回面板，字段里显示已选标签摘要（列显隐等场景直接复用它） |
