@@ -42,12 +42,17 @@ const DEFAULTS = {
   /* 跟手到底时的缩小幅度（越小越明显） */
   maxScale: 0.86,
   /* 跟手到底时的圆角（px）：滑动过程中圆角连续变大 */
-  maxRadius: 18,
+  maxRadius: 32,
   /* 起始阻尼：前段位移需要多拖一点才动（0 = 完全线性跟手） */
   startDeadZone: 4,
   /* 完成 / 弹回动画时长（ms） */
   finishDuration: 260,
   revertDuration: 340,
+  /* 弹回时：离得越远，时长与回弹幅度都略增（弹性随距离增强）。 */
+  revertDurationFar: 520,
+  /* 弹回越界系数（cubic-bezier 的 y2）：近处几乎不回弹，远处明显回弹。 */
+  revertOvershootNear: 1.02,
+  revertOvershootFar: 1.42,
   /* 下层遮罩：最大不透明度与背景模糊半径 */
   scrimOpacity: 0.36,
   scrimBlur: 10,
@@ -259,6 +264,8 @@ export function useEdgeSwipeBack(options = {}) {
       'opacity ' + config.finishDuration + 'ms ease-out'
     ].join(', ')
     el.style.transform = 'translate3d(' + to + 'px,0,0) scale(' + config.maxScale + ')'
+    /* 滑出过程中圆角继续加大到上限，和跟手趋势一致。 */
+    el.style.borderRadius = config.maxRadius + 'px'
     el.style.opacity = '0.85'
     if (scrim) {
       scrim.style.transition = 'opacity ' + config.finishDuration + 'ms ease-out'
@@ -286,20 +293,44 @@ export function useEdgeSwipeBack(options = {}) {
     }, config.finishDuration)
   }
 
-  /* 未过阈值：恢复 transition 弹回原位。 */
+  /* 未过阈值：从松手的确切位置弹回原位。
+     · 起点 = 当前 travelled / 缩放 / 圆角（先提交这一帧，绝不重置）；
+     · 离得越远，时长略增、回弹（overshoot）越明显 —— 弹性随距离增强。 */
   function revert() {
     if (!el) { dropScrim(); return }
     if (reduceMotion()) { restoreStatic(); dropScrim(); return }
     animating = true
+
+    /* 把松手瞬间的跟手状态落成显式值，保证过渡起点就是手指所在处。 */
+    const progress = progressOf(travelled)
+    const scale = 1 - (1 - config.maxScale) * progress
+    const radius = config.maxRadius * progress
+    el.style.transition = 'none'
+    el.style.transform = 'translate3d(' + travelled + 'px,0,0) scale(' + scale + ')'
+    el.style.borderRadius = radius > 0.4 ? radius.toFixed(2) + 'px' : savedRadius
+    /* 强制一帧：让上面的起点被浏览器接受，transition 才不会从旧值插值。 */
     void el.offsetWidth
+
+    /* 弹性随距离：近处几乎线性，远处过冲更明显、时长更长。 */
+    const ease = progress
+    const y2 = config.revertOvershootNear +
+      (config.revertOvershootFar - config.revertOvershootNear) * ease
+    /* 控制点 y1 同步抬一点，避免中段被拉得过慢。 */
+    const y1 = 1 + (y2 - 1) * 0.25
+    const duration = Math.round(
+      config.revertDuration + (config.revertDurationFar - config.revertDuration) * ease
+    )
+    const curve = 'cubic-bezier(.34,' + y1.toFixed(3) + ',.5,' + y2.toFixed(3) + ')'
+
     el.style.transition = [
-      'transform ' + config.revertDuration + 'ms cubic-bezier(.25,.1,.25,1)',
-      'border-radius ' + config.revertDuration + 'ms cubic-bezier(.25,.1,.25,1)'
+      'transform ' + duration + 'ms ' + curve,
+      'border-radius ' + duration + 'ms ' + curve
     ].join(', ')
     el.style.transform = 'translate3d(0,0,0) scale(1)'
     el.style.borderRadius = savedRadius
+
     if (scrim) {
-      scrim.style.transition = 'opacity ' + config.revertDuration + 'ms ease, backdrop-filter ' + config.revertDuration + 'ms ease'
+      scrim.style.transition = 'opacity ' + duration + 'ms ease, backdrop-filter ' + duration + 'ms ease'
       scrim.style.opacity = '0'
       scrim.style.webkitBackdropFilter = 'blur(0px)'
       scrim.style.backdropFilter = 'blur(0px)'
@@ -309,7 +340,7 @@ export function useEdgeSwipeBack(options = {}) {
       animating = false
       restoreStatic()
       dropScrim()
-    }, config.revertDuration + 20)
+    }, duration + 40)
   }
 
   function callBack() {

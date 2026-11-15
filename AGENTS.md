@@ -242,8 +242,9 @@ const swipe = useEdgeSwipeBack({
 
 - `touchstart` 只落在左边缘 `edgeWidth`（默认 26px）内才开始拖拽；明显纵向滑动立即让位给页面滚动。
 - `touchmove` 按 `deltaX` 实时写 `translate3d / scale / border-radius`，期间 `transition: none` 完全跟手；同时驱动一层黑色遮罩 + 背景模糊（`backdrop-filter`）随进度渐显。
-- **跟手有限度**：位移到 `travelLimit`（默认 78% 宽度）为止，超出走橡皮筋（最多再 12%），拖不到屏幕外；到底时缩放 `maxScale`（默认 .86）、圆角 `maxRadius`（默认 18px）都取最大，中途连续变化。
-- `touchend` 按位移比例（默认 34% × 上限）+ 速度（默认 0.62px/ms）判断：过阈值 -> **从当前跟手位置继续滑出**（先提交当前帧再过渡，绝不回原位重放），落定后 `back()`，并在路由切换绘制完成后才清掉内联样式；未过阈值恢复 transition 弹回原位。
+- **跟手有限度**：位移到 `travelLimit`（默认 78% 宽度）为止，超出走橡皮筋（最多再 12%），拖不到屏幕外；到底时缩放 `maxScale`（默认 .86）、圆角 `maxRadius`（默认 **32px**）都取最大，中途连续变化。
+- `touchend` 按位移比例（默认 34% × 上限）+ 速度（默认 0.62px/ms）判断：过阈值 -> **从当前跟手位置继续滑出**（圆角同时加到 32px，先提交当前帧再过渡，绝不回原位重放），落定后 `back()`，并在路由切换绘制完成后才清掉内联样式。
+- **弹回按距离给弹性**：未过阈值时从松手的确切位置 / 缩放 / 圆角续接（显式落值 + 强制一帧，不会重放），离得越远时长越长（`revertDuration` 340ms → `revertDurationFar` 520ms）、过冲越大（cubic-bezier 的 y2 从 `revertOvershootNear` 1.02 线性升到 `revertOvershootFar` 1.42），近处几乎不回弹。
 - 卡片展开态下侧滑完成时会给卡片打 `uiSwipeClose` 标记，`ExpandableCard` 看到标记就直接落定，不再重放「弹回原位」的弹簧。
 - 手感参数（阈值 / 上限 / 橡皮筋 / 缩放 / 圆角 / 遮罩 / 时长）全部可配，见 `DEFAULTS`。
 
