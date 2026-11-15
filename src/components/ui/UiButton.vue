@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   /* primary / tonal / outline / text / danger / icon
@@ -43,6 +43,50 @@ const emit = defineEmits(['click', 'confirm', 'commit', 'undo', 'done'])
    · slide：拖滑块过阈值才确认；确认后把手变转圈，外部 loading 放掉后
      把手展开成一整颗完成药丸（unfurl）。
    ============================================================ */
+
+/* 烧边需要一个「贴着按钮真实圆角」的描边路径。
+   SVG 的 width/height 属性不认 calc()，rx 给大数会变成椭圆，
+   所以这里实测按钮尺寸与 border-radius，生成圆角矩形 path。 */
+const rootEl = ref(null)
+const rim = ref({ w: 0, h: 0, r: 0, d: '' })
+let rimObserver = null
+
+function roundedRectPath(w, h, r) {
+  const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2))
+  const x = 1
+  const y = 1
+  const ix = w - 1
+  const iy = h - 1
+  return [
+    'M', x + rr, y,
+    'H', ix - rr,
+    'A', rr, rr, 0, 0, 1, ix, y + rr,
+    'V', iy - rr,
+    'A', rr, rr, 0, 0, 1, ix - rr, iy,
+    'H', x + rr,
+    'A', rr, rr, 0, 0, 1, x, iy - rr,
+    'V', y + rr,
+    'A', rr, rr, 0, 0, 1, x + rr, y,
+    'Z'
+  ].join(' ')
+}
+
+function measureRim() {
+  const el = rootEl.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const style = getComputedStyle(el)
+  const radius = parseFloat(style.borderTopLeftRadius) || 0
+  rim.value = { w: Math.round(rect.width), h: Math.round(rect.height), r: radius, d: roundedRectPath(rect.width, rect.height, radius) }
+}
+
+onMounted(() => {
+  measureRim()
+  if (typeof ResizeObserver !== 'undefined' && rootEl.value) {
+    rimObserver = new ResizeObserver(() => measureRim())
+    rimObserver.observe(rootEl.value)
+  }
+})
 
 const isFuse = computed(() => props.variant === 'fuse')
 const isHold = computed(() => props.variant === 'hold')
@@ -117,28 +161,37 @@ function holdEnd() {
 const slideX = ref(0)
 const slidePhase = ref('idle')   /* idle | running | done */
 const trackEl = ref(null)
+const handleEl = ref(null)
 let slideStartX = 0
 let slidePointer = null
-let slideMax = 200
+const HANDLE = 38
+const HANDLE_INSET = 4
+/* 可用行程 = 轨道宽 - 把手宽 - 两侧内边距；以前用固定 46 会让把手越界。 */
+const slideMax = ref(0)
+function measureSlide() {
+  const track = trackEl.value
+  if (!track) return
+  slideMax.value = Math.max(24, track.clientWidth - HANDLE - HANDLE_INSET * 2)
+}
 
 function slideDown(event) {
   if (props.disabled || props.loading || slidePhase.value !== 'idle') return
+  measureSlide()
   slidePointer = event.pointerId
   slideStartX = event.clientX
-  slideMax = trackEl.value ? Math.max(40, trackEl.value.clientWidth - 46) : 180
   try { trackEl.value && trackEl.value.setPointerCapture && trackEl.value.setPointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
 }
 
 function slideMove(event) {
   if (slidePointer === null) return
-  slideX.value = Math.min(slideMax, Math.max(0, event.clientX - slideStartX))
+  slideX.value = Math.min(slideMax.value, Math.max(0, event.clientX - slideStartX))
 }
 
 function slideUp() {
   if (slidePointer === null) return
   slidePointer = null
-  if (slideX.value >= Math.min(props.slideThreshold, slideMax * 0.72)) {
-    slideX.value = slideMax
+  if (slideX.value >= Math.min(props.slideThreshold, slideMax.value * 0.72)) {
+    slideX.value = slideMax.value
     slidePhase.value = 'running'
     emit('confirm')
   } else {
@@ -149,10 +202,17 @@ function slideUp() {
 /* 外部把 loading 放掉 = 跑完：转圈展开成完成药丸，停一会儿复位。 */
 watch(() => props.loading, (value, prev) => {
   if (!isSlide.value) return
-  if (value) { slidePhase.value = 'running'; return }
+  if (value) {
+    measureSlide()
+    slideX.value = slideMax.value
+    slidePhase.value = 'running'
+    return
+  }
   if (prev && slidePhase.value === 'running') {
     slidePhase.value = 'done'
     emit('done')
+    /* 完成态：把手回到最左再长成整颗药丸（unfurl），否则会从右侧溢出被裁掉。 */
+    slideX.value = 0
     setTimeout(() => {
       slidePhase.value = 'idle'
       slideX.value = 0
@@ -168,6 +228,7 @@ function slideReset() {
 onBeforeUnmount(() => {
   clearTimeout(holdTimer)
   cancelAnimationFrame(holdRaf)
+  if (rimObserver) rimObserver.disconnect()
 })
 
 function onClick(event) {
@@ -196,6 +257,7 @@ defineExpose({
 
 <template>
   <button
+    ref="rootEl"
     :type="type"
     class="ui-btn"
     :class="[
@@ -217,7 +279,7 @@ defineExpose({
     @keyup.enter.space="isHold ? holdEnd() : null"
     @keydown.esc="isFuse && fusePhase === 'armed' ? fuseUndo() : null"
   >
-    <span v-if="loading" class="ui-btn__spinner" aria-hidden="true"></span>
+    <span v-if="loading && !isSlide" class="ui-btn__spinner" aria-hidden="true"></span>
 
     <!-- ============ fuse：三个面叠放 + 烧边 / 烧线 ============ -->
     <template v-if="isFuse">
@@ -236,14 +298,14 @@ defineExpose({
         <span class="ui-btn__label">{{ doneLabel }}</span>
       </span>
 
-      <svg v-if="fusePosition === 'outline'" class="ui-btn__rim" aria-hidden="true">
-        <rect
-          x="1" y="1"
-          :width="'calc(100% - 2px)'" :height="'calc(100% - 2px)'"
-          rx="999"
-          pathLength="1"
-          @transitionend="onFuseEnd"
-        />
+      <svg
+        v-if="fusePosition === 'outline'"
+        class="ui-btn__rim"
+        :viewBox="'0 0 ' + rim.w + ' ' + rim.h"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path :d="rim.d" pathLength="1" @transitionend="onFuseEnd" />
       </svg>
       <span
         v-else
@@ -281,8 +343,12 @@ defineExpose({
           {{ slidePhase === 'running' ? runningLabel : slidePhase === 'done' ? doneLabel : confirmLabel }}
         </span>
         <span
+          ref="handleEl"
           class="ui-btn__slide-handle"
-          :style="{ transform: 'translate3d(' + slideX + 'px,0,0)' }"
+          :style="{
+            transform: 'translate3d(' + slideX + 'px,0,0)',
+            width: slidePhase === 'done' ? 'calc(100% - 8px)' : '38px'
+          }"
         >
           <svg v-if="slidePhase === 'running'" class="ui-btn__slide-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4a8 8 0 1 1-8 8" /></svg>
           <svg v-else-if="slidePhase === 'done'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.4 4.4L19 7" /></svg>
@@ -299,8 +365,35 @@ defineExpose({
 </template>
 
 <style scoped>
+/* ---------- fuse / hold 的基础外观（变体表里没有这两个名字） ---------- */
+.ui-btn--fuse,
+.ui-btn--hold {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: var(--btn-h-md, 34px);
+  padding: var(--btn-pad-md, 7px 10px);
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: calc(var(--r-button, 14px) * var(--radius-scale));
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: var(--btn-fs-md, var(--fs-tiny));
+  font-weight: var(--w-label);
+  cursor: pointer;
+  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-feedback);
+}
+.ui-btn--fuse:active,
+.ui-btn--hold:active { transform: scale(var(--press-scale)); }
+.ui-btn--sm.ui-btn--fuse,
+.ui-btn--sm.ui-btn--hold { min-height: var(--btn-h-sm, 28px); padding: var(--btn-pad-sm, 5px 8px); font-size: var(--btn-fs-sm, var(--fs-micro)); }
+.ui-btn--lg.ui-btn--fuse,
+.ui-btn--lg.ui-btn--hold { min-height: var(--btn-h-lg, 42px); padding: var(--btn-pad-lg, 10px 14px); font-size: var(--btn-fs-lg, var(--fs-small)); }
+
 /* ---------- fuse ---------- */
-.ui-btn--fuse { position: relative; overflow: hidden; }
+.ui-btn--fuse { overflow: hidden; }
 .ui-btn__face {
   display: inline-flex;
   align-items: center;
@@ -332,14 +425,15 @@ defineExpose({
   pointer-events: none;
   overflow: visible;
 }
-.ui-btn__rim rect {
+.ui-btn__rim path {
   fill: none;
   stroke: var(--ui-warning, #b45309);
   stroke-width: 1.6;
+  stroke-linecap: round;
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
 }
-.ui-btn--fuse.is-armed .ui-btn__rim rect {
+.ui-btn--fuse.is-armed .ui-btn__rim path {
   stroke-dashoffset: -1;
   transition: stroke-dashoffset var(--undo-window) linear;
 }
@@ -361,7 +455,7 @@ defineExpose({
 }
 
 /* ---------- hold ---------- */
-.ui-btn--hold { position: relative; overflow: hidden; }
+.ui-btn--hold { overflow: hidden; }
 .ui-btn__hold-fill {
   position: absolute;
   inset: 0;
@@ -420,8 +514,12 @@ defineExpose({
 .ui-btn__slide-handle svg { width: 16px; height: 16px; }
 .ui-btn__slide-spin { animation: uiBtnSpin 900ms linear infinite; }
 .ui-btn--slide.is-running .ui-btn__slide-hint { opacity: .5; }
-/* 跑完：把手展开成整颗药丸。 */
-.ui-btn--slide.is-done .ui-btn__slide-handle { width: calc(100% - 8px); background: var(--ui-success, #15803d); }
+/* 跑完：把手从最左铺满整条轨道（宽度由行内样式给，位移已归零）。 */
+.ui-btn--slide.is-done .ui-btn__slide-handle {
+  width: calc(100% - 8px) !important;
+  background: var(--ui-success, #15803d);
+}
+.ui-btn--slide.is-done .ui-btn__slide-handle svg { width: 18px; height: 18px; }
 .ui-btn--slide.is-done .ui-btn__slide-hint { opacity: 0; }
 
 @keyframes uiBtnSpin { to { transform: rotate(360deg); } }

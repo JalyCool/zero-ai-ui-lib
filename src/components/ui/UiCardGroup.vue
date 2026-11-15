@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { SPRINGS, animateSpring } from '../../core/springPhysics'
 
 const props = defineProps({
   /* gallery | circular | depth | wall | scroll-stack | stack | swap | bounce */
@@ -119,32 +120,34 @@ function onUp(event) {
 }
 
 /* ---------------- 动画小工具：rAF 补间 + 惯性 ---------------- */
-const motion = { frame: 0, kind: '' }
+const motion = { cancel: null, kind: '' }
 
 function stopAllMotion() {
-  if (motion.frame) cancelAnimationFrame(motion.frame)
-  motion.frame = 0
+  if (motion.cancel) motion.cancel()
+  motion.cancel = null
   motion.kind = ''
 }
 
-/* 朝目标做阻尼补间（每帧走剩余距离的固定比例），到点即停。 */
-function animateTo(getter, setter, target, done) {
+/* 朝目标跑真弹簧：松手速度会作为初速度注入，所以「甩得越快冲得越远」，
+   接近时不过冲、落点干净 —— 这是原库 place / settle / fling 分档的做法。 */
+function animateTo(getter, setter, target, done, options = {}) {
   stopAllMotion()
-  motion.kind = 'tween'
-  const step = () => {
-    const current = getter()
-    const delta = target - current
-    if (Math.abs(delta) < 0.4) {
+  const preset = SPRINGS[options.kind || 'place'] || SPRINGS.place
+  motion.kind = 'spring'
+  motion.cancel = animateSpring({
+    from: getter(),
+    to: target,
+    velocity: options.velocity || 0,
+    stiffness: preset.stiffness,
+    damping: preset.damping,
+    onUpdate: value => setter(value),
+    onDone: () => {
       setter(target)
-      motion.frame = 0
+      motion.cancel = null
       motion.kind = ''
       if (done) done()
-      return
     }
-    setter(current + delta * 0.2)
-    motion.frame = requestAnimationFrame(step)
-  }
-  motion.frame = requestAnimationFrame(step)
+  })
 }
 
 /* ---------------- gallery：横向轨道 ---------------- */
@@ -418,18 +421,19 @@ function applyDrag(dx, dy) {
 function endDrag(dx, dy) {
   const v = props.variant
   if (v === 'gallery') {
-    /* 甩动：按速度多滑一段，再吸到最近格位。 */
-    const projected = offset.value + vx * 260
-    animateTo(() => offset.value, value => { offset.value = value }, galleryNearestOf(projected))
+    /* 甩动：速度作为弹簧初速度注入（px/s），由弹簧自己决定冲多远再吸回格位。 */
+    const velocity = Math.max(-1600, Math.min(1600, vx * 1000))
+    animateTo(() => offset.value, value => { offset.value = value }, galleryNearestOf(offset.value + velocity * 0.18), null, { kind: 'settle', velocity })
     const nearestIndex = Math.round(-wrapped.value / span.value) % Math.max(1, count.value)
     pick(((nearestIndex % count.value) + count.value) % count.value)
   } else if (v === 'circular') {
     const step = stepAngle.value || 1
-    const projected = rotation.value + vx * 240
+    const velocity = Math.max(-420, Math.min(420, vx * 300))
+    const projected = rotation.value + velocity * 0.22
     animateTo(() => rotation.value, value => { rotation.value = value }, Math.round(projected / step) * step, () => {
       const index = ((Math.round(-rotation.value / step) % count.value) + count.value) % count.value
       pick(index)
-    })
+    }, { kind: 'settle', velocity })
   } else if (v === 'depth') {
     const overflow = depthDrag.value
     const moved = Math.abs(overflow) > 0.22 || Math.abs(vx) > 0.6

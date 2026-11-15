@@ -1,0 +1,22 @@
+修动作按钮三处渲染问题、把动效气质搬进 Playground、CardGroup 改用真弹簧
+
+1. fuse 烧边不再是椭圆：SVG 的 width/height 属性不认 calc()，rx=999 又会把
+   圆角放大成椭圆，所以之前只有上半圈可见、边框是圆的。改为实测按钮宽高与
+   border-radius，生成圆角矩形 path（viewBox = 实际 px），pathLength=1 烧一整圈。
+   实测 327x37 / radius 13px 的按钮，path 长 697，整圈贴合。
+2. fuse / hold 缺少基础外观：这两个变体名不在 ui.css 的变体表里，之前是透明
+   的纯文字。补上底色、描边、圆角、尺寸（沿用 --btn-* 令牌）与按压缩放。
+3. slide：去掉叠加的通用 spinner（转圈只保留在把手内）；行程改为实测
+   轨道宽 - 把手宽 - 2*内边距（原来固定 -46 会让把手越界）；完成态把手先回到
+   最左再铺满整条轨道（原来向右溢出被裁掉，只剩半颗绿药丸）。
+   实测：运行态把手 left 284 / right 322（轨道 327），完成态 left 5 / width 317。
+4. 动效气质从组件示例页搬进 **Playground 设置弹层**（ColorPanel 用最新组件重写：
+   UiSegmented / UiColorPicker / UiSwitch / UiStatusMark / UiButton / UiChip），
+   文档强调这不是给终端用户的开关。
+5. CardGroup 换真弹簧：新增 core/springPhysics（place/settle/tuck/fling/lean 分档，
+   半隐式欧拉 + 初速度注入）。gallery / circular 的吸附把松手速度喂进弹簧，
+   甩得快冲得远、落点干净。注意：core/spring.js 是「弹簧令牌 + apply」的老模块，
+   求解器单独放 springPhysics.js，不要混在一起（上一版误覆盖导致整页白屏，已修）。
+
+实测：/components 44 格正常渲染、按钮三变体外观与轨迹正确、Playground 弹层
+打开后有 3 个分段控件 + 取色器 + 开关 + 3 枚状态标记；console 零错误。

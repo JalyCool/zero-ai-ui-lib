@@ -13,7 +13,7 @@ import {
   UiTerminalOutput, UiTextarea, UiTimePicker, UiToastHost, UiToolMenu, UiTooltip,
   UiTreeView, UiVirtualList, UiWheelDatePicker
 } from '../components/ui'
-import { confirmDialog, getMotionTone, setMotionTone } from '../lib'
+import { confirmDialog } from '../lib'
 
 /* ============================================================
    组件库示例 · 重写版
@@ -171,12 +171,6 @@ const virtualSelected = ref([])
 const dropped = ref([])
 const search = ref('')
 /* ---- 动效 / 手势演示用的状态 ---- */
-/* 演示用的气质切换：正式应用不要暴露给用户。 */
-const statusText = ref('')
-const motionTone = ref(getMotionTone())
-const motionToneOptions = [{ label: '克制', value: 'calm' }, { label: '活泼', value: 'lively' }]
-function applyTone(value) { motionTone.value = setMotionTone(value) }
-
 const rotateIndex = ref(0)
 const rotatingPhrases = ['已同步 3 项记录', '今天比昨天多走 1800 步', '连续 7 天达标', '下周目标：每天 8000 步']
 
@@ -745,14 +739,6 @@ onMounted(() => {
     <section :id="sections[7].id" class="lib-sec">
       <h3 class="lib-sec__title">动效与手势</h3>
       <div class="lib-cells">
-        <div class="lib-cell">
-          <span class="lib-cell__label">动效气质 <small>motion tone</small></span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiSegmented v-model="motionTone" :options="motionToneOptions" layout="one-line" label="气质（仅演示）" @update:model-value="applyTone" />
-            <span class="lib-muted">克制：稳、短、几乎不过冲；活泼：弹簧更陡、回弹与缩放幅度更大。切换后整套令牌立刻生效。</span>
-            <span class="lib-muted"><b>这不是用户设置</b>：正式应用按调性在代码里预置 setMotionTone('lively')，或写进 zero.config 的 ui.motion。</span>
-          </div>
-        </div>
         <div class="lib-cell">
           <span class="lib-cell__label">循环短语 <small>RotatingText</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">

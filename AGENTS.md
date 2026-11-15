@@ -139,7 +139,7 @@ import {
 | `UiStepFlow` | 多步流程：`steps` + `v-model` 索引；指示器是一块绝对定位的薄条，靠 transform 在轨道上滑到当前格位，面板内容按方向滑入并模糊；`orientation="horizontal|vertical"` |
 | `UiTooltipGroup` | 提示词组：冷态第一次悬停要等 `wait`（默认 520ms），打开过一次后在 `warm-window` 内兄弟项瞬时打开；气泡只渲染一个，跟着当前项移动 |
 | `UiMediaViewer` | 图片 / 视频查看器：收起态是缩略预览，点击后舞台从缩略位置长到**整个视口**（几何连续，不是淡入新窗口）；舞台没有尺寸上限，放大后图片可以在满屏空间里平移；缩放手势：双指捏合、双击、滚轮、以及触控板捏合（浏览器里是 `ctrlKey` 的 wheel，走指数缩放，不会一滚就跳到底；Safari 走 `gesturechange`），键盘 `+ / - / 0`；放大后单指拖动平移，未放大时下拉关闭；同页多个实例互斥，任一时刻只会有一个打开（不会叠出两层遮罩）；视频用原生控件关闭即暂停 |
-| `UiCardGroup` | 卡片组，**每种形态都可拖拽 / 点击 / 方向键**，松手有惯性或吸附；`variant` 8 种形态：`gallery` 横向平铺循环、`circular` 3D 圆环（拖拽惯量 + 吸附）、`depth` Z 轴轨道（拖拽 / 键盘 / 自动推进）、`wall` 透视墙漂移 + 悬停抬起、`scroll-stack` 滚动压栈、`stack` 牌堆拖甩点、`swap` 定时 / 甩动轮换、`bounce` 扇形弹入。gallery 拖拽后按速度惯性再吸到最近格位并循环，圆环拖动带惯性吸附到最近格位，depth 拖过阈值换卡并回弹归零，wall 持续漂移且可拖动，牌堆可拖 / 甩 / 点且甩出的牌绕到最下面，bounce 拖动改展开角度、悬停或选中扶正；卡池 / 选中 / 拖拽 / 键盘共用一套 |
+| `UiCardGroup` | 卡片组，**每种形态都可拖拽 / 点击 / 方向键**，松手有惯性或吸附；`variant` 8 种形态：`gallery` 横向平铺循环、`circular` 3D 圆环（拖拽惯量 + 吸附）、`depth` Z 轴轨道（拖拽 / 键盘 / 自动推进）、`wall` 透视墙漂移 + 悬停抬起、`scroll-stack` 滚动压栈、`stack` 牌堆拖甩点、`swap` 定时 / 甩动轮换、`bounce` 扇形弹入。吸附与惯性用真弹簧求解（`core/springPhysics`：place 220/26、settle 300/30、tuck 240/28、fling 650/42），松手速度会作为初速度注入，所以甩得快冲得远、落点干净；gallery 拖拽后按速度惯性再吸到最近格位并循环，圆环拖动带惯性吸附到最近格位，depth 拖过阈值换卡并回弹归零，wall 持续漂移且可拖动，牌堆可拖 / 甩 / 点且甩出的牌绕到最下面，bounce 拖动改展开角度、悬停或选中扶正；卡池 / 选中 / 拖拽 / 键盘共用一套 |
 | `UiTabBar` | `:items` 传 `{ value, label, icon }`（icon 是 24x24 viewBox 内的 SVG 标记），`v-model` + `@change`；移动端贴底横排、背景铺满整屏宽度（tab 各自上限 96px），桌面端贴左竖排、背景铺满整个高度、tab 从顶部固定间距往下排 |
 | `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；时间 / 日期波轮都基于它 |
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起 |
@@ -178,7 +178,7 @@ import {
 ## 3. 交互约定（照抄即可，别自己发明）
 
 - **按下必收缩**：可展开按钮按下时 `scale(.97)`，松手才展开；长按保持收缩态。
-- **动作按钮三个变体**（`UiButton`）：`fuse` 点一下进入已完成、引线开始烧，烧完落定，期间可撤销；`hold` 按住填充上涨，抬手过早就缩回，涨满才确认；`slide` 拖滑块过阈值确认，跑动时转圈、结束展开成完成药丸。
+- **动作按钮三个变体**（`UiButton`）：`fuse` 点一下进入已完成，烧边从按钮**真实圆角**起笔（用实测尺寸生成圆角矩形 path，不能用 SVG `rect` + `calc()` + 超大 rx，那会变成椭圆），烧完落定、期间可撤销；`hold` 按住填充上涨，抬手过早就缩回，涨满才确认；`slide` 拖滑块过阈值确认，跑动时只有把手转圈（不再叠加通用 spinner），完成后把手回到最左铺满成整颗药丸。
 - **图标的两种放法**：`leading`（文字前端，布局完全不变）与 `top`（文字上方，卡片网格）；分段与下拉都支持，图标标记统一用 24x24 viewBox 内的 SVG 内容。`UiSegmented` 单行装不下会自动转多行网格，多行布局下取消滑动指示器、改由选中项自己填底色（指示器跨行会乱跑）。
 - **内容替换**：旧内容留在原位 `opacity→0 + blur(8px)`，新内容从 `blur(10px)` 浮现；外壳只做几何（宽高/圆角/底色）过渡。
 - **可打断**：`UiToolMenu` / `UiFloatingMenu` / `UiSelect` / `UiDatePicker` / `UiTimePicker` 在收起动画途中再次点击，会直接反向长回展开态。
@@ -192,7 +192,7 @@ import {
 - **弧线宽度只有两档**：`--arc-stroke-thin`(10) / `--arc-stroke-bold`(12)，圆环族与仪表盘族共用，配合 `non-scaling-stroke` 保证宽度是 CSS 像素、与组件尺寸无关。
 - **动效令牌**：不要写死 duration，用 `--t-fade` / `--t-panel` / `--t-sheet` / `--t-exit`；弹簧曲线是 `--spring-*`。`prefers-reduced-motion` 时库内已自动降级。
 - **动效气质（motion tone）——产品调性，不是用户偏好**：两档 `calm`（默认，稳、短、几乎不过冲）与 `lively`（弹簧更陡、回弹与缩放幅度更大、位移更远、模糊更重）。它只换一组令牌：`--spring-*` / `--spring-*-dur`、`--motion-scale|bounce|distance|blur`、`--pop-scale`、`--press-scale`。
-  **按应用定位在代码里预置**：`setMotionTone('lively')`，或写进 `zero.config.yaml` 的 `ui.motion`。**不要做成设置项暴露给终端用户**（示例应用里的切换控件仅用于演示）。
+  **按应用定位在代码里预置**：`setMotionTone('lively')`，或写进 `zero.config.yaml` 的 `ui.motion`。**不要做成设置项暴露给终端用户** —— 示例应用把这个切换放在 **Playground 设置弹层**里，仅用于演示，正式应用不要照抄到用户设置页。
 
 ## 4. 可展开卡片（列表 → 详情）
 
