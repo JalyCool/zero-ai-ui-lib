@@ -85,9 +85,15 @@ declare const UiCodeEditor: DefineComponent<{
 }, AnyProps, unknown>
 declare const UiConfirmDialog: DefineComponent<Record<string, never>, AnyProps, unknown>
 declare const UiDataTable: DefineComponent<{
-  columns: { key: string; label?: string; width?: string; align?: 'left' | 'center' | 'right'; sortable?: boolean }[]
+  columns: { key: string; label?: string; width?: string; align?: 'left' | 'center' | 'right'; sortable?: boolean; hidden?: boolean }[]
   rows?: unknown[]
   rowKey?: string; maxHeight?: number; striped?: boolean; clickable?: boolean; emptyText?: string
+  /* 分组 / 服务端分页 / 列显隐 / 多选 */
+  groupBy?: string
+  server?: boolean; page?: number; pageSize?: number; total?: number
+  visible?: string[] | null
+  selection?: 'none' | 'single' | 'multiple'
+  selected?: (string | number)[]
 }, AnyProps, unknown>
 declare const UiDatePicker: DefineComponent<{ modelValue?: string; label?: string; placeholder?: string; disabled?: boolean }, AnyProps, unknown>
 declare const UiEmptyState: DefineComponent<{ title?: string; description?: string }, AnyProps, unknown>
@@ -180,7 +186,9 @@ declare const UiToolMenu: DefineComponent<{ items?: AnyProps[]; label?: string }
 declare const UiTooltip: DefineComponent<{ text?: string; placement?: 'top' | 'bottom' | 'left' | 'right' }, AnyProps, unknown>
 declare const UiTreeView: DefineComponent<{
   nodes?: { label: string; value?: string | number; children?: unknown[]; kind?: string }[]
-  modelValue?: string | number; defaultOpen?: string[] | null; indent?: number; multi?: boolean
+  modelValue?: string | number | (string | number)[]
+  defaultOpen?: string[] | null; indent?: number
+  multi?: boolean; cascade?: boolean; filter?: string; draggable?: boolean
 }, AnyProps, unknown>
 declare const UiVirtualList: DefineComponent<{
   items?: unknown[]; itemHeight?: number; height?: number; buffer?: number

@@ -29,8 +29,8 @@
 
 ## B. 完全没实现的能力
 
-1. **UiDataTable 增强**：行分组、服务端分页（`@page-change`）、列显隐（`v-model:columns`）、多选。
-2. **UiTreeView 增强**：过滤（`filter` 关键字）、拖拽换父、多选级联（父子联动）。
+1. ✅ **UiDataTable 增强**：`group-by` 分组、`server` + `v-model:page` 服务端分页、`v-model:visible` 列显隐、`selection` + `v-model:selected` 多选。
+2. ✅ **UiTreeView 增强**：`filter` 过滤（命中分支自动展开）、`draggable` 拖拽换父（`@move`）、`multi` + `cascade` 级联多选（父级半选）。
 3. **CardGroup 一批重做**（逐条来自用户反馈）：
    - ✅ gallery：改成「居中索引」单一状态，轨道位移由它算（卡片宽度 < 视口时
      也不再贴左）；方向键 / 自动推进走弹簧；resize 后重新居中。实测选中卡中心 = 视口中心（误差 0）。

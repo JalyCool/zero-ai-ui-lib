@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
@@ -167,6 +167,26 @@ const tableRows = [
   { name: 'vue', version: '3.5.44', size: 112.3, ok: true },
   { name: 'vite', version: '6.4.5', size: 88.1, ok: false }
 ]
+
+/* 分组 / 多选 / 列显隐 / 服务端分页 的表格演示 */
+const tableColumns2 = [
+  { key: 'team', label: '团队', hidden: true },
+  { key: 'name', label: '包名', sortable: true },
+  { key: 'version', label: '版本', sortable: true },
+  { key: 'size', label: '体积 (kB)', sortable: true, align: 'right' }
+]
+const groupTableRows = [
+  { team: '框架', name: 'zero-ai-ui-lib', version: '0.1.1', size: 241.4 },
+  { team: '框架', name: 'vue', version: '3.5.44', size: 112.3 },
+  { team: '构建', name: 'vite', version: '6.4.5', size: 88.1 },
+  { team: '构建', name: 'rollup', version: '4.67.4', size: 96.8 },
+  { team: '测试', name: 'vitest', version: '3.2.4', size: 71.2 },
+  { team: '测试', name: 'playwright', version: '1.55.0', size: 154.6 }
+]
+const tablePage = ref(1)
+const tableVisible = ref(['name', 'version', 'size'])
+const tableSelected = ref([])
+const groupedPageRows = computed(() => groupTableRows.slice((tablePage.value - 1) * 2, tablePage.value * 2))
 const tree = [
   { label: 'src', kind: 'folder', value: 'src', children: [
     { label: 'core', kind: 'folder', value: 'src/core', children: [
@@ -182,6 +202,11 @@ const tree = [
   ] }
 ]
 const treePick = ref('duration.js')
+const treeFilter = ref('')
+const treeMulti = ref(['duration.js'])
+function onTreeMove(payload) {
+  toast.value?.show('移动：' + payload.from + ' → ' + payload.to, 'info')
+}
 const virtualItems = ref(Array.from({ length: 600 }, (_, i) => ({ label: '会话消息 #' + (i + 1) })))
 const virtualSelected = ref([])
 const dropped = ref([])
@@ -711,10 +736,44 @@ onMounted(() => {
           <span class="lib-cell__label">数据表格 <small>点表头排序</small></span>
           <UiDataTable :columns="tableColumns" :rows="tableRows" striped clickable @row-click="row => toast?.show('点击行：' + row.name, 'info')" />
         </div>
+        <div class="lib-cell lib-cell--span">
+          <span class="lib-cell__label">数据表格 · 分组 / 多选 / 列显隐 / 服务端分页</span>
+          <UiDataTable
+            :columns="tableColumns2"
+            :rows="groupedPageRows"
+            row-key="name"
+            group-by="team"
+            v-model:visible="tableVisible"
+            v-model:selected="tableSelected"
+            selection="multiple"
+            :server="true"
+            :page="tablePage"
+            :page-size="2"
+            :total="groupTableRows.length"
+            @page-change="p => tablePage = p.page"
+          />
+          <span class="lib-cell__note">「列」按钮控制显隐；表头全选、行首多选；组标题整行合并；服务端模式下排序 / 分页只发事件。</span>
+          <span class="lib-muted">已选 {{ tableSelected.length }} 行 · 第 {{ tablePage }} 页</span>
+        </div>
         <div class="lib-cell">
           <span class="lib-cell__label">文件树</span>
           <UiTreeView :nodes="tree" v-model="treePick" :default-open="['src']" />
           <span class="lib-muted">选中：{{ treePick }}；分组展开 / 折叠是 0 ↔ 自然高度的连续过渡。</span>
+        </div>
+        <div class="lib-cell lib-cell--span">
+          <span class="lib-cell__label">文件树 · 过滤 / 级联多选 / 拖拽换父</span>
+          <UiInput v-model="treeFilter" placeholder="过滤关键字（例如 core / css）" />
+          <UiTreeView
+            :nodes="tree"
+            v-model="treeMulti"
+            multi
+            cascade
+            draggable
+            :filter="treeFilter"
+            :default-open="['src']"
+            @move="onTreeMove"
+          />
+          <span class="lib-muted">已选 {{ treeMulti.length }} 项；勾目录 = 勾整棵子树（父级半选）；把行拖到目录上可换父。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">虚拟列表 <small>滑动多选</small></span>

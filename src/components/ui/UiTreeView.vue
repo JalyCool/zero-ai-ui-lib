@@ -15,12 +15,18 @@ const props = defineProps({
   indent: { type: Number, default: 16 },
   /* 多选模式：modelValue 为数组，点击切换包含关系 */
   multi: { type: Boolean, default: false },
+  /* 级联多选：勾目录 = 勾中它的整棵子树；父级显示半选 */
+  cascade: { type: Boolean, default: false },
+  /* 关键字过滤：命中节点及其祖先保留，过滤时自动展开命中分支 */
+  filter: { type: String, default: '' },
+  /* 拖拽换父：把行拖到目录行上，emit move { from, to } */
+  draggable: { type: Boolean, default: false },
   /* 以下两项由递归内部传入，外部不要设置 */
   depth: { type: Number, default: 0 },
   pathPrefix: { type: String, default: '' }
 })
 
-const emit = defineEmits(['update:modelValue', 'select', 'expand'])
+const emit = defineEmits(['update:modelValue', 'select', 'expand', 'move'])
 
 /* ============================================================
    文件树：可展开 / 折叠，图标按类型区分。
@@ -63,6 +69,9 @@ const state = isRoot ? {
     }
   },
   groups: new Map(),
+  /* 拖拽中的源节点 value（全树共享，避免每个递归实例各存一份） */
+  dragging: ref(''),
+  dropKey: ref(''),
   supportsInterpolation:
     typeof CSS !== 'undefined' && typeof CSS.supports === 'function' &&
     CSS.supports('interpolate-size', 'allow-keywords')
@@ -71,19 +80,92 @@ const state = isRoot ? {
 if (isRoot) provide(ROOT_KEY, state)
 const shared = isRoot ? state : (inject(ROOT_KEY) || state)
 
-const rows = computed(() => props.nodes.map((node, index) => {
+/* 过滤：节点自身命中，或任一后代命中，就保留；祖先因此不会被隐藏。 */
+function subtreeMatches(node) {
+  const query = props.filter.trim().toLowerCase()
+  if (!query) return true
+  if (String(node.label || '').toLowerCase().includes(query)) return true
+  return childrenOf(node).some(subtreeMatches)
+}
+
+const rows = computed(() => props.nodes.filter(subtreeMatches).map((node, index) => {
   const path = props.pathPrefix ? props.pathPrefix + '/' + index : String(index)
   const kids = childrenOf(node)
   return { node, path, key: nodeKey(node, path), hasChildren: kids.length > 0, children: kids }
 }))
 
-function isOpen(key) { return !!shared.openMap.value.get(key) }
+function isOpen(key) {
+  /* 过滤时命中分支一律展开，否则用户还得挨个点开才能看到结果。 */
+  if (props.filter.trim()) return true
+  return !!shared.openMap.value.get(key)
+}
 function isPicked(row) { return shared.picked.value.has(String(row.node.value ?? row.key)) }
+
+/* 一个节点及其全部后代的 value（级联勾选用）。 */
+function subtreeValues(node) {
+  const out = []
+  const walk = current => {
+    if (current.value !== undefined && current.value !== null) out.push(String(current.value))
+    childrenOf(current).forEach(walk)
+  }
+  walk(node)
+  return out
+}
+
+function checkState(row) {
+  if (!props.multi) return isPicked(row) ? 'on' : 'off'
+  if (!props.cascade) return checkState.leaf || isPicked(row) ? 'on' : 'off'
+  const values = subtreeValues(row.node)
+  if (!values.length) return 'off'
+  const hit = values.filter(value => shared.picked.value.has(value)).length
+  if (!hit) return 'off'
+  return hit === values.length ? 'on' : 'mixed'
+}
+
+function toggleCheck(row) {
+  const values = props.cascade ? subtreeValues(row.node) : [String(row.node.value ?? row.key)]
+  if (!values.length) return
+  const next = new Set(shared.picked.value)
+  const allOn = values.every(value => next.has(value))
+  values.forEach(value => { if (allOn) next.delete(value); else next.add(value) })
+  emit('update:modelValue', [...next])
+}
 
 function pick(row) {
   if (row.hasChildren) { shared.toggle(row.key); return }
   shared.choose(row.node.value ?? row.key)
   emit('select', row.node)
+}
+
+/* ---------- 拖拽换父 ---------- */
+function onDragStart(row, event) {
+  if (!props.draggable) return
+  const value = row.node.value !== undefined ? String(row.node.value) : row.key
+  shared.dragging.value = value
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    try { event.dataTransfer.setData('text/plain', value) } catch (error) { /* 某些环境禁止写 */ }
+  }
+}
+function onDragOver(row, event) {
+  if (!props.draggable || !shared.dragging.value) return
+  if (!row.hasChildren) return
+  const value = row.node.value !== undefined ? String(row.node.value) : row.key
+  if (value === shared.dragging.value) return
+  event.preventDefault()
+  shared.dropKey.value = row.key
+}
+function onDragLeave(row) {
+  if (shared.dropKey.value === row.key) shared.dropKey.value = ''
+}
+function onDrop(row, event) {
+  if (!props.draggable || !row.hasChildren) return
+  event.preventDefault()
+  const to = row.node.value !== undefined ? String(row.node.value) : row.key
+  const from = shared.dragging.value
+  shared.dragging.value = ''
+  shared.dropKey.value = ''
+  if (from && from !== to) emit('move', { from, to })
 }
 
 function iconOf(node) {
@@ -150,19 +232,32 @@ defineExpose(isRoot ? {
           'is-selected': !multi && isPicked(row),
           'is-checked': multi && isPicked(row),
           'is-folder': row.hasChildren,
-          'is-open': row.hasChildren && isOpen(row.key)
+          'is-open': row.hasChildren && isOpen(row.key),
+          'is-drop': shared.dropKey.value === row.key
         }"
         :style="{ paddingLeft: 'calc(8px + var(--tree-indent, 16px) * ' + depth + ')' }"
+        :draggable="draggable ? 'true' : undefined"
         :aria-expanded="row.hasChildren ? isOpen(row.key) : undefined"
         :aria-selected="isPicked(row)"
         @click="pick(row)"
+        @dragstart="onDragStart(row, $event)"
+        @dragover="onDragOver(row, $event)"
+        @dragleave="onDragLeave(row)"
+        @drop="onDrop(row, $event)"
       >
         <span v-if="row.hasChildren" class="ui-tree__caret" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>
         </span>
         <span v-else class="ui-tree__caret ui-tree__caret--gap" aria-hidden="true"></span>
-        <span v-if="multi" class="ui-tree__check" :class="{ 'is-on': isPicked(row) }" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+        <span
+          v-if="multi"
+          class="ui-tree__check"
+          :class="{ 'is-on': checkState(row) === 'on', 'is-mixed': checkState(row) === 'mixed' }"
+          aria-hidden="true"
+          @click.stop="toggleCheck(row)"
+        >
+          <svg v-if="checkState(row) === 'mixed'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 12h12" /></svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7" /></svg>
         </span>
         <span class="ui-tree__icon" :data-kind="iconOf(row.node)" aria-hidden="true">
           <svg v-if="iconOf(row.node) === 'folder'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
@@ -184,8 +279,12 @@ defineExpose(isRoot ? {
           :path-prefix="row.path"
           :model-value="modelValue"
           :multi="multi"
+          :cascade="cascade"
+          :filter="filter"
+          :draggable="draggable"
           @select="node => emit('select', node)"
           @expand="payload => emit('expand', payload)"
+          @move="payload => emit('move', payload)"
           @update:model-value="value => emit('update:modelValue', value)"
         />
       </div>
@@ -218,6 +317,12 @@ defineExpose(isRoot ? {
   transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback);
 }
 .ui-tree__row:hover { background: var(--surface-container); }
+.ui-tree__row.is-drop {
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  outline: var(--focus-w) dashed color-mix(in oklab, var(--primary) 55%, transparent);
+  outline-offset: -2px;
+}
+.ui-tree__check.is-mixed { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .ui-tree__row:active { transform: scale(var(--press-scale)); }
 .ui-tree__row.is-selected { background: var(--primary-container); color: var(--on-primary-container); font-weight: var(--w-label); }
 .ui-tree__caret {

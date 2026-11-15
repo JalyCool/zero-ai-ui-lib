@@ -165,8 +165,8 @@ import {
 | `UiTagInput` | `v-model` 字符串数组；回车 / 逗号 / Tab 生成 chip，退格删末尾，重复自动去重 |
 | `UiKeyValueEditor` | `v-model` 为 `[{ key, value }]`；headers / env 录入用；`secret` 把值列变密码点 |
 | `UiSchemaForm` | `:schema` JSON Schema（properties / required / enum / type）自动生成表单，`@submit` 回传收敛后的值 |
-| `UiDataTable` | `:columns` `{ key, label, width?, align?, sortable? }` + `:rows`；粘性表头、点表头三态排序、`max-height` 内滚动、`#cell-<key>` 插槽 |
-| `UiTreeView` | `:nodes` 递归树（folder / file / md / json / image 图标分色），箭头旋转变形、`default-open` 初始展开 |
+| `UiDataTable` | `:columns` `{ key, label, width?, align?, sortable?, hidden? }` + `:rows`；粘性表头、三态排序、`max-height` 内滚动、`#cell-<key>` 插槽。增强：`group-by` 分组（组标题整行合并，`#group` 可自定义）、`server` 服务端模式（`sort-change` / `page-change` 只发事件，不动本地顺序）、`v-model:page` + `total` + `page-size` 分页条、`v-model:visible` 列显隐面板、`selection="single\|multiple"` + `v-model:selected` 多选（表头全选、半选） |
+| `UiTreeView` | `:nodes` 递归树（folder / file / md / json / image 图标分色），箭头旋转变形、`default-open` 初始展开。增强：`filter` 关键字过滤（命中节点与祖先保留、命中分支自动展开）、`multi` + `cascade` 级联多选（勾目录 = 整棵子树，父级半选）、`draggable` 拖拽换父（`@move` 回传 `{ from, to }`，目录行高亮） |
 | `UiVirtualList` | 定高虚拟滚动（`item-height` `height`），几百上千行只渲染窗口；勾选标记在行首；`selection="single|multiple"` 决定单击语义；`drag-select`（多选）长按某行后竖向拖动连续勾选 —— 锚点初始状态决定这段是选中还是取消，往回拖可改终点，拖到边缘自动滚动（限速 12px/帧），期间容器 `touch-action: none` 接管原生滚动 |
 | `UiFileDropzone` | 拖入 / 点击收 `File` 列表，`accept` `max-size`(MB) 过滤，不合格文件走 `@reject` |
 | `UiSearchField` | 图标 ⇄ 输入框原地形变：外壳宽度走 view 弹簧，同一个搜索图标平移到尾部成为搜索按钮；Enter / 点图标 `@search`，Esc 先清空后收起，点外部收起 |
