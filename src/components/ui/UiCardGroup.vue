@@ -402,22 +402,42 @@ function pileStyle(position, item, index) {
     const m = frontMotion.value
     /* 拖动时按速度与位移算「倾斜」（lean）：左右甩 → 绕 Y 转，上下拉 → 绕 X 转。
        松手后 tilt 归零（face），这就是原库 lean / face 两档弹簧的简化版。 */
-    return {
-      '--card-tone': item.tone || 'primary',
-      transform:
-        'translate3d(' + m.x + 'px,' + m.y + 'px,0) ' +
+    const leaving = swapPhase.value === 'exit'
+    /* 轮换退出：整张牌绕底边向后仰、向下滑出，像从牌堆里被抽走。 */
+    const transform = leaving
+      ? 'translate3d(' + (m.x * 0.4) + 'px,' + (m.y + 118) + 'px,0) rotateX(-28deg) scale(.9)'
+      : 'translate3d(' + m.x + 'px,' + m.y + 'px,0) ' +
         'rotate(' + m.rot + 'deg) ' +
         'rotateX(' + (m.tiltX || 0) + 'deg) rotateY(' + (m.tiltY || 0) + 'deg) ' +
-        'scale(' + m.scale + ')',
-      opacity: swapPhase.value === 'exit' ? '0' : String(1 - m.dim * 0.6),
-      filter: swapPhase.value === 'exit' ? 'blur(6px)' : '',
+        'scale(' + m.scale + ')'
+    return {
+      '--card-tone': item.tone || 'primary',
+      transform,
+      opacity: leaving ? '0' : String(1 - m.dim * 0.6),
+      filter: leaving ? 'blur(6px)' : '',
       zIndex: '60',
-      transition: swapPhase.value === 'exit'
-        ? 'transform 240ms cubic-bezier(.5,0,.75,0), opacity 240ms ease, filter 240ms ease'
+      transition: leaving
+        ? 'transform 300ms cubic-bezier(.5,0,.75,0), opacity 280ms ease, filter 280ms ease'
         : (m.flying ? 'transform 280ms cubic-bezier(.3,.7,.3,1), opacity 260ms ease' : 'none')
     }
   }
-  /* 越靠后越沉：位移 + 压暗 + 轻微模糊，像一叠真的牌。 */
+  /* CardSwap = 三维轮换台：整叠牌略微向一侧错开并绕 X 轴后仰，
+     像一摞立着的卡片；与 stack（物理牌堆，前后左右随机歪一点）区分开。 */
+  if (props.variant === 'swap') {
+    return {
+      '--card-tone': item.tone || 'primary',
+      transform:
+        'translate3d(' + position * 15 + 'px,' + position * -9 + 'px,' + -position * 46 + 'px) ' +
+        'rotateX(' + position * -3 + 'deg) rotateY(' + position * 2.6 + 'deg) ' +
+        'scale(' + (1 - position * 0.07) + ')',
+      opacity: String(Math.max(0.2, 1 - position * 0.18)),
+      filter: position > 1 ? 'blur(' + Math.min(2.4, position * 0.55).toFixed(2) + 'px)' : '',
+      zIndex: String(50 - position),
+      transition: 'transform 380ms var(--spring-view), opacity var(--t-fade), filter var(--t-fade)'
+    }
+  }
+
+  /* stack = 物理牌堆：越靠后越沉，位移 + 压暗 + 轻微模糊。 */
   const shade = Math.min(0.28, position * 0.07)
   return {
     '--card-tone': item.tone || 'primary',
@@ -1051,6 +1071,8 @@ watch(() => props.modelValue, value => {
   width: calc(var(--cg-card-width) * 0.92);
   aspect-ratio: 4 / 3;
   transform-style: preserve-3d;
+  /* 轮换台以底边为轴后仰，退出 / 进场都绕这条边。 */
+  transform-origin: 50% 100%;
 }
 /* 牌堆卡不参与「入场动画」：重新排序时 --i 变化会让 cgCardIn 重跑，
    把飞出的牌瞬间拉回原位 —— 这正是「回队尾闪现」的根因。 */
@@ -1059,10 +1081,11 @@ watch(() => props.modelValue, value => {
 .ui-card-group__pile-card.is-front.is-flying { pointer-events: none; }
 /* 轮换：退出的那张已经淡出，重新进场的那张从后层抬起来。 */
 .ui-card-group__pile-card.is-entering {
-  animation: cgSwapEnter 360ms cubic-bezier(.22,1.2,.36,1) both;
+  animation: cgSwapEnter 460ms var(--spring-view) both;
+  transform-origin: 50% 100%;
 }
 @keyframes cgSwapEnter {
-  from { opacity: 0; transform: translate3d(0, 16%, -40px) rotateX(-18deg) scale(.86); filter: blur(8px); }
+  from { opacity: 0; transform: translate3d(0, -18%, -70px) rotateX(24deg) scale(.84); filter: blur(9px); }
   to { opacity: 1; filter: blur(0); }
 }
 .ui-card-group__pile-actions {
