@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 0.75px 细描边 + 圆角分档」，不用阴影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：58 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：69 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -113,6 +113,8 @@ import {
   UiCodeEditor, UiTerminalOutput, UiTagInput, UiKeyValueEditor, UiSchemaForm,
   UiDataTable, UiTreeView, UiVirtualList, UiImageViewer, UiFileDropzone,
   UiMorphPanel, UiWheel, UiCodeImage, UiTabBar, confirmDialog,
+  UiRotatingText, UiText, UiStatusMark, UiToolCallChip, UiCodeSlots, UiScrubField,
+  UiSwipeRow, UiStepFlow, UiTooltipGroup, UiMediaViewer, UiCardGroup,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -127,6 +129,17 @@ import {
 | `UiSlider` | `v-model`；`stops` 数组或 `snapCount` 等分 → 拖动跟手、松手弹簧吸附；`@snap="({index, value}) => …"`；刻度：`show-scale` + `major-ticks`（大刻度区间数）+ `minor-ticks`（大刻度间的小刻度份数）+ `precision`（小数位）。刻度在轨道上方、短浅线，小刻度短大刻度长；数值只在最小值 / 最大值（无刻度时）或大刻度位置显示；`show-bubble` 拖拽时把手上方浮当前值；弹簧参数收进 `spring` 对象（`{ stiffness, dampingRatio, flingTime, rubber, maxOverscroll }`），旧的 5 个独立 props 已废弃仍兼容 |
 | `UiDatePicker` / `UiTimePicker` | `v-model` 字符串（`YYYY-MM-DD` / `HH:mm[:ss]`）；贴着输入框展开，不压暗背景；`UiTimePicker` 有 `precision`（h/m/s）决定波轮字段数 |
 | `UiCodeImage` | 2~3 项用分段控件（跨族时图标在上、仅 2 项跨族时只留图标不显示文字）、4 项及以上一律用带图标的下拉框。切换动画的方向按「目标相对当前位置」动态决定（目标在后往正方向进、在前往反方向进），进场层先按新方向落位、下一帧再滑回原位；用下拉切换时轴改为纵向（上下滑入滑出），分段 / 图标切换保持横向；仅两个跨族（一维/二维）选项时图标模式不再显示文字标签（图标已说明族差别）。children 直接传文本：<`CodeImage type="qrcode">https://…</`CodeImage>；`type` 字符串或数组（数组 = 可切换码制组，<=3 用 Segmented、>3 用下拉；跨一维/二维用图标区分，同族用文字标签）；`options` 按码制传参 `{ qrcode: { errorCorrectionLevel: 'H' }, ean13: { flat: true } }`，未传的走默认、未知键忽略不崩溃；内容不合规的选项可见但禁用、自动切到可用项；全部不可用走降级候选（二维码兜底），仍无解渲染空状态。校验 / 参数 / 降级规则全部集中在 `core/codeFormats`，组件内不硬编码码制规则 |
+| `UiRotatingText` | 循环短语：`phrases` + `transition="rotate|flip|slide"`；进场层从进入方向的偏转 + 位移 + 模糊里出现，离场层反向散去，方向随前后顺序切换；`pause-on-hover` 默认开 |
+| `UiText` | 文字动效包装器：`variant="type"` 打字机（`cps` 节奏、闪烁光标、`loop`）、`shiny` 掠光（`sheen="soft|chrome"`）、`gradient` 流动渐变（`gradient="sweep|mesh|conic"` + `colors`）；三者都只做视觉层，不改排版 |
+| `UiStatusMark` | 任务状态标记（仅受控）：`status="idle|progress|done|error"` + `progress`；同一圈描边从虚环 → 进度弧（自转）→ 勾 / 叉（描边绘制），失败带一次抖动 |
+| `UiToolCallChip` | 工具调用胶囊（仅受控）：`name` `detail` `status="running|success|error"` `expected`（秒）；运行中填充按耗时擦过、右侧计时器跳动，成功补满转绿、失败转红抖动 |
+| `UiCodeSlots` | 一次性验证码：原生 input 承担输入 / 粘贴 / `autocomplete="one-time-code"` 短信填充，界面上的格子只是显示层，数字逐格弹入；`length` `mask` `autofocus` |
+| `UiScrubField` | 可拖数字：横向拖动改值（`pixels-per-range` 定灵敏度），越界走橡皮筋松手弹回；不拖直接点击切换成输入框；方向键可微调 |
+| `UiSwipeRow` | 划开式列表行：`actions` 露在右侧，拖拽跟手、按位移 + 速度吸附；继续划到底直接执行最后一个操作（`full-swipe-action`）；`once` 触发后自动收回 |
+| `UiStepFlow` | 多步流程：`steps` + `v-model` 索引；指示器是一块绝对定位的薄条，靠 transform 在轨道上滑到当前格位，面板内容按方向滑入并模糊；`orientation="horizontal|vertical"` |
+| `UiTooltipGroup` | 提示词组：冷态第一次悬停要等 `wait`（默认 520ms），打开过一次后在 `warm-window` 内兄弟项瞬时打开；气泡只渲染一个，跟着当前项移动 |
+| `UiMediaViewer` | 图片 / 视频查看器：收起态是缩略预览，点击后舞台从缩略位置长开到视口中央（几何连续，不是淡入新窗口）；图片支持捏合 / 双击 / 滚轮缩放、放大后拖动平移、未放大下拉关闭；视频用原生控件关闭时自动暂停 |
+| `UiCardGroup` | 卡片组，`variant` 8 种形态：`gallery` 横向平铺循环、`circular` 3D 圆环（拖拽惯量 + 吸附）、`depth` Z 轴轨道（拖拽 / 键盘 / 自动推进）、`wall` 透视墙漂移 + 悬停抬起、`scroll-stack` 滚动压栈、`stack` 牌堆拖甩点、`swap` 定时 / 甩动轮换、`bounce` 扇形弹入。卡池 / 选中 / 拖拽 / 键盘共用一套 |
 | `UiTabBar` | `:items` 传 `{ value, label, icon }`（icon 是 24x24 viewBox 内的 SVG 标记），`v-model` + `@change`；移动端贴底横排、背景铺满整屏宽度（tab 各自上限 96px），桌面端贴左竖排、背景铺满整个高度、tab 从顶部固定间距往下排 |
 | `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；时间 / 日期波轮都基于它 |
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起 |
@@ -166,6 +179,7 @@ import {
 ## 3. 交互约定（照抄即可，别自己发明）
 
 - **按下必收缩**：可展开按钮按下时 `scale(.97)`，松手才展开；长按保持收缩态。
+- **动作按钮三个变体**（`UiButton`）：`fuse` 点一下进入已完成、引线开始烧，烧完落定，期间可撤销；`hold` 按住填充上涨，抬手过早就缩回，涨满才确认；`slide` 拖滑块过阈值确认，跑动时转圈、结束展开成完成药丸。
 - **图标的两种放法**：`leading`（文字前端，布局完全不变）与 `top`（文字上方，卡片网格）；分段与下拉都支持，图标标记统一用 24x24 viewBox 内的 SVG 内容。`UiSegmented` 单行装不下会自动转多行网格，多行布局下取消滑动指示器、改由选中项自己填底色（指示器跨行会乱跑）。
 - **内容替换**：旧内容留在原位 `opacity→0 + blur(8px)`，新内容从 `blur(10px)` 浮现；外壳只做几何（宽高/圆角/底色）过渡。
 - **可打断**：`UiToolMenu` / `UiFloatingMenu` / `UiSelect` / `UiDatePicker` / `UiTimePicker` 在收起动画途中再次点击，会直接反向长回展开态。
@@ -173,6 +187,7 @@ import {
 - **数字滑轨**（`UiStepper`）：旧值按「新旧值大小关系」方向滑出并模糊，新值从反向滑入，位移量随变化量缩放；单位不滚动、与数字底部对齐；到上下限再点有轻微「碰壁」回弹。
 - **滚轮**（`UiWheel`，时间 / 日期波轮共用）：高亮块固定在中间不动，点击和滑动移动的是背后的数字层；字段数量由列配置决定。
 - **按钮 ⇄ 组件的形变泛用化**：`UiMorphPanel` 把「点一下切换成另一个组件」做成通用容器，不再局限于「按钮变输入框」；`UiSearchField` 也走同一语言（图标平移到尾部作动作按钮）。
+- **状态类组件一律受控**：`UiToolCallChip` / `UiStatusMark` / `UiStepFlow` 的状态由外部传入，组件只负责把动效衔接好，不自己猜业务阶段。
 - **确认统一走 `confirmDialog`**：应用里不要再调 `window.confirm`，样式断层且阻塞；`await` 拿到布尔结果即可。
 - **返回只有一种写法**：Tab 用 replace、展开用 push、收起用 back()（动画播完再退），见 4.5。
 - **弧线宽度只有两档**：`--arc-stroke-thin`(10) / `--arc-stroke-bold`(12)，圆环族与仪表盘族共用，配合 `non-scaling-stroke` 保证宽度是 CSS 像素、与组件尺寸无关。
@@ -314,6 +329,7 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 7. `UiToastHost` 在最上层，底部面板打开时可能盖住表单底部，可在打开前 dismiss。
 8. `UiToolMenu` 展开时会在文档流里占位、把下方内容推开；不想位移就换 `UiFloatingMenu`。
 9. 调试用的无头 Chrome profile 目录（`.chrome-p*/`）会被写大量文件，`vite.config.js` 已用 `server.watch.ignored` 排除，否则 dev/preview 会被热更风暴拖垮。
+11. 手势组件里的 `setPointerCapture` 必须 try/catch：指针在回调前已失效时（系统取消、合成事件）会抛 `NotFoundError`，一旦抛在回调中间，后续的吸附 / 收尾逻辑会被整段跳过。
 10. 给展开卡片做「滑出式关闭」时，动画必须**从当前跟手位置续接**（先 `void offsetWidth` 提交当前帧再写 transition），并在路由切换绘制后才清内联样式；否则完成动画会像从原位重新开始。
 
 ## 9. 交付前自查

@@ -3,7 +3,9 @@ import { onMounted, ref } from 'vue'
 import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
-  UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap, UiImageViewer,
+  UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
+  UiMediaViewer, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
+  UiText, UiToolCallChip, UiTooltipGroup,
   UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
   UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
   UiRingSlider, UiSchemaForm, UiSearchField, UiSegmented, UiSelect, UiSkeleton,
@@ -27,7 +29,8 @@ const sections = [
   { id: 'sec-pickers', label: '日期时间' },
   { id: 'sec-dev', label: '工程' },
   { id: 'sec-viz', label: '可视化' },
-  { id: 'sec-overlay', label: '浮层反馈' }
+  { id: 'sec-overlay', label: '浮层反馈' },
+  { id: 'sec-motion', label: '动效手势' }
 ]
 
 function jump(id) {
@@ -167,6 +170,89 @@ const virtualItems = ref(Array.from({ length: 600 }, (_, i) => ({ label: '会话
 const virtualSelected = ref([])
 const dropped = ref([])
 const search = ref('')
+/* ---- 动效 / 手势演示用的状态 ---- */
+const rotateIndex = ref(0)
+const rotatingPhrases = ['已同步 3 项记录', '今天比昨天多走 1800 步', '连续 7 天达标', '下周目标：每天 8000 步']
+
+const toolStatus = ref('running')
+let toolTimer = 0
+function runTool(demo) {
+  clearTimeout(toolTimer)
+  toolStatus.value = 'running'
+  toolTimer = setTimeout(() => { toolStatus.value = demo === 'error' ? 'error' : 'success' }, 2600)
+}
+
+const statusStep = ref('idle')
+const statusProgress = ref(0)
+let statusTimer = 0
+function runStatus() {
+  clearInterval(statusTimer)
+  statusStep.value = 'progress'
+  statusProgress.value = 0
+  statusTimer = setInterval(() => {
+    statusProgress.value = Math.min(1, statusProgress.value + 0.16)
+    if (statusProgress.value >= 1) {
+      clearInterval(statusTimer)
+      statusStep.value = Math.random() > 0.25 ? 'done' : 'error'
+      setTimeout(() => { statusStep.value = 'idle'; statusProgress.value = 0 }, 1800)
+    }
+  }, 160)
+}
+
+const codeSlot = ref('')
+const scrubValue = ref(42)
+const stepIndex = ref(0)
+const stepFlowSteps = [
+  { label: '填写资料', description: '姓名与联系方式' },
+  { label: '选择方案', description: '按月或按年' },
+  { label: '确认支付', description: '核对金额' }
+]
+const tooltipItems = [
+  { label: '步频', tip: '每分钟步数，180 以上为高强度' },
+  { label: '配速', tip: '每公里用时，越小越快' },
+  { label: '心率区间', tip: '按最大心率百分比划分的五档' },
+  { label: '恢复时间', tip: '训练后建议的休息时长' }
+]
+const swipeLog = ref('尚未操作')
+const swipeActions = [
+  { label: '置顶', tone: 'neutral', icon: '<path d="M12 4v16M6 10l6-6 6 6"/>' },
+  { label: '删除', tone: 'danger', icon: '<path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/>' }
+]
+function onSwipeAction({ action, full }) {
+  swipeLog.value = full ? `整行划到底：${action.label}` : `点击操作：${action.label}`
+}
+
+const cardItems = [
+  { title: '晨跑', meta: '5.2 公里 · 32 分钟', tone: 'primary' },
+  { title: '力量', meta: '上肢 · 4 组', tone: 'secondary' },
+  { title: '拉伸', meta: '12 分钟', tone: 'tertiary' },
+  { title: '骑行', meta: '18 公里', tone: 'primary' },
+  { title: '游泳', meta: '800 米', tone: 'secondary' },
+  { title: '冥想', meta: '10 分钟', tone: 'tertiary' }
+]
+const cardVariant = ref('gallery')
+const cardVariants = [
+  { label: '平铺', value: 'gallery' },
+  { label: '圆环', value: 'circular' },
+  { label: '纵深', value: 'depth' },
+  { label: '透视墙', value: 'wall' },
+  { label: '滚动压栈', value: 'scroll-stack' },
+  { label: '牌堆', value: 'stack' },
+  { label: '轮换', value: 'swap' },
+  { label: '扇形', value: 'bounce' }
+]
+const stepOrientation = ref('horizontal')
+const slideLoading = ref(false)
+let slideTimer = 0
+function startSlide() {
+  slideLoading.value = true
+  clearTimeout(slideTimer)
+  slideTimer = setTimeout(() => { slideLoading.value = false }, 1600)
+}
+const buttonLog = ref('')
+const strikeDone = ref(false)
+const jellyPick = ref('a')
+
 const viewer = ref(false)
 const viewerSrc = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d7e2ff"/><stop offset="1" stop-color="#3f5f90"/></linearGradient></defs><rect width="640" height="360" fill="url(#g)"/><circle cx="180" cy="140" r="60" fill="#faf9fd" opacity=".9"/><path d="M60 300 L260 180 L420 260 L600 140 L600 360 L60 360 Z" fill="#3f5f90" opacity=".55"/></svg>')
@@ -570,7 +656,7 @@ onMounted(() => showToast('info'))
             <UiButton variant="danger" @click="askDemo">confirmDialog 演示</UiButton>
             <UiButton variant="outline" @click="viewer = true">查看图片</UiButton>
           </div>
-          <span class="lib-cell__note">Esc 取消 / Enter 确认；查看器支持缩放、旋转、下载。</span>
+          <span class="lib-cell__note">确认框有意不接 Esc / Enter。媒体查看器从缩略位置长开，支持捏合 / 双击缩放、下拉关闭。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">弹层三件套</span>
@@ -592,6 +678,136 @@ onMounted(() => showToast('info'))
               <template #action><UiButton size="sm" @click="alertOpen = !alertOpen">看看提醒</UiButton></template>
             </UiEmptyState>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section :id="sections[7].id" class="lib-sec">
+      <h3 class="lib-sec__title">动效与手势</h3>
+      <div class="lib-cells">
+        <div class="lib-cell">
+          <span class="lib-cell__label">循环短语 <small>RotatingText</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiRotatingText :phrases="rotatingPhrases" transition="rotate" :interval="2400" />
+            <UiRotatingText :phrases="rotatingPhrases" transition="flip" :interval="2600" />
+            <UiRotatingText :phrases="rotatingPhrases" transition="slide" :interval="2800" />
+          </div>
+          <span class="lib-cell__note">rotate 原地旋转 / flip 绕轴翻牌 / slide 纵向滑过；悬停暂停。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">文字变体 <small>Text</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiText variant="type" :text="'正在生成报告…'" :cps="18" :loop="true" />
+            <UiText variant="shiny" text="掠光文字" sheen="chrome" />
+            <UiText variant="gradient" text="流动渐变 · 扫过" gradient="sweep" />
+            <UiText variant="gradient" text="流动渐变 · 网格" gradient="mesh" />
+            <UiText variant="gradient" text="流动渐变 · 锥形" gradient="conic" />
+          </div>
+          <span class="lib-cell__note">打字节奏可调；掠光有柔和与金属两档；渐变有扫过 / 漂移 / 锥形三种。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">工具调用胶囊 <small>ToolCallChip</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiToolCallChip name="search_web" detail="q=运动记录" :status="toolStatus" :expected="2.6" />
+            <div class="lib-cell__stage">
+              <UiButton size="sm" variant="tonal" @click="runTool('success')">重跑（成功）</UiButton>
+              <UiButton size="sm" variant="outline" @click="runTool('error')">重跑（失败）</UiButton>
+            </div>
+          </div>
+          <span class="lib-cell__note">填充随计时擦过；成功补满转绿，失败转红并抖动。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">状态标记 <small>StatusMark</small></span>
+          <div class="lib-cell__stage">
+            <UiStatusMark status="idle" :size="26" />
+            <UiStatusMark status="progress" :progress="0.62" :size="26" />
+            <UiStatusMark status="done" :size="26" />
+            <UiStatusMark status="error" :size="26" />
+            <UiButton size="sm" variant="tonal" @click="runStatus">跑一次</UiButton>
+            <UiStatusMark :status="statusStep" :progress="statusProgress" :size="22" />
+          </div>
+          <span class="lib-cell__note">静止环 → 进度弧 → 勾 / 叉，全部是同一条描边的形变。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">一次性验证码 <small>CodeSlots</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiCodeSlots v-model="codeSlot" :length="6" label="验证码（粘贴或短信自动填充）" />
+            <span class="lib-muted">已输入：{{ codeSlot || '空' }}</span>
+          </div>
+          <span class="lib-cell__note">原生 input 承担输入与 autocomplete，数字逐格弹入。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">可拖数值 <small>ScrubField</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiScrubField v-model="scrubValue" label="每日目标" unit="步" :min="0" :max="20000" :step="500" :pixels-per-range="260" />
+            <span class="lib-muted">当前：{{ scrubValue }}　左右拖，或用方向键；点击可输入。</span>
+          </div>
+          <span class="lib-cell__note">越界走橡皮筋，松手弹回；点击（不拖）切换成输入框。</span>
+        </div>
+        <div class="lib-cell lib-cell--span">
+          <span class="lib-cell__label">划开式列表行 <small>SwipeRow</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiSwipeRow :actions="swipeActions" :once="true" @action="onSwipeAction">
+              <div class="lib-row">
+                <b>晨跑 5.2 公里</b>
+                <span>32 分钟 · 268 kcal</span>
+              </div>
+            </UiSwipeRow>
+            <span class="lib-muted">{{ swipeLog }}（向左划开露出操作，划到底直接执行最后一个）</span>
+          </div>
+        </div>
+        <div class="lib-cell lib-cell--span">
+          <span class="lib-cell__label">多步流程 <small>StepFlow</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiSegmented v-model="stepOrientation" :options="[{ label: '横向', value: 'horizontal' }, { label: '纵向', value: 'vertical' }]" layout="one-line" label="方向" />
+            <UiStepFlow v-model="stepIndex" :steps="stepFlowSteps" :orientation="stepOrientation" @finish="showToast('success')">
+              <template #default="{ index, step }">
+                <p class="lib-muted">{{ step.label }}：{{ step.description }}</p>
+              </template>
+            </UiStepFlow>
+          </div>
+          <span class="lib-cell__note">指示器是一块滑动的薄条，换步时在轨道上滑过去。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">提示词组 <small>TooltipGroup</small></span>
+          <div class="lib-cell__stage">
+            <UiTooltipGroup :items="tooltipItems" />
+          </div>
+          <span class="lib-cell__note">第一次悬停要等 520ms，热了之后兄弟项瞬开。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">媒体查看 <small>MediaViewer</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiMediaViewer v-model="viewer" kind="image" :src="viewerSrc" label="训练场地" aspect="4 / 3" />
+            <UiButton size="sm" variant="outline" @click="viewer = true">打开</UiButton>
+          </div>
+          <span class="lib-cell__note">缩略预览点击后原地长开，支持捏合 / 双击缩放、下拉关闭。</span>
+        </div>
+        <div class="lib-cell lib-cell--span">
+          <span class="lib-cell__label">卡片组 <small>CardGroup · 8 种形态</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiSegmented v-model="cardVariant" :options="cardVariants" layout="one-line" label="形态" :auto-multiline="true" />
+            <UiCardGroup :variant="cardVariant" :items="cardItems" :height="240" :card-width="170" :auto="false" />
+          </div>
+          <span class="lib-cell__note">common 卡池 / 选中 / 键盘共用一套；形态只决定每张卡落在三维空间的哪儿。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">动作按钮 <small>Button · fuse / hold / slide</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiButton variant="fuse" :fuse-duration="4200" @click="buttonLog = 'fuse 点击'" @commit="buttonLog = 'fuse 已落定'" @undo="buttonLog = 'fuse 已撤销'">删除记录</UiButton>
+            <UiButton variant="hold" :hold-duration="1100" @confirm="buttonLog = 'hold 已确认'">按住确认</UiButton>
+            <UiButton variant="slide" :slide-threshold="56" :loading="slideLoading" @confirm="startSlide">滑动发布</UiButton>
+            <span class="lib-muted">{{ buttonLog }}</span>
+          </div>
+          <span class="lib-cell__note">fuse 烧引线可撤销；hold 松手即缩回；slide 跑完展开成药丸。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">果冻单选 / 删除线复选</span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiRadioGroup v-model="jellyPick" :options="[{ label: '轻松', value: 'a' }, { label: '适中', value: 'b' }, { label: '高强度', value: 'c' }]" />
+            <UiCheckbox v-model="strikeDone" strike label="完成今日目标" description="勾选后划线" />
+          </div>
+          <span class="lib-cell__note">选中项鼓起并把邻居往外推；复选的线从左往右划过文字。</span>
         </div>
       </div>
     </section>
@@ -713,6 +929,9 @@ onMounted(() => showToast('info'))
 }
 .lib-cell__note { color: var(--on-surface-variant); font-size: var(--fs-micro); line-height: 1.55; }
 .lib-cell__on { color: var(--on-primary-container); font-weight: var(--w-label); }
+.lib-row { display: flex; flex-direction: column; gap: 2px; padding: 13px 14px; }
+.lib-row b { font-size: var(--fs-small); font-weight: var(--w-strong); }
+.lib-row span { font-size: var(--fs-micro); color: var(--on-surface-variant); }
 .lib-muted { color: var(--on-surface-variant); font-size: var(--fs-micro); }
 .lib-link { color: var(--primary); text-decoration: underline dotted; cursor: help; font-size: var(--fs-small); }
 </style>

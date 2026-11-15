@@ -1,0 +1,268 @@
+<script setup>
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+
+const props = defineProps({
+  /* [{ label, description?, icon? }] */
+  steps: { type: Array, default: () => [] },
+  /* 当前步（0 起，仅受控） */
+  modelValue: { type: Number, default: 0 },
+  /* horizontal | vertical */
+  orientation: { type: String, default: 'horizontal' },
+  /* 允许点击已到达的步骤直接跳转 */
+  clickable: { type: Boolean, default: true },
+  /* 是否显示底部「上一步 / 下一步」 */
+  controls: { type: Boolean, default: true },
+  nextLabel: { type: String, default: '下一步' },
+  prevLabel: { type: String, default: '上一步' },
+  finishLabel: { type: String, default: '完成' }
+})
+
+const emit = defineEmits(['update:modelValue', 'change', 'finish'])
+
+/* ============================================================
+   多步流程
+   步骤之间是一条「滑动的高亮」：指示器是一个绝对定位的薄条，
+   位置与长度按当前步的格位算，靠 transform 走弹簧过渡，
+   所以换步时是在轨道上滑过去，而不是淡出淡入。
+   内容区只换内容：旧的淡出并模糊，新的从反方向浮现（内容替换语言）。
+   ============================================================ */
+
+const trackEl = ref(null)
+const itemEls = ref([])
+const indicator = ref({ left: 0, width: 0, top: 0, height: 0, ready: false })
+const direction = ref(1)
+
+const count = computed(() => props.steps.length)
+const clamped = computed(() => Math.max(0, Math.min(count.value - 1, props.modelValue)))
+const isLast = computed(() => clamped.value >= count.value - 1)
+
+function setItemEl(el, index) {
+  if (!el) { itemEls.value[index] = null; return }
+  itemEls.value[index] = el
+}
+
+function measure() {
+  const track = trackEl.value
+  const item = itemEls.value[clamped.value]
+  if (!track || !item) return
+  const tRect = track.getBoundingClientRect()
+  const iRect = item.getBoundingClientRect()
+  indicator.value = {
+    left: iRect.left - tRect.left,
+    width: iRect.width,
+    top: iRect.top - tRect.top,
+    height: iRect.height,
+    ready: true
+  }
+}
+
+let observer = null
+
+function go(index, fromUser = true) {
+  const next = Math.max(0, Math.min(count.value - 1, index))
+  if (next === clamped.value) return
+  direction.value = next > clamped.value ? 1 : -1
+  if (fromUser) emit('update:modelValue', next)
+  emit('change', { index: next, direction: direction.value })
+  if (next >= count.value - 1 && isLast.value) emit('finish')
+}
+
+function next() {
+  if (isLast.value) { emit('finish'); return }
+  go(clamped.value + 1)
+}
+
+function prev() {
+  if (clamped.value === 0) return
+  go(clamped.value - 1)
+}
+
+function onStepClick(index) {
+  if (!props.clickable) return
+  /* 只允许跳到「已完成」或当前步之后一步以内的位置，避免乱跳。 */
+  if (index > clamped.value + 1) return
+  go(index)
+}
+
+watch(() => [props.modelValue, props.steps.length, props.orientation], () => {
+  nextTick(measure)
+}, { deep: true, immediate: true })
+
+/* 尺寸变化（转屏 / 容器变宽）时重新量格位。 */
+function observe() {
+  if (typeof ResizeObserver === 'undefined' || !trackEl.value) return
+  observer = new ResizeObserver(() => measure())
+  observer.observe(trackEl.value)
+  window.addEventListener('resize', measure)
+}
+
+watch(trackEl, el => { if (el) { nextTick(() => { measure(); observe() }) } }, { immediate: true })
+
+onBeforeUnmount(() => {
+  if (observer) observer.disconnect()
+  window.removeEventListener('resize', measure)
+})
+</script>
+
+<template>
+  <div class="ui-stepflow" :class="[`is-${orientation}`]">
+    <div ref="trackEl" class="ui-stepflow__track" role="tablist" :aria-orientation="orientation">
+      <!-- 滑动指示器：当前步的格位。 -->
+      <span
+        v-if="indicator.ready && count"
+        class="ui-stepflow__indicator"
+        :style="{
+          transform: orientation === 'vertical'
+            ? `translate3d(0, ${indicator.top}px, 0)`
+            : `translate3d(${indicator.left}px, 0, 0)`,
+          width: orientation === 'vertical' ? indicator.width + 'px' : indicator.width + 'px',
+          height: orientation === 'vertical' ? indicator.height + 'px' : indicator.height + 'px'
+        }"
+        aria-hidden="true"
+      ></span>
+
+      <button
+        v-for="(step, index) in steps"
+        :key="step.label + index"
+        :ref="el => setItemEl(el, index)"
+        type="button"
+        class="ui-stepflow__step"
+        :class="{ 'is-active': index === clamped, 'is-done': index < clamped, 'is-locked': index > clamped + 1 }"
+        role="tab"
+        :aria-selected="index === clamped"
+        :aria-disabled="index > clamped + 1"
+        :tabindex="index === clamped ? 0 : -1"
+        @click="onStepClick(index)"
+      >
+        <span class="ui-stepflow__dot" aria-hidden="true">
+          <svg v-if="index < clamped" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.4 4.4L19 7" /></svg>
+          <template v-else-if="step.icon"><span class="ui-stepflow__glyph" v-html="step.icon"></span></template>
+          <template v-else>{{ index + 1 }}</template>
+        </span>
+        <span class="ui-stepflow__text">
+          <span class="ui-stepflow__label">{{ step.label }}</span>
+          <span v-if="step.description" class="ui-stepflow__desc">{{ step.description }}</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="ui-stepflow__panel">
+      <Transition :name="`stepflow-${direction > 0 ? 'next' : 'prev'}`">
+        <div :key="clamped" class="ui-stepflow__panel-inner">
+          <slot :index="clamped" :step="steps[clamped]" :next="next" :prev="prev" :finish="() => emit('finish')">
+            <p class="ui-stepflow__fallback">{{ steps[clamped]?.description || steps[clamped]?.label }}</p>
+          </slot>
+        </div>
+      </Transition>
+    </div>
+
+    <div v-if="controls" class="ui-stepflow__controls">
+      <button type="button" class="ui-stepflow__btn" :disabled="clamped === 0" @click="prev">{{ prevLabel }}</button>
+      <button type="button" class="ui-stepflow__btn is-primary" @click="next">{{ isLast ? finishLabel : nextLabel }}</button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.ui-stepflow { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.ui-stepflow__track { position: relative; display: flex; gap: 6px; padding: 5px; border-radius: calc(16px * var(--radius-scale)); background: var(--surface-container); }
+.ui-stepflow.is-vertical .ui-stepflow__track { flex-direction: column; align-items: stretch; }
+
+/* 指示器：靠 transform 在轨道上滑动，宽度 / 高度都跟随格位。 */
+.ui-stepflow__indicator {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 0;
+  border-radius: calc(12px * var(--radius-scale));
+  background: var(--primary-container);
+  transition: transform var(--t-panel) var(--spring-view), width var(--t-panel), height var(--t-panel);
+  pointer-events: none;
+}
+.ui-stepflow__step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: calc(12px * var(--radius-scale));
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-tiny);
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--t-fade), transform var(--t-feedback);
+}
+.ui-stepflow__step:active { transform: scale(var(--press-scale)); }
+.ui-stepflow__step.is-active { color: var(--on-primary-container); font-weight: var(--w-label); }
+.ui-stepflow__step.is-done { color: var(--on-surface); }
+.ui-stepflow__step.is-locked { cursor: default; opacity: .5; }
+.ui-stepflow__dot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: var(--border-w) solid var(--outline-variant);
+  background: var(--surface);
+  font-size: var(--fs-micro);
+  font-weight: var(--w-strong);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-feedback);
+}
+.ui-stepflow__dot svg { width: 13px; height: 13px; }
+.ui-stepflow__step.is-active .ui-stepflow__dot { background: var(--primary); border-color: var(--primary); color: var(--on-primary); transform: scale(1.06); }
+.ui-stepflow__step.is-done .ui-stepflow__dot { background: color-mix(in oklab, var(--primary) 16%, var(--surface)); border-color: var(--primary); color: var(--primary); }
+.ui-stepflow__glyph { display: grid; place-items: center; }
+.ui-stepflow__glyph :deep(svg) { width: 13px; height: 13px; }
+.ui-stepflow__text { display: flex; flex-direction: column; min-width: 0; }
+.ui-stepflow__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-stepflow__desc { font-size: var(--fs-micro); color: var(--on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 面板：内容替换 —— 旧内容淡出模糊，新内容从方向侧浮现。 */
+.ui-stepflow__panel { position: relative; min-height: 76px; }
+.ui-stepflow__panel-inner { will-change: transform, filter, opacity; }
+.ui-stepflow__fallback { margin: 0; color: var(--on-surface-variant); font-size: var(--fs-small); line-height: 1.6; }
+
+.stepflow-next-enter-active,
+.stepflow-next-leave-active,
+.stepflow-prev-enter-active,
+.stepflow-prev-leave-active { transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade); }
+.stepflow-next-enter-from { opacity: 0; transform: translateX(24px); filter: blur(8px); }
+.stepflow-next-leave-to { opacity: 0; transform: translateX(-24px); filter: blur(8px); }
+.stepflow-prev-enter-from { opacity: 0; transform: translateX(-24px); filter: blur(8px); }
+.stepflow-prev-leave-to { opacity: 0; transform: translateX(24px); filter: blur(8px); }
+/* 两层同时在场时叠在一起，避免高度跳动。 */
+.stepflow-next-leave-active,
+.stepflow-prev-leave-active { position: absolute; inset: 0; }
+
+.ui-stepflow__controls { display: flex; gap: 8px; justify-content: flex-end; }
+.ui-stepflow__btn {
+  padding: 9px 15px;
+  border: var(--border-w) solid var(--outline-variant);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-surface);
+  font-size: var(--fs-tiny);
+  font-weight: var(--w-label);
+  cursor: pointer;
+  transition: background var(--t-fade), border-color var(--t-fade), transform var(--t-feedback), opacity var(--t-fade);
+}
+.ui-stepflow__btn:active { transform: scale(var(--press-scale)); }
+.ui-stepflow__btn:disabled { opacity: .38; cursor: not-allowed; }
+.ui-stepflow__btn.is-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-stepflow__indicator { transition-duration: .01ms; }
+  .ui-stepflow__panel-inner { transition-duration: .01ms; }
+  .stepflow-next-enter-active, .stepflow-next-leave-active,
+  .stepflow-prev-enter-active, .stepflow-prev-leave-active { transition-duration: .01ms; }
+  .ui-stepflow__step :deep(*) { transition-duration: .01ms; }
+}
+</style>

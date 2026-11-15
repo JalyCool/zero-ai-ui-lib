@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { usePress } from '../../core/pressFeedback'
 
 const props = defineProps({
@@ -31,6 +31,37 @@ const panelEl = ref(null)
 const panelContentEl = ref(null)
 
 const open = ref(false)
+watch(open, value => { if (value) nextTick(resetGlide); else glideIndex.value = -1 })
+/* 滑行高亮：跟随悬停项，离开时回到当前选中项 */
+const glideIndex = ref(-1)
+const glideStyle = ref(null)
+
+function optionEls() {
+  const inner = panelContentEl.value
+  return inner ? Array.from(inner.querySelectorAll('.ui-select__option')) : []
+}
+
+function measureGlide() {
+  if (props.iconPlacement === 'top') { glideStyle.value = null; return }
+  const buttons = optionEls()
+  const index = glideIndex.value
+  const el = buttons[index]
+  if (!el) { glideStyle.value = null; return }
+  glideStyle.value = {
+    transform: 'translate3d(0,' + el.offsetTop + 'px,0)',
+    height: el.offsetHeight + 'px'
+  }
+}
+
+function setGlide(index) {
+  glideIndex.value = index
+  nextTick(measureGlide)
+}
+
+function resetGlide() {
+  const index = props.options.findIndex(item => item.value === props.modelValue)
+  setGlide(index)
+}
 const closing = ref(false)
 const pressed = ref(false)
 const floating = ref(false)
@@ -398,6 +429,8 @@ onBeforeUnmount(() => {
           class="ui-select__panel-inner"
           :class="{ 'is-icon-top': iconPlacement === 'top' }"
         >
+          <!-- 滑行高亮：一个圆角块在行之间滑过去，代替每行各自变色 -->
+          <span v-if="glideStyle" class="ui-select__glide" :style="glideStyle" aria-hidden="true"></span>
           <button
             v-for="option in options"
             :key="option.value"
@@ -408,6 +441,9 @@ onBeforeUnmount(() => {
             :tabindex="open && !option.disabled ? 0 : -1"
             class="ui-select__option"
             :class="{ 'is-selected': option.value === modelValue, 'is-disabled': !!option.disabled }"
+            @mouseenter="!option.disabled && setGlide(options.indexOf(option))"
+            @mouseleave="resetGlide"
+            @focus="!option.disabled && setGlide(options.indexOf(option))"
             @click="choose(option)"
           >
             <span v-if="option.icon" class="ui-select__icon" aria-hidden="true">
@@ -579,7 +615,22 @@ onBeforeUnmount(() => {
   gap: 2px;
   padding: 6px;
 }
+.ui-select__panel-inner { position: relative; }
+/* 高亮块：位置与高度由 JS 量出来，过渡用面板弹簧。 */
+.ui-select__glide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  border-radius: calc(10px * var(--radius-scale));
+  background: var(--surface-container-low);
+  pointer-events: none;
+  transition: transform var(--t-panel) var(--spring-view), height var(--t-panel) var(--spring-view);
+}
 .ui-select__option {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -596,7 +647,9 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: background var(--t-fade), color var(--t-fade), border-radius var(--t-panel);
 }
-.ui-select__option:hover { background: var(--surface-container-low); }
+/* 行不再自己变底色：滑行高亮块负责「跟着指针走」。 */
+.ui-select__option:hover { background: transparent; }
+.ui-select__panel-inner.is-icon-top .ui-select__option:hover { background: var(--surface-container); }
 .ui-select__option.is-selected {
   color: var(--primary);
   font-weight: var(--w-label);

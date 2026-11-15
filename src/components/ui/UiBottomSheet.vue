@@ -279,7 +279,7 @@ function onHandleDown(event) {
   dragLastY = event.clientY
   dragLastT = event.timeStamp
   dragVelocity = 0
-  event.currentTarget.setPointerCapture?.(event.pointerId)
+  try { event.currentTarget.setPointerCapture?.(event.pointerId) } catch (error) { /* 指针已失效，忽略 */ }
 }
 
 function onHandleMove(event) {

@@ -47,7 +47,7 @@ export function usePress(options) {
     pointerEl.addEventListener('pointerup', onPointerUp)
     pointerEl.addEventListener('pointercancel', onPointerCancel)
     try {
-      pointerEl.setPointerCapture(event.pointerId)
+      try { pointerEl.setPointerCapture(event.pointerId) } catch (error) { /* 指针已失效，忽略 */ }
     } catch (error) {
       // 个别环境不支持捕获，退化成普通监听。
     }

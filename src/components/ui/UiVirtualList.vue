@@ -136,7 +136,7 @@ function onRowPointerDown(event, index) {
     dragState.value = { from: index }
     moved = true
     /* 接管手势：容器禁止原生滚动，指针捕获到列表上。 */
-    scrollEl.value?.setPointerCapture?.(event.pointerId)
+    try { scrollEl.value?.setPointerCapture?.(event.pointerId) } catch (error) { /* 指针已失效，忽略 */ }
     /* 锚点自身先切换一次，作为整段的起点。 */
     applyRange(index, !anchorWasSelected)
   }, props.holdMs)

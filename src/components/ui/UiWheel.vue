@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   /* 列配置：[{ items, value, separator?, label? }]
@@ -8,7 +8,11 @@ const props = defineProps({
   /* 面板未展开时屏蔽列内焦点 */
   interactive: { type: Boolean, default: true },
   /* 高亮块高度（px），默认 30 与数字行高一致 */
-  itemHeight: { type: Number, default: 30 }
+  itemHeight: { type: Number, default: 30 },
+  /* 离中心越远越模糊（景深），并轻微降低不透明度 */
+  distanceBlur: { type: Boolean, default: true },
+  /* 最远行的模糊半径上限（px） */
+  maxBlur: { type: Number, default: 3.4 }
 })
 
 const emit = defineEmits(['change'])
@@ -59,7 +63,32 @@ function centeredValue(index) {
   return best
 }
 
+/* 按「离高亮块中心几行」给每行写字：模糊 + 淡出，越远越虚。
+   直接写内联样式而不是靠 CSS：距离是滚动位置的连续函数，
+   CSS 没法表达「第几行离中心多远」。 */
+let blurFrame = 0
+function paintBlur(index) {
+  if (!props.distanceBlur) return
+  const column = columnEls.value[index]
+  if (!column) return
+  const center = column.scrollTop + column.clientHeight / 2
+  const unit = Math.max(1, props.itemHeight)
+  column.querySelectorAll('button').forEach(button => {
+    const middle = button.offsetTop + button.offsetHeight / 2
+    const rows = Math.abs(middle - center) / unit
+    const blur = Math.min(props.maxBlur, Math.max(0, (rows - 0.6) * 0.9))
+    button.style.filter = blur > 0.04 ? 'blur(' + blur.toFixed(2) + 'px)' : ''
+    button.style.opacity = String(Math.max(0.26, 1 - Math.max(0, rows - 1.7) * 0.24))
+  })
+}
+
+function schedulePaint(index) {
+  if (blurFrame) cancelAnimationFrame(blurFrame)
+  blurFrame = requestAnimationFrame(() => { blurFrame = 0; paintBlur(index) })
+}
+
 function onScroll(index) {
+  schedulePaint(index)
   clearTimeout(timers[index])
   timers[index] = setTimeout(() => {
     const raw = centeredValue(index)
@@ -74,15 +103,27 @@ function onScroll(index) {
 function select(index, item) {
   const value = itemValue(item)
   scrollToValue(index, value)
+  requestAnimationFrame(() => paintBlur(index))
   emit('change', { index, value })
 }
 
 /* 外部值变化（含切月后日列变化）时把各列重新居中。 */
 watch(() => props.columns.map(c => c.value).join('|'), () => {
-  props.columns.forEach((column, index) => scrollToValue(index, column.value))
+  props.columns.forEach((column, index) => {
+    scrollToValue(index, column.value)
+    requestAnimationFrame(() => paintBlur(index))
+  })
 })
 
-onBeforeUnmount(() => timers.forEach(timer => clearTimeout(timer)))
+onMounted(() => {
+  /* 首帧把景深画上，否则初始状态所有行都是清晰的。 */
+  props.columns.forEach((_, index) => requestAnimationFrame(() => paintBlur(index)))
+})
+
+onBeforeUnmount(() => {
+  timers.forEach(timer => clearTimeout(timer))
+  if (blurFrame) cancelAnimationFrame(blurFrame)
+})
 
 function scrollAll(behavior = 'smooth') {
   props.columns.forEach((column, index) => scrollToValue(index, column.value, behavior))
@@ -180,6 +221,7 @@ defineExpose({ scrollAll, scrollToValue })
   cursor: pointer;
   transition: color var(--t-fade), background var(--t-fade), transform var(--t-feedback);
 }
+.ui-wheel__column button { will-change: filter, opacity; }
 .ui-wheel__column button:hover { background: color-mix(in oklab, var(--surface) 46%, transparent); color: var(--on-surface); }
 .ui-wheel__column button:active { transform: scale(.96); }
 /* 落在高亮块里的那一项：不带底色，只换颜色和字重。 */

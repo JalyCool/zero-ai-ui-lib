@@ -7,17 +7,65 @@ import type { DefineComponent } from 'vue'
 
 type AnyProps = Record<string, unknown>
 
+declare const UiMediaViewer: DefineComponent<{
+  src: string; kind?: 'auto' | 'image' | 'video'; poster?: string; label?: string; alt?: string
+  aspect?: string; thumbWidth?: string; zoomable?: boolean; maxZoom?: number
+  modelValue?: boolean
+}, AnyProps, unknown>
+declare const UiCardGroup: DefineComponent<{
+  variant?: 'gallery' | 'circular' | 'depth' | 'wall' | 'scroll-stack' | 'stack' | 'swap' | 'bounce'
+  items?: { title: string; meta?: string; tone?: string; image?: string }[]
+  height?: number; cardWidth?: number; gap?: number; auto?: boolean; interval?: number
+  modelValue?: number
+}, AnyProps, unknown>
+declare const UiCodeSlots: DefineComponent<{
+  length?: number; modelValue?: string; autofocus?: boolean; disabled?: boolean; mask?: boolean; label?: string
+}, AnyProps, unknown>
+declare const UiScrubField: DefineComponent<{
+  modelValue?: number; min?: number; max?: number; step?: number; precision?: number
+  unit?: string; label?: string; pixelsPerRange?: number; rubber?: number; disabled?: boolean
+}, AnyProps, unknown>
+declare const UiStatusMark: DefineComponent<{
+  status?: 'idle' | 'progress' | 'done' | 'error'; progress?: number; size?: number
+}, AnyProps, unknown>
+declare const UiStepFlow: DefineComponent<{
+  steps?: { label: string; description?: string; icon?: string }[]
+  modelValue?: number; orientation?: 'horizontal' | 'vertical'; clickable?: boolean
+  controls?: boolean; nextLabel?: string; prevLabel?: string; finishLabel?: string
+}, AnyProps, unknown>
+declare const UiSwipeRow: DefineComponent<{
+  actions?: { label: string; tone?: 'neutral' | 'danger'; icon?: string }[]
+  threshold?: number; fullSwipeAction?: boolean; once?: boolean; disabled?: boolean; open?: boolean | null
+}, AnyProps, unknown>
+declare const UiText: DefineComponent<{
+  variant?: 'type' | 'shiny' | 'gradient'; text?: string
+  cps?: number; cursor?: boolean; loop?: boolean; startDelay?: number
+  sheen?: 'soft' | 'chrome'; sweep?: number
+  gradient?: 'sweep' | 'mesh' | 'conic'; colors?: string[]
+}, AnyProps, unknown>
+declare const UiRotatingText: DefineComponent<{
+  phrases?: string[]; interval?: number; transition?: 'rotate' | 'flip' | 'slide'
+  pauseOnHover?: boolean; paused?: boolean
+}, AnyProps, unknown>
+declare const UiToolCallChip: DefineComponent<{
+  name?: string; detail?: string; status?: 'running' | 'success' | 'error'
+  expected?: number; showTime?: boolean
+}, AnyProps, unknown>
+declare const UiTooltipGroup: DefineComponent<{
+  items?: { label: string; tip: string }[]; wait?: number; warmWindow?: number; linger?: number
+}, AnyProps, unknown>
+declare const UiButton: DefineComponent<{
+  variant?: 'primary' | 'tonal' | 'outline' | 'text' | 'danger' | 'icon' | 'fuse' | 'hold' | 'slide'
+  size?: 'sm' | 'md' | 'lg'; type?: string; block?: boolean; disabled?: boolean; loading?: boolean
+  fuseDuration?: number; undoLabel?: string; doneLabel?: string
+  holdDuration?: number; slideThreshold?: number
+}, AnyProps, unknown>
 declare const UiAccordion: DefineComponent<{ title?: string; open?: boolean; modelValue?: boolean }, AnyProps, unknown>
 declare const UiAlert: DefineComponent<{ tone?: 'warning' | 'danger' | 'success' | 'info'; title?: string }, AnyProps, unknown>
 declare const UiAvatar: DefineComponent<{ name?: string; src?: string; size?: number }, AnyProps, unknown>
 declare const UiBadge: DefineComponent<{ tone?: 'primary' | 'success' | 'warning' | 'danger'; dot?: boolean; label?: string }, AnyProps, unknown>
 declare const UiBarChart: DefineComponent<{ data?: number[]; labels?: string[]; height?: number }, AnyProps, unknown>
 declare const UiBottomSheet: DefineComponent<{ modelValue?: boolean; title?: string; maxHeight?: string; closeOnBackdrop?: boolean; scrim?: boolean; anchors?: number[] }, AnyProps, unknown>
-declare const UiButton: DefineComponent<{
-  variant?: 'primary' | 'tonal' | 'outline' | 'text' | 'danger' | 'icon'
-  size?: 'sm' | 'md' | 'lg'
-  block?: boolean; loading?: boolean; disabled?: boolean; type?: string
-}, AnyProps, unknown>
 declare const UiCheckbox: DefineComponent<{ modelValue?: boolean; label?: string; disabled?: boolean }, AnyProps, unknown>
 declare const UiCodeImage: DefineComponent<{ type: string | string[]; options?: Record<string, Record<string, unknown>>; width?: number }, AnyProps, unknown>
 declare const UiChip: DefineComponent<{ variant?: string; selected?: boolean; removable?: boolean; dot?: boolean }, AnyProps, unknown>
@@ -43,7 +91,6 @@ declare const UiGaugeSlider: DefineComponent<{
   showScale?: boolean; showBubble?: boolean; spring?: Record<string, number> | null
 }, AnyProps, unknown>
 declare const UiHeatmap: DefineComponent<{ data?: number[][]; labels?: string[] }, AnyProps, unknown>
-declare const UiImageViewer: DefineComponent<{ modelValue?: boolean; src: string; alt?: string }, AnyProps, unknown>
 declare const UiInput: DefineComponent<{
   modelValue?: string | number; label?: string; type?: string; placeholder?: string
   hint?: string; error?: string; disabled?: boolean; autocomplete?: string
@@ -221,6 +268,8 @@ export {
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
+  UiCardGroup, UiCodeSlots, UiMediaViewer, UiRotatingText, UiScrubField, UiStatusMark,
+  UiStepFlow, UiSwipeRow, UiText, UiToolCallChip, UiTooltipGroup,
   UiRating, UiRingProgress, UiRingSlider, UiRollNumber, UiSchemaForm,
   UiSearchField, UiSelect, UiSegmented, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,
   UiStepper, UiSwitch, UiTabBar, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,
