@@ -18,7 +18,9 @@ const props = defineProps({
   /* 单行宽度装不下时自动切成多行网格（不需要图标也会触发）。 */
   autoMultiline: { type: Boolean, default: true },
   /* 多行时单个选项的最小宽度（px）；0 = 按图标位置自动取。 */
-  minItemWidth: { type: Number, default: 0 }
+  minItemWidth: { type: Number, default: 0 },
+  /* 手动指定每行列数（0 = 自动按内容宽度算）。多行能力本身一直保留。 */
+  columns: { type: Number, default: 0 }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -88,6 +90,13 @@ const naturalWidths = computed(() => {
 function measure() {
   const el = rootEl.value
   const count = props.options.length || 1
+  /* 调用方显式给了列数：直接用它，不再量宽度。 */
+  if (props.columns > 0) {
+    const forced = Math.max(1, Math.min(count, props.columns))
+    columns.value = forced
+    isMultiline.value = forced < count
+    return
+  }
   if (!el || !props.autoMultiline) {
     columns.value = count
     isMultiline.value = false
@@ -116,7 +125,7 @@ onMounted(() => {
   }
 })
 
-watch([() => props.options, () => props.showLabels, () => props.iconPlacement, () => props.minItemWidth], () => {
+watch([() => props.options, () => props.showLabels, () => props.iconPlacement, () => props.minItemWidth, () => props.columns], () => {
   nextTick(measure)
 }, { deep: true })
 

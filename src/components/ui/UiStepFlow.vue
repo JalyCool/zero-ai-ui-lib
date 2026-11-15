@@ -28,33 +28,33 @@ const emit = defineEmits(['update:modelValue', 'change', 'finish'])
    ============================================================ */
 
 const trackEl = ref(null)
-const itemEls = ref([])
-const indicator = ref({ left: 0, width: 0, top: 0, height: 0, ready: false })
 const direction = ref(1)
 
 const count = computed(() => props.steps.length)
 const clamped = computed(() => Math.max(0, Math.min(count.value - 1, props.modelValue)))
 const isLast = computed(() => clamped.value >= count.value - 1)
 
-function setItemEl(el, index) {
-  if (!el) { itemEls.value[index] = null; return }
-  itemEls.value[index] = el
-}
-
-function measure() {
-  const track = trackEl.value
-  const item = itemEls.value[clamped.value]
-  if (!track || !item) return
-  const tRect = track.getBoundingClientRect()
-  const iRect = item.getBoundingClientRect()
-  indicator.value = {
-    left: iRect.left - tRect.left,
-    width: iRect.width,
-    top: iRect.top - tRect.top,
-    height: iRect.height,
-    ready: true
+/* 指示器与 UiSegmented 完全同一套算法：步骤等分（flex:1），
+   宽高用 calc 一次算定，位移用百分比 —— 不依赖 getBoundingClientRect，
+   所以换步时它就是一块背景在轨道上平移，不会因为量尺寸的时机抖动。
+   GAP = 轨道内间隙（6px），PAD = 轨道内边距（5px）。 */
+const PAD = 5
+const GAP = 6
+const indicatorStyle = computed(() => {
+  const n = count.value
+  if (!n) return null
+  const index = clamped.value
+  if (props.orientation === 'vertical') {
+    return {
+      height: 'calc((100% - ' + PAD * 2 + 'px - ' + (n - 1) * GAP + 'px) / ' + n + ')',
+      transform: 'translate3d(0, calc(' + index + ' * (100% + ' + GAP + 'px)), 0)'
+    }
   }
-}
+  return {
+    width: 'calc((100% - ' + PAD * 2 + 'px - ' + (n - 1) * GAP + 'px) / ' + n + ')',
+    transform: 'translate3d(calc(' + index + ' * (100% + ' + GAP + 'px)), 0, 0)'
+  }
+})
 
 let observer = null
 
@@ -84,20 +84,6 @@ function onStepClick(index) {
   go(index)
 }
 
-watch(() => [props.modelValue, props.steps.length, props.orientation], () => {
-  nextTick(measure)
-}, { deep: true, immediate: true })
-
-/* 尺寸变化（转屏 / 容器变宽）时重新量格位。 */
-function observe() {
-  if (typeof ResizeObserver === 'undefined' || !trackEl.value) return
-  observer = new ResizeObserver(() => measure())
-  observer.observe(trackEl.value)
-  window.addEventListener('resize', measure)
-}
-
-watch(trackEl, el => { if (el) { nextTick(() => { measure(); observe() }) } }, { immediate: true })
-
 onBeforeUnmount(() => {
   if (observer) observer.disconnect()
   window.removeEventListener('resize', measure)
@@ -108,23 +94,11 @@ onBeforeUnmount(() => {
   <div class="ui-stepflow" :class="[`is-${orientation}`]">
     <div ref="trackEl" class="ui-stepflow__track" role="tablist" :aria-orientation="orientation">
       <!-- 滑动指示器：当前步的格位。 -->
-      <span
-        v-if="indicator.ready && count"
-        class="ui-stepflow__indicator"
-        :style="{
-          transform: orientation === 'vertical'
-            ? `translate3d(0, ${indicator.top}px, 0)`
-            : `translate3d(${indicator.left}px, 0, 0)`,
-          width: orientation === 'vertical' ? indicator.width + 'px' : indicator.width + 'px',
-          height: orientation === 'vertical' ? indicator.height + 'px' : indicator.height + 'px'
-        }"
-        aria-hidden="true"
-      ></span>
+      <span v-if="indicatorStyle" class="ui-stepflow__indicator" :style="indicatorStyle" aria-hidden="true"></span>
 
       <button
         v-for="(step, index) in steps"
         :key="step.label + index"
-        :ref="el => setItemEl(el, index)"
         type="button"
         class="ui-stepflow__step"
         :class="{ 'is-active': index === clamped, 'is-done': index < clamped, 'is-locked': index > clamped + 1 }"
@@ -177,8 +151,10 @@ onBeforeUnmount(() => {
   z-index: 0;
   border-radius: calc(12px * var(--radius-scale));
   background: var(--primary-container);
+  /* 宽高按 calc 一次算定，位移用百分比 translate：换步时就是平移。 */
   transition: transform var(--t-panel) var(--spring-view), width var(--t-panel), height var(--t-panel);
   pointer-events: none;
+  will-change: transform;
 }
 .ui-stepflow__step {
   position: relative;

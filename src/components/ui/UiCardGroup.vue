@@ -291,6 +291,10 @@ watch(count, value => {
 }, { immediate: true })
 
 const front = computed(() => pile.value[0] ?? 0)
+/* swap = 3D 轮换：rest → exit（前卡向下退出）→ enter（从后层重新进场）。
+   stack = 物理牌堆：直接重排，被甩出的卡靠 transform 过渡「钻回堆底」。 */
+const swapPhase = ref('rest')
+const enteringIndex = ref(-1)
 /* 最上面那张的跟手 / 飞出状态 */
 const frontMotion = ref({ x: 0, y: 0, rot: 0, scale: 1, flying: false, dim: 0 })
 let pileStartX = 0
@@ -299,37 +303,70 @@ let pileStartY = 0
 function pileStyle(position, item) {
   if (position === 0) {
     const m = frontMotion.value
+    /* 拖动时按速度与位移算「倾斜」（lean）：左右甩 → 绕 Y 转，上下拉 → 绕 X 转。
+       松手后 tilt 归零（face），这就是原库 lean / face 两档弹簧的简化版。 */
     return {
       '--card-tone': item.tone || 'primary',
-      transform: 'translate3d(' + m.x + 'px,' + m.y + 'px,0) rotate(' + m.rot + 'deg) scale(' + m.scale + ')',
-      opacity: String(1 - m.dim * 0.6),
+      transform:
+        'translate3d(' + m.x + 'px,' + m.y + 'px,0) ' +
+        'rotate(' + m.rot + 'deg) ' +
+        'rotateX(' + (m.tiltX || 0) + 'deg) rotateY(' + (m.tiltY || 0) + 'deg) ' +
+        'scale(' + m.scale + ')',
+      opacity: swapPhase.value === 'exit' ? '0' : String(1 - m.dim * 0.6),
+      filter: swapPhase.value === 'exit' ? 'blur(6px)' : '',
       zIndex: '60',
-      transition: m.flying ? 'transform 260ms cubic-bezier(.3,.7,.3,1), opacity 260ms ease' : 'none'
+      transition: swapPhase.value === 'exit'
+        ? 'transform 240ms cubic-bezier(.5,0,.75,0), opacity 240ms ease, filter 240ms ease'
+        : (m.flying ? 'transform 280ms cubic-bezier(.3,.7,.3,1), opacity 260ms ease' : 'none')
     }
   }
+  /* 越靠后越沉：位移 + 压暗 + 轻微模糊，像一叠真的牌。 */
+  const shade = Math.min(0.28, position * 0.07)
   return {
     '--card-tone': item.tone || 'primary',
     transform: 'translate3d(' + position * 9 + 'px,' + position * -7 + 'px,' + -position * 26 + 'px) rotate(' + (position % 2 ? 1.4 : -1.4) * position + 'deg) scale(' + (1 - position * 0.055) + ')',
     opacity: String(Math.max(0, 1 - position * 0.16)),
-    filter: position > 1 ? 'brightness(' + (1 - Math.min(0.3, position * 0.1)) + ')' : '',
+    filter: 'brightness(' + (1 - shade) + ')' + (position > 1 ? ' blur(' + Math.min(2, position * 0.5) + 'px)' : ''),
     zIndex: String(50 - position),
-    transition: 'transform var(--t-panel) var(--spring-view), opacity var(--t-fade), filter var(--t-fade)'
+    transition: 'transform 320ms cubic-bezier(.22,1.2,.36,1), opacity var(--t-fade), filter var(--t-fade)'
   }
 }
 
+/* 牌堆：直接重排（前卡靠 transform 过渡飞过去/钻到底）。 */
 function advancePile() {
   if (pile.value.length < 2) return
   const next = pile.value.slice(1)
   next.push(pile.value[0])
   pile.value = next
-  frontMotion.value = { x: 0, y: 0, rot: 0, scale: 1, flying: false, dim: 0 }
+  frontMotion.value = { x: 0, y: 0, rot: 0, scale: 1, tiltX: 0, tiltY: 0, flying: false, dim: 0 }
   pick(pile.value[0])
+}
+
+/* 轮换：前卡先向下「退出」，再从后层重新进场（rest → exit → enter）。 */
+function advanceSwap() {
+  if (pile.value.length < 2 || swapPhase.value !== 'rest') return
+  swapPhase.value = 'exit'
+  setTimeout(() => {
+    const next = pile.value.slice(1)
+    const moved = pile.value[0]
+    next.push(moved)
+    pile.value = next
+    enteringIndex.value = moved
+    swapPhase.value = 'enter'
+    frontMotion.value = { x: 0, y: 0, rot: 0, scale: 1, tiltX: 0, tiltY: 0, flying: false, dim: 0 }
+    pick(next[0])
+    setTimeout(() => {
+      swapPhase.value = 'rest'
+      enteringIndex.value = -1
+    }, 360)
+  }, 260)
 }
 
 /* 甩出去：先飞出去，再绕到牌堆最下面。 */
 function flingFront(direction) {
   if (pile.value.length < 2) return
-  frontMotion.value = { x: direction * 240, y: -46, rot: direction * 20, scale: 0.94, flying: true, dim: 1 }
+  if (props.variant === 'swap') { advanceSwap(); return }
+  frontMotion.value = { x: direction * 240, y: -46, rot: direction * 20, tiltX: -10, tiltY: direction * 12, scale: 0.94, flying: true, dim: 1 }
   setTimeout(() => {
     advancePile()
   }, 250)
@@ -361,13 +398,19 @@ function applyDrag(dx, dy) {
   else if (v === 'depth') depthDrag.value = depthStart - dx / 110
   else if (v === 'wall') driftY.value += dy * 0.6
   else if (v === 'stack' || v === 'swap') {
+    const width = props.cardWidth * 0.92
+    /* lean：横向甩 → 绕 Y 倾斜，纵向拉 → 绕 X 倾斜（上限 14°）。 */
+    const tiltY = Math.max(-14, Math.min(14, (vx * 120 + (dx / Math.max(1, width)) * 22)))
+    const tiltX = Math.max(-12, Math.min(12, (-vy * 100) + (dy / Math.max(1, width)) * -14))
     frontMotion.value = {
       x: dx,
-      y: dy * 0.35,
-      rot: dx * 0.06,
-      scale: 1 - Math.min(0.05, Math.abs(dx) / 1600),
+      y: dy * 0.42,
+      rot: dx * 0.055,
+      tiltX,
+      tiltY,
+      scale: 1 - Math.min(0.06, Math.abs(dx) / (width * 4)),
       flying: false,
-      dim: Math.min(0.3, Math.abs(dx) / 600)
+      dim: Math.min(0.32, Math.abs(dx) / (width * 2))
     }
   } else if (v === 'bounce') spread.value = spreadStart + dx * 0.5
 }
@@ -396,10 +439,13 @@ function endDrag(dx, dy) {
     /* 惯性再飘一点，然后继续自动漂移。 */
     animateTo(() => driftY.value, value => { driftY.value = value }, driftY.value + vy * 220)
   } else if (v === 'stack' || v === 'swap') {
-    if (Math.abs(dx) > 92 || Math.abs(vx) > 0.65) flingFront(dx >= 0 ? 1 : -1)
+    const width = props.cardWidth * 0.92
+    const reach = Math.max(56, width * 0.3)
+    if (Math.abs(dx) > reach || Math.abs(vx) > 0.55) flingFront(dx >= 0 ? 1 : -1)
     else {
-      frontMotion.value = { ...frontMotion.value, x: 0, y: 0, rot: 0, scale: 1, dim: 0, flying: true }
-      setTimeout(() => { frontMotion.value = { x: 0, y: 0, rot: 0, scale: 1, flying: false, dim: 0 } }, 260)
+      /* 没到阈值：回弹（face + settle），倾斜一起回正。 */
+      frontMotion.value = { ...frontMotion.value, x: 0, y: 0, rot: 0, tiltX: 0, tiltY: 0, scale: 1, dim: 0, flying: true }
+      setTimeout(() => { frontMotion.value = { x: 0, y: 0, rot: 0, tiltX: 0, tiltY: 0, scale: 1, flying: false, dim: 0 } }, 300)
     }
   } else if (v === 'bounce') {
     animateTo(() => spread.value, value => { spread.value = value }, 0)
@@ -429,8 +475,10 @@ function hitCard(index) {
   else if (v === 'wall' || v === 'bounce') pick(index)
   else if (v === 'scroll-stack') scrollToCard(index)
   else if (v === 'stack' || v === 'swap') {
-    if (index === front.value) advancePile()
-    else pick(index)
+    if (index === front.value) {
+      if (v === 'swap') advanceSwap()
+      else advancePile()
+    } else pick(index)
   }
 }
 
@@ -485,7 +533,8 @@ function startAuto() {
   if (!shouldRun) return
   autoTimer = setInterval(() => {
     if (dragging) return
-    if (v === 'swap' || v === 'stack') advancePile()
+    if (v === 'swap') advanceSwap()
+    else if (v === 'stack') advancePile()
     else if (v === 'depth') depthStep(1)
     else if (v === 'gallery') hitCard(Math.min(count.value - 1, active.value + 1))
     else if (v === 'circular') hitCard((active.value + 1) % Math.max(1, count.value))
@@ -620,7 +669,12 @@ watch(() => props.modelValue, value => {
           v-for="(index, position) in pile"
           :key="'p' + index"
           class="ui-card-group__card ui-card-group__pile-card"
-          :class="{ 'is-front': position === 0, 'is-flying': position === 0 && frontMotion.flying }"
+          :class="{
+            'is-front': position === 0,
+            'is-flying': position === 0 && frontMotion.flying,
+            'is-exiting': variant === 'swap' && position === 0 && swapPhase === 'exit',
+            'is-entering': variant === 'swap' && enteringIndex === index && swapPhase !== 'rest'
+          }"
           :data-card-index="index"
           :style="[pileStyle(position, items[index] || {}), { '--i': position }]"
         >
@@ -852,6 +906,14 @@ watch(() => props.modelValue, value => {
 }
 .ui-card-group__pile-card.is-front { cursor: grab; animation: none; }
 .ui-card-group__pile-card.is-front.is-flying { pointer-events: none; }
+/* 轮换：退出的那张已经淡出，重新进场的那张从后层抬起来。 */
+.ui-card-group__pile-card.is-entering {
+  animation: cgSwapEnter 360ms cubic-bezier(.22,1.2,.36,1) both;
+}
+@keyframes cgSwapEnter {
+  from { opacity: 0; transform: translate3d(0, 16%, -40px) rotateX(-18deg) scale(.86); filter: blur(8px); }
+  to { opacity: 1; filter: blur(0); }
+}
 .ui-card-group__pile-actions {
   position: absolute;
   inset: auto 0 6px 0;

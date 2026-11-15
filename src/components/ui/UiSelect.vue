@@ -10,9 +10,13 @@ const props = defineProps({
   placeholder: { type: String, default: '请选择' },
   /* 整体禁用：直接无法展开；单个选项禁用：options 里带 disabled: true */
   disabled: { type: Boolean, default: false },
-  /* 选项图标位置：leading 在文字前端（列表行布局不变）；
+  /* 面板里选项的图标位置：leading 在文字前端（列表行布局不变）；
      top 在文字上方（下拉面板变成图标卡片网格）。icon 是 24x24 viewBox 内的 SVG 标记。 */
-  iconPlacement: { type: String, default: 'leading' }
+  iconPlacement: { type: String, default: 'leading' },
+  /* 是否显示图标（全局开关，字段与选项同时受控）。 */
+  showIcon: { type: Boolean, default: true },
+  /* 字段里「已选中项」的图标位置：leading 与文字同行 / top 在文字上方。 */
+  fieldIconPlacement: { type: String, default: 'leading' }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -77,7 +81,7 @@ let borderX = 0
 let borderY = 0
 
 const selectedOption = computed(() => props.options.find(item => item.value === props.modelValue) || null)
-const showFieldIcon = computed(() => props.iconPlacement === 'leading' && !!selectedOption.value?.icon)
+const showFieldIcon = computed(() => props.showIcon && !!selectedOption.value?.icon)
 
 const selectedLabel = computed(() => {
   const option = props.options.find(item => item.value === props.modelValue)
@@ -137,7 +141,7 @@ function removePlaceholder() {
 
 /* 量列表高度，同时算出「当前选中项」在展开后所处的中心位置：
    原始内容要平移到那里（相对输入框中心的差值）。 */
-function measure(width, closedH) {
+function measure(width, closedH, innerW = width) {
   const layer = panelEl.value
   const content = panelContentEl.value
   if (!layer || !content) return { height: 0, shiftY: 0 }
@@ -147,12 +151,17 @@ function measure(width, closedH) {
 
   const height = content.offsetHeight
   const selected = content.querySelector('.is-selected')
+  /* 文本要从字段位置「飞」到选中项位置：纵向按 offsetTop，横向按 offsetLeft 算，
+     一行多个（图标在上 / 网格模式）时也必须带上横向位移，否则会飞到最左一列。 */
   const shiftY = selected
     ? Math.round(selected.offsetTop + selected.offsetHeight / 2 - closedH / 2)
     : 0
+  const shiftX = selected
+    ? Math.round(selected.offsetLeft + selected.offsetWidth / 2 - innerW / 2)
+    : 0
 
   layer.style.width = previous
-  return { height: Math.ceil(height), shiftY }
+  return { height: Math.ceil(height), shiftY, shiftX }
 }
 
 const press = usePress({
@@ -200,7 +209,7 @@ async function openMenu(byKeyboard = false) {
     top: originTop + 'px',
     width: closedW + 'px',
     height: closedH + 'px',
-    '--select-shift': '0px'
+    '--select-shift': '0px', '--select-shift-x': '0px'
   }
   floating.value = true
   pressed.value = false
@@ -208,7 +217,7 @@ async function openMenu(byKeyboard = false) {
   await nextTick()
 
   const innerW = Math.max(1, closedW - borderX * 2)
-  const { height, shiftY } = measure(innerW, closedH)
+  const { height, shiftY, shiftX } = measure(innerW, closedH, innerW)
   const naturalH = height + borderY * 2
   const targetH = Math.max(closedH, Math.min(naturalH, window.innerHeight - MARGIN * 2))
 
@@ -227,7 +236,8 @@ async function openMenu(byKeyboard = false) {
       top: Math.round(top) + 'px',
       width: closedW + 'px',
       height: targetH + 'px',
-      '--select-shift': shiftY + 'px'
+      '--select-shift': shiftY + 'px',
+      '--select-shift-x': shiftX + 'px'
     }
     surface.value = { ...openedBox }
     open.value = true
@@ -254,8 +264,8 @@ function interruptOpen() {
   // 否则文字仍然飞向旧的选中项位置。
   if (closedBox) {
     const innerW = Math.max(1, closedBox.width - borderX * 2)
-    const { shiftY } = measure(innerW, closedBox.height)
-    openedBox = { ...openedBox, '--select-shift': shiftY + 'px' }
+    const { shiftY, shiftX } = measure(innerW, closedBox.height, innerW)
+    openedBox = { ...openedBox, '--select-shift': shiftY + 'px', '--select-shift-x': shiftX + 'px' }
   }
   surface.value = { ...openedBox }
 }
@@ -290,7 +300,7 @@ async function close() {
       top: closedBox.top + 'px',
       width: closedBox.width + 'px',
       height: closedBox.height + 'px',
-      '--select-shift': '0px'
+      '--select-shift': '0px', '--select-shift-x': '0px'
     }
   }
 
@@ -403,10 +413,12 @@ onBeforeUnmount(() => {
           @click="onTriggerClick"
           @contextmenu.prevent
         >
-          <span v-if="showFieldIcon" class="ui-select__icon ui-select__icon--field" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" v-html="selectedOption.icon"></svg>
+          <span class="ui-select__field-main" :class="{ 'is-icon-top': fieldIconPlacement === 'top' }">
+            <span v-if="showFieldIcon" class="ui-select__icon ui-select__icon--field" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" v-html="selectedOption.icon"></svg>
+            </span>
+            <span class="ui-select__value" :class="{ 'is-placeholder': selectedLabel === placeholder }">{{ selectedLabel }}</span>
           </span>
-          <span class="ui-select__value" :class="{ 'is-placeholder': selectedLabel === placeholder }">{{ selectedLabel }}</span>
           <span class="ui-select__chevron" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 9l6 6 6-6" />
@@ -446,7 +458,7 @@ onBeforeUnmount(() => {
             @focus="!option.disabled && setGlide(options.indexOf(option))"
             @click="choose(option)"
           >
-            <span v-if="option.icon" class="ui-select__icon" aria-hidden="true">
+            <span v-if="option.icon && showIcon" class="ui-select__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" v-html="option.icon"></svg>
             </span>
             <span class="ui-select__option-label">{{ option.label }}</span>
@@ -524,7 +536,7 @@ onBeforeUnmount(() => {
 .ui-select.is-open .ui-select__view {
   opacity: 0;
   pointer-events: none;
-  transform: translate3d(0, var(--select-shift, 0px), 0);
+  transform: translate3d(var(--select-shift-x, 0px), var(--select-shift, 0px), 0);
   filter: blur(8px);
   transition: opacity var(--t-fade) 330ms, transform var(--t-panel), filter var(--t-fade) 260ms;
 }
@@ -633,8 +645,10 @@ onBeforeUnmount(() => {
   z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  /* 关键：图标 + 文字从左往右排，勾号才单独靠右（原来 space-between
+     会把「图标 文字」两端撑开，图标在前时文字被推远）。 */
+  justify-content: flex-start;
+  gap: 9px;
   width: 100%;
   padding: 10px 11px;
   border: 0;
@@ -687,7 +701,12 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ui-select__check { width: 15px; height: 15px; flex-shrink: 0; }
+.ui-select__check { width: 15px; height: 15px; flex-shrink: 0; margin-left: auto; }
+/* 字段：图标 + 文字可横排或竖排（图标在上）。 */
+.ui-select__field-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.ui-select__field-main.is-icon-top { flex-direction: column; align-items: flex-start; gap: 2px; }
+.ui-select__field-main.is-icon-top .ui-select__value { flex: none; }
+.ui-select__field-main.is-icon-top .ui-select__icon svg { width: 20px; height: 20px; }
 .ui-select.is-disabled .ui-select__surface { opacity: .42; cursor: not-allowed; }
 .ui-select__field:disabled { cursor: not-allowed; }
 /* 单个禁用选项：可见但不可选，弱化而不是隐藏。 */

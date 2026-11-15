@@ -58,6 +58,8 @@ const panX = ref(0)
 const panY = ref(0)
 const dragDown = ref(0)
 const gesturing = ref(false)
+/* 下拉关闭的进度：0（不动）→ 1（该关了）。遮罩与缩放跟着它连续变化。 */
+const dismiss = computed(() => Math.min(1, dragDown.value / 320))
 
 const DUR = 420
 let closeTimer = 0
@@ -322,7 +324,12 @@ defineExpose({ open: doOpen, close: doClose, closeImmediately: instance.closeImm
 
     <Teleport to="body">
       <div v-if="rendered" class="ui-media-viewer__root" :class="{ 'is-open': open, 'is-closing': closing }">
-        <div class="ui-media-viewer__backdrop" :class="{ 'is-open': backdrop }" @click="doClose"></div>
+        <div
+          class="ui-media-viewer__backdrop"
+          :class="{ 'is-open': backdrop }"
+          :style="{ '--dismiss': dismiss }"
+          @click="doClose"
+        ></div>
         <div
           ref="stageEl"
           class="ui-media-viewer__stage"
@@ -341,7 +348,8 @@ defineExpose({ open: doOpen, close: doClose, closeImmediately: instance.closeImm
             :src="src"
             :alt="alt || label"
             :style="{
-              transform: 'translate3d(' + panX + 'px,' + panY + 'px,0) scale(' + zoom + ')',
+              transform: 'translate3d(' + panX + 'px,' + panY + 'px,0) scale(' + (zoom * (1 - dismiss * 0.14)) + ')',
+              translate: '0 ' + dragDown + 'px',
               transition: gesturing ? 'none' : 'transform var(--t-panel)'
             }"
             draggable="false"
@@ -444,6 +452,9 @@ defineExpose({ open: doOpen, close: doClose, closeImmediately: instance.closeImm
   transition: opacity var(--t-panel), backdrop-filter var(--t-panel);
 }
 .ui-media-viewer__backdrop.is-open { opacity: 1; backdrop-filter: blur(8px); }
+/* 下拉关闭：遮罩随进度变淡，舞台轻微缩小 —— 松手前就有「要关了」的预期。 */
+.ui-media-viewer__backdrop { opacity: calc(1 - var(--dismiss, 0) * 0.9); }
+.ui-media-viewer__backdrop.is-open { opacity: calc(1 - var(--dismiss, 0) * 0.9); }
 /* 舞台：位置 / 尺寸由 JS 从缩略位置过渡到整个视口。
    注意这里没有 max-width / max-height —— 放大后的图片要用满屏空间。 */
 .ui-media-viewer__stage {
