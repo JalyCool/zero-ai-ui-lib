@@ -18,6 +18,8 @@ export const MOTION_TONES = {
   lively: { value: 'lively', label: '活泼', hint: '更陡的弹簧与明显回弹；娱乐 / 社交 / 儿童' }
 }
 
+import { apply as applySpringTokens } from './spring'
+
 let current = 'calm'
 
 function rootEl() {
@@ -34,6 +36,8 @@ export function setMotionTone(tone) {
     else el.setAttribute('data-motion', next)
   }
   current = next
+  /* 行内 --spring-* 会盖掉 tokens.css 里的气质覆盖，所以换气质必须重算一次。 */
+  applySpringTokens(next)
   return next
 }
 

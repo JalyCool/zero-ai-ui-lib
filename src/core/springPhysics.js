@@ -22,8 +22,16 @@ export function animateSpring(options) {
   const {
     from = 0, to = 0, velocity = 0,
     stiffness = 220, damping = 26,
-    onUpdate, onDone, precision = 0.25
+    onUpdate, onDone
   } = options || {}
+  /* 精度必须跟着行程走：scale 从 .94 到 1 只有 0.06，用 0.25 的绝对阈值
+     会在第一帧就判定「已到位」，回弹整段被掐掉 —— 这正是之前的小控件不弹。 */
+  const range = Math.abs(to - from)
+  const precision = options.precision != null
+    ? options.precision
+    : Math.max(0.00015, range * 0.0012)
+  const speedLimit = Math.max(0.02, precision * 40)
+  const startedAt = performance.now()
 
   let value = from
   let speed = velocity
@@ -40,7 +48,9 @@ export function animateSpring(options) {
     speed += accel * dt
     value += speed * dt
     if (onUpdate) onUpdate(value)
-    if (Math.abs(value - to) < precision && Math.abs(speed) < precision * 12) {
+    const settled = Math.abs(value - to) < precision && Math.abs(speed) < speedLimit
+    /* 保险：再软的弹簧也不该跑超过 2.4 秒。 */
+    if (settled || now - startedAt > 2400) {
       if (onUpdate) onUpdate(to)
       frame = 0
       if (onDone) onDone()

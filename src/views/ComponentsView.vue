@@ -71,6 +71,13 @@ const nickname = ref('Alex')
 const email = ref('alex@')
 const note = ref('')
 const sport = ref('walk')
+/* 超长列表：验证面板封顶 + 自动滚到选中项 */
+const longOptions = Array.from({ length: 40 }, (_, i) => ({
+  label: '选项 ' + String(i + 1).padStart(2, '0'),
+  value: 'long-' + (i + 1)
+}))
+const longPick = ref('long-35')
+
 const sportOptions = [
   { label: '步行', value: 'walk' },
   { label: '跑步', value: 'run' },
@@ -525,6 +532,7 @@ onMounted(() => {
             <UiSelect v-model="sport" label="运动类型" :options="sportOptions" />
             <UiSelect v-model="plan" label="含禁用项的方案" :options="planOptionsWithDisabled" />
             <UiSelect label="整体禁用" :options="sportOptions" model-value="walk" disabled />
+        <UiSelect v-model="longPick" label="超长列表（40 项）" :options="longOptions" />
             <span class="lib-cell__note">订阅方案</span>
             <UiRadioGroup v-model="plan" :options="planOptions" />
           </div>

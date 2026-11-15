@@ -103,10 +103,20 @@ function fullFraction() {
      且当全内容不足 60% 时，60% 档也一并去掉。 */
 function computeAnchors() {
   const full = fullFraction()
+  /* 面板里固定的几段（把手 + 标题 + 底部）必须始终可见，比它还矮的档没意义。 */
+  const chrome =
+    (handleEl.value?.offsetHeight || 0) +
+    (headEl.value?.offsetHeight || 0) +
+    (footerEl.value?.offsetHeight || 0)
+  const minUsable = (chrome + 56) / viewportHeight()
   const base = props.anchors || (props.scrim ? [0.6] : [0.2, 0.6])
+  /* 关键规律（用户反复强调）：固定档必须**严格低于**内容全高。
+     内容只有 50% 高时，60% 档要直接消失，不能让人吸附到一个
+     只能看见半截内容、还要再滚一遍的高度。
+     留 2% 余量，避免 full≈0.6 时出现两个几乎重合的档。 */
   const list = base
     .map(Number)
-    .filter(value => Number.isFinite(value) && value > 0 && value <= full + 0.001)
+    .filter(value => Number.isFinite(value) && value > 0 && value < full - 0.02 && value >= minUsable)
   list.push(full)
   const unique = []
   for (const value of list.sort((a, b) => a - b)) {
@@ -209,6 +219,13 @@ function beginOpen() {
     const full = anchorList.value[anchorList.value.length - 1] || 0.9
     setHeight(full, { silent: true })
     observeContent()
+    /* 首帧量到的 scrollHeight 可能还没算完（字体 / 图片 / 插槽），下一帧再校一次。 */
+    requestAnimationFrame(() => {
+      if (!props.modelValue) return
+      refreshAnchors()
+      const settled = anchorList.value[anchorList.value.length - 1] || full
+      setHeight(settled, { silent: true })
+    })
 
     void el.offsetHeight
     frameA = requestAnimationFrame(() => {
@@ -380,9 +397,7 @@ onBeforeUnmount(() => {
         ></div>
         <header ref="headEl" class="ui-sheet-head">
           <h2>{{ title }}</h2>
-          <button type="button" class="ui-sheet-close" aria-label="关闭面板" @click="close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
+          <!-- 已经有可拖拽的把手：不再额外放关闭键。收起靠 拖把手 / 点遮罩 / Esc。 -->
         </header>
         <div ref="bodyEl" class="ui-sheet-body">
           <slot />
@@ -491,22 +506,6 @@ onBeforeUnmount(() => {
   font-weight: var(--w-heading);
   letter-spacing: -.015em;
 }
-.ui-sheet-close {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: calc(10px * var(--radius-scale));
-  background: var(--surface-container);
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  transition: background var(--t-fade), border-radius var(--t-panel), transform var(--t-feedback);
-}
-.ui-sheet-close:hover { background: var(--surface-container-highest); }
-.ui-sheet-close:active { transform: scale(var(--press-scale)); }
-.ui-sheet-close svg { width: 14px; height: 14px; }
 .ui-sheet-body {
   flex: 1;
   min-height: 0;

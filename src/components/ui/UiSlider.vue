@@ -66,6 +66,16 @@ const emit = defineEmits(['update:modelValue', 'snap', 'drag-start', 'drag-end']
 
 const trackEl = ref(null)
 const dragging = ref(false)
+/* 松手瞬间的「duang」：先缩到 70% 再弹回（只在活泼气质下播）。 */
+const released = ref(false)
+let releaseTimer = 0
+function flashRelease() {
+  if (typeof window === 'undefined' || !window.matchMedia) return
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  released.value = true
+  clearTimeout(releaseTimer)
+  releaseTimer = setTimeout(() => { released.value = false }, 460)
+}
 
 /* 显示值：拖拽时 = 指针原始值；松手后 = 弹簧动画值 */
 const shown = ref(clampRaw(props.modelValue))
@@ -246,6 +256,7 @@ function onPointerUp(event) {
 
   emit('update:modelValue', quantize(next))
   emit('drag-end')
+  flashRelease()
   startSpring(next)
 }
 
@@ -393,6 +404,7 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="ui-slider__thumb"
+        :class="{ 'is-released': released }"
         role="slider"
         :aria-label="label || '滑块'"
         :aria-valuemin="min"
@@ -401,7 +413,7 @@ onBeforeUnmount(() => {
         :aria-valuetext="`${displayValue}${unit}`"
         @keydown="onKeyDown"
       >
-        <span class="ui-slider__thumb-dot" aria-hidden="true"></span>
+        <span class="ui-slider__thumb-body" aria-hidden="true"></span>
         <span v-if="showBubble" class="ui-slider__bubble" aria-hidden="true"><UiRollNumber :value="displayValue" :direction-key="quantize(shown)" :step="step" :instant="true" />{{ unit }}</span>
       </button>
     </div>
@@ -450,27 +462,42 @@ onBeforeUnmount(() => {
   height: 20px;
   margin: 0;
   padding: 0;
+  border: 0;
+  background: transparent;
+  /* 位移只在这一层；圆的缩放在内层，气泡才不会跟着被拉扁。 */
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  display: grid;
+  place-items: center;
+}
+.ui-slider__thumb-body {
+  position: absolute;
+  inset: 0;
   border: 3px solid var(--surface);
   border-radius: 50%;
   background: var(--primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
-  transform: translate(-50%, -50%) scale(1);
-  cursor: grab;
-  display: grid;
-  place-items: center;
-  transition: transform var(--t-feedback), background var(--t-fade),
-              box-shadow var(--t-fade);
+  transform: scale(1);
+  transition: transform var(--t-pop), background var(--t-fade), box-shadow var(--t-fade);
 }
-.ui-slider__thumb:hover { background: color-mix(in oklab, var(--primary) 88%, var(--on-primary)); }
+.ui-slider__thumb:hover .ui-slider__thumb-body { background: color-mix(in oklab, var(--primary) 88%, var(--on-primary)); }
 .ui-slider__thumb:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 22%, transparent);
 }
-.ui-slider.is-dragging .ui-slider__thumb {
-  cursor: grabbing;
-  transform: translate(-50%, -50%) scale(1.14);
+.ui-slider.is-dragging .ui-slider__thumb { cursor: grabbing; }
+.ui-slider.is-dragging .ui-slider__thumb-body { transform: scale(1.16); }
+[data-motion="lively"] .ui-slider.is-dragging .ui-slider__thumb-body { transform: scale(1.28); }
+/* 松手：先缩到 70%，再弹过 1.16，最后落回 1 —— 就是「duang」一下。 */
+[data-motion="lively"] .ui-slider__thumb.is-released .ui-slider__thumb-body {
+  animation: uiThumbDuang calc(var(--spring-pop-dur) * 1.35) cubic-bezier(.3, .8, .3, 1) both;
 }
-.ui-slider__thumb-dot { display: none; }
+@keyframes uiThumbDuang {
+  0% { transform: scale(.7); }
+  22% { transform: scale(.7); }
+  58% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
 
 /* ---------- 刻度：数值行在上；刻度线长在轨道里、向上探出并紧贴轨道 ---------- */
 .ui-slider__scale {

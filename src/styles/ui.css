@@ -781,38 +781,32 @@
    geometry 类的过渡改成 --spring-pop：克制模式下它依然不回弹，
    活泼模式下才过冲。只覆盖会动的属性，颜色过渡保持原曲线。
    ============================================================ */
-[data-motion="lively"] .ui-switch__thumb,
-[data-motion="lively"] .ui-check__box,
-[data-motion="lively"] .ui-radio__dot,
-[data-motion="lively"] .ui-chip,
-[data-motion="lively"] .ui-avatar,
-[data-motion="lively"] .ui-badge,
-[data-motion="lively"] .ui-segmented__indicator,
-[data-motion="lively"] .ui-tab,
-[data-motion="lively"] .ui-tab-icon,
-[data-motion="lively"] .ui-skeleton,
-[data-motion="lively"] .ui-slider__thumb,
-[data-motion="lively"] .ui-sheet-handle,
-[data-motion="lively"] .ui-list-item {
-  transition-timing-function: var(--spring-pop);
-}
-[data-motion="lively"] .ui-switch.is-on .ui-switch__thumb { transition: transform var(--t-pop); }
-[data-motion="lively"] .ui-check__box,
-[data-motion="lively"] .ui-check__box svg { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade); }
-
 /* ============================================================
    小控件统一走 pop 弹簧
    这些控件原本只有颜色 / 位置过渡，没有回弹；换成 --t-pop 之后
    克制模式仍然稳，活泼模式会一起弹（过冲 2.4）。
    ============================================================ */
-.ui-switch__thumb { transition: transform var(--t-pop), background var(--t-fade); }
+.ui-switch__thumb {
+  /* 位移用 --t-shift（温和过冲），尺寸变化用 --t-pop（夸张）：
+     位置不要甩、大小要弹，这是「活泼但不晕」的分界。 */
+  transition: transform var(--t-shift), width var(--t-pop), height var(--t-pop),
+              border-radius var(--t-pop), background var(--t-fade);
+}
+.ui-switch:active .ui-switch__thumb { width: 26px; height: 26px; border-radius: 42%; }
+[data-motion="lively"] .ui-switch:active .ui-switch__thumb { width: 32px; height: 32px; border-radius: 38%; }
+[data-motion="lively"] .ui-switch__thumb { width: 24px; height: 24px; }
 .ui-check__box,
 .ui-check__box svg { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade), color var(--t-fade); }
-.ui-segmented__indicator { transition: transform var(--t-pop), width var(--t-pop), height var(--t-pop), background var(--t-fade), opacity var(--t-fade); }
+.ui-segmented__indicator {
+  /* 指示器是「跨格位移」，同样不要用 2.6 的 pop，否则会冲过目标再荡回来。 */
+  transition: transform var(--t-shift), width var(--t-shift), height var(--t-shift),
+              background var(--t-fade), opacity var(--t-fade);
+}
 .ui-segmented button { transition: color var(--t-fade), transform var(--t-pop); }
 .ui-chip { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade), color var(--t-fade); }
-.ui-slider__thumb,
-.ui-range-slider__thumb { transition: transform var(--t-pop), box-shadow var(--t-fade), background var(--t-fade); }
+.ui-range__thumb,
+.ui-ring-slider__thumb,
+.ui-gauge-slider__thumb { transition: transform var(--t-pop), box-shadow var(--t-fade), background var(--t-fade); }
 .ui-radio__dot,
 .ui-radio__dot::after { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade); }
 .ui-rating button { transition: transform var(--t-pop), color var(--t-fade); }

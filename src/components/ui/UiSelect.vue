@@ -141,27 +141,36 @@ function removePlaceholder() {
 
 /* 量列表高度，同时算出「当前选中项」在展开后所处的中心位置：
    原始内容要平移到那里（相对输入框中心的差值）。 */
-function measure(width, closedH, innerW = width) {
+function measure(width, closedH, innerW = width, viewH = 0) {
   const layer = panelEl.value
   const content = panelContentEl.value
-  if (!layer || !content) return { height: 0, shiftY: 0 }
+  if (!layer || !content) return { height: 0, shiftY: 0, shiftX: 0, scrollTop: 0, selectedTop: 0 }
 
   const previous = layer.style.width
   layer.style.width = width + 'px'
 
   const height = content.offsetHeight
   const selected = content.querySelector('.is-selected')
-  /* 文本要从字段位置「飞」到选中项位置：纵向按 offsetTop，横向按 offsetLeft 算，
-     一行多个（图标在上 / 网格模式）时也必须带上横向位移，否则会飞到最左一列。 */
+  const naturalH = Math.ceil(height) + borderY * 2
+
+  /* 长列表：面板高度被视口夹住之后，列表必须**先滚到选中项**，
+     否则字段里写着「第 35 项」、展开却从第 1 项开始 —— 这就是
+     「特别长的下拉框错位」。同时把原文案要飞去的终点按滚动后的
+     真实屏幕位置算，飞过去的落点才和选中行重合。 */
+  const selectedCenter = selected ? selected.offsetTop + selected.offsetHeight / 2 : 0
+  let scrollTop = 0
+  if (selected && viewH > 0 && naturalH > viewH) {
+    scrollTop = Math.max(0, Math.min(naturalH - viewH, Math.round(selectedCenter - viewH / 2)))
+  }
   const shiftY = selected
-    ? Math.round(selected.offsetTop + selected.offsetHeight / 2 - closedH / 2)
+    ? Math.round(selectedCenter - scrollTop - closedH / 2)
     : 0
   const shiftX = selected
     ? Math.round(selected.offsetLeft + selected.offsetWidth / 2 - innerW / 2)
     : 0
 
   layer.style.width = previous
-  return { height: Math.ceil(height), shiftY, shiftX }
+  return { height: Math.ceil(height), shiftY, shiftX, scrollTop, selectedTop: selected ? selected.offsetTop : 0 }
 }
 
 const press = usePress({
@@ -171,9 +180,15 @@ const press = usePress({
   onPressEnd: () => { pressed.value = false }
 })
 
+/* 展开后短时间内的滚动事件要忽略：用户常常「先 scrollIntoView 再点」，
+   触摸滚动还有余速，滚动事件会在展开之后才到，一进来就被当成「页面滚动」
+   立刻收起 —— 表现出来就是「点了没反应 / 一闪就没了」。 */
+let openingAt = 0
+
 async function openMenu(byKeyboard = false) {
   if (open.value) return
   closing.value = false
+  openingAt = performance.now()
 
   const el = surfaceEl.value
   if (!el) return
@@ -217,9 +232,13 @@ async function openMenu(byKeyboard = false) {
   await nextTick()
 
   const innerW = Math.max(1, closedW - borderX * 2)
-  const { height, shiftY, shiftX } = measure(innerW, closedH, innerW)
+  const vh = window.innerHeight
+  /* 超长列表不要铺满整屏：一封顶到 62% 视口就内部滚动，
+     否则面板把字段本身盖住，看着像「整个页面错位」。 */
+  const menuCap = Math.max(closedH, Math.min(vh - MARGIN * 2, vh * 0.62))
+  const { height, shiftY, shiftX, scrollTop } = measure(innerW, closedH, innerW, menuCap)
   const naturalH = height + borderY * 2
-  const targetH = Math.max(closedH, Math.min(naturalH, window.innerHeight - MARGIN * 2))
+  const targetH = Math.max(closedH, Math.min(naturalH, menuCap))
 
   let left = originLeft
   left = Math.max(MARGIN, Math.min(left, window.innerWidth - MARGIN - closedW))
@@ -241,6 +260,8 @@ async function openMenu(byKeyboard = false) {
     }
     surface.value = { ...openedBox }
     open.value = true
+    /* 长列表滚到选中项：等面板拿到最终高度之后再设 scrollTop。 */
+    if (panelEl.value && scrollTop > 0) panelEl.value.scrollTop = scrollTop
     if (byKeyboard) panelEl.value?.focus({ preventScroll: true })
   })
 }
@@ -352,6 +373,7 @@ function onKeydown(event) {
    收起途中滚动则立刻回落到文档流，输入框跟着页面一起滚。 */
 function onScroll(event) {
   if (surfaceEl.value?.contains(event.target)) return
+  if (performance.now() - openingAt < 320) return
   if (closing.value || (floating.value && !open.value)) {
     finishClose()
     return

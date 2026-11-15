@@ -390,11 +390,20 @@ function closeCard() {
   // 先把新的 transition 提交一帧，再写入目标值，确保圆角也会反向过渡。
   void card.offsetWidth
 
+  /* 收起的落点必须**重新测量**：展开期间可能滚动了页面、内容变高变矮、
+     视口旋转或响应式断点切换，用展开瞬间的快照当目标，弹簧越猛、
+     结束时离真实位置就越远，最后还要「啪」地跳一下。
+     占位块还在原位、随文档流一起布局，它就是此刻真实的落点。 */
+  const live = slot && slot.isConnected ? slot.getBoundingClientRect() : null
+  const target = live && live.width > 0 && live.height > 0
+    ? { top: live.top, left: live.left, width: live.width, height: live.height }
+    : { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+
   // 回到基础表面色与基础描边，而不是回到展开瞬间可能携带的 hover 状态。
-  card.style.top = rect.top + 'px'
-  card.style.left = rect.left + 'px'
-  card.style.width = rect.width + 'px'
-  card.style.height = rect.height + 'px'
+  card.style.top = target.top + 'px'
+  card.style.left = target.left + 'px'
+  card.style.width = target.width + 'px'
+  card.style.height = target.height + 'px'
   card.style.borderRadius = originRadius
   card.style.backgroundColor = 'var(--surface-container-low)'
   card.style.borderColor = 'var(--outline-variant)'

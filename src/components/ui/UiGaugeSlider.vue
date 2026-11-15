@@ -36,6 +36,16 @@ const SWEEP = 220
 
 const dialEl = ref(null)
 const dragging = ref(false)
+/* 松手「duang」：先缩到 70% 再弹回；只在活泼气质下播。 */
+const released = ref(false)
+let releaseTimer = 0
+function flashRelease() {
+  if (typeof window === 'undefined' || !window.matchMedia) return
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  released.value = true
+  clearTimeout(releaseTimer)
+  releaseTimer = setTimeout(() => { released.value = false }, 460)
+}
 const shown = ref(sanitize(props.modelValue))
 
 const range = computed(() => props.max - props.min || 1)
@@ -161,6 +171,7 @@ function onPointerUp(event) {
   shown.value = quantize(shown.value)
   commit()
   emit('drag-end')
+  flashRelease()
   event.preventDefault()
 }
 
@@ -229,6 +240,7 @@ watch(() => props.modelValue, value => {
 
       <span
         class="ui-gauge-slider__thumb"
+      :class="{ 'is-released': released }"
         :style="{ left: thumbPos.x / 200 * 100 + '%', top: thumbPos.y / 140 * 100 + '%' }"
         aria-hidden="true"
       ></span>
@@ -305,9 +317,19 @@ watch(() => props.modelValue, value => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
   transform: translate(-50%, -50%);
   pointer-events: none;
-  transition: transform var(--t-feedback);
+  transition: transform var(--t-pop);
 }
-.ui-gauge-slider__dial.is-dragging .ui-gauge-slider__thumb { transform: translate(-50%, -50%) scale(1.12); }
+.ui-gauge-slider__dial.is-dragging .ui-gauge-slider__thumb { transform: translate(-50%, -50%) scale(1.16); }
+[data-motion="lively"] .ui-gauge-slider__dial.is-dragging .ui-gauge-slider__thumb { transform: translate(-50%, -50%) scale(1.28); }
+[data-motion="lively"] .ui-gauge-slider__thumb.is-released {
+  animation: uiGaugeDuang calc(var(--spring-pop-dur) * 1.35) cubic-bezier(.3, .8, .3, 1) both;
+}
+@keyframes uiGaugeDuang {
+  0% { transform: translate(-50%, -50%) scale(.7); }
+  22% { transform: translate(-50%, -50%) scale(.7); }
+  58% { transform: translate(-50%, -50%) scale(1.18); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
 
 /* 数字显示逻辑与 UiGauge 相同：圆心明显偏上（top 58%）。 */
 .ui-gauge-slider__center {

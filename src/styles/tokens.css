@@ -86,6 +86,10 @@
      也会跟着一起弹，动效语言才统一。 */
   --spring-pop: cubic-bezier(.25,.1,.25,1);
   --spring-pop-dur: 0.3s;
+  /* 「换位」专用：开关把手、分段指示器这类**长距离位移**用它。
+     活泼模式下过冲比 pop 收敛（1.36 而不是 2.6），否则把手会冲出头再荡回来。 */
+  --spring-shift: cubic-bezier(.25,.1,.25,1);
+  --spring-shift-dur: 0.3s;
   --spring-exit: cubic-bezier(.25,.1,.25,1);
   --spring-exit-dur: 0.4s;
 
@@ -96,6 +100,7 @@
   --t-panel: var(--t-view);
   --t-fade: var(--spring-fade-dur) var(--spring-fade);
   --t-pop: var(--spring-pop-dur) var(--spring-pop);
+  --t-shift: var(--spring-shift-dur) var(--spring-shift);
   --t-exit: var(--spring-exit-dur) var(--spring-exit);
 
   --accent: var(--primary);
@@ -226,6 +231,8 @@
   /* 活泼模式：小控件也明显弹 —— 过冲 2.6，比大控件（2.1）更强。 */
   --spring-pop: cubic-bezier(.14, 2.6, .3, 1);
   --spring-pop-dur: 0.34s;
+  --spring-shift: cubic-bezier(.2, 1.36, .3, 1);
+  --spring-shift-dur: 0.34s;
 }
 
 @media (prefers-reduced-motion: reduce) {

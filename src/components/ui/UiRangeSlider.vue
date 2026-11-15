@@ -53,6 +53,16 @@ const emit = defineEmits(['update:modelValue', 'drag-start', 'drag-end'])
 const trackEl = ref(null)
 const dragging = ref(false)
 const activeHead = ref('lo')
+/* 松手「duang」用：记住刚松手的是哪个头，只让它缩一下再弹回。 */
+const releasedHead = ref('')
+let releaseTimer = 0
+function flashRelease(head) {
+  if (typeof window === 'undefined' || !window.matchMedia) return
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  releasedHead.value = head
+  clearTimeout(releaseTimer)
+  releaseTimer = setTimeout(() => { releasedHead.value = '' }, 460)
+}
 
 const initial = sanitizePair(
   sanitize(props.modelValue[0], props.min),
@@ -216,10 +226,24 @@ function onPointerUp(event) {
   const velocity = currentVelocity()
   const predicted = headValue(head) + velocity * springCfg.value.flingTime
   const target = quantize(predicted)
-  setHeadRaw(head, target)
+  /* 与普通滑轨一致：**不要**先把值直接写成吸附点（那等于瞬移），
+     而是让弹簧从松手位置跑到吸附点；v-model 先按目标值同步。 */
   emit('drag-end', { head })
-  startSpring(head, headValue(head))
-  commit()
+  commitTarget(head, target)
+  flashRelease(head)
+  startSpring(head, target)
+}
+
+/* 松手瞬间把 v-model 同步到吸附目标（视觉仍由弹簧追赶）。 */
+function commitTarget(head, target) {
+  const gap = minGap.value
+  if (head === 'lo') {
+    const nextLo = quantize(Math.min(target, hi.value - gap))
+    emit('update:modelValue', [nextLo, quantize(hi.value)])
+  } else {
+    const nextHi = quantize(Math.max(target, lo.value + gap))
+    emit('update:modelValue', [quantize(lo.value), nextHi])
+  }
 }
 
 /* ---------- 临界阻尼弹簧（每个拖拽头独立归位） ---------- */
@@ -257,7 +281,8 @@ function stepSpring(head, now) {
   spring.velocity += accel * dt
   setHeadRaw(head, headValue(head) + spring.velocity * dt)
 
-  if (Math.abs(headValue(head) - spring.target) < 0.3 && Math.abs(spring.velocity) < 2) {
+  /* 收得再紧一点：0.3 的残差在 0–100 量程上是 0.3%，肉眼能看出「没落到格上」。 */
+  if (Math.abs(headValue(head) - spring.target) < 0.05 && Math.abs(spring.velocity) < 0.6) {
     setHeadRaw(head, spring.target)
     spring.velocity = 0
     spring.lastTime = 0
@@ -289,16 +314,17 @@ function onKeyDown(head, event) {
   }
   event.preventDefault()
   stopSpring(head)
-  setHeadRaw(head, next)
-  let target = quantize(headValue(head))
-  setHeadRaw(head, target)
-  target = headValue(head)
-  commit()
+  /* 键盘也走弹簧：算出目标后让把手滑过去，而不是直接跳。 */
+  const target = quantize(next)
+  commitTarget(head, target)
   startSpring(head, target)
 }
 
 watch(() => props.modelValue, value => {
-  if (dragging.value || !Array.isArray(value)) return
+  /* 弹簧跑的时候不要用外部值直接改写 lo/hi：那等于把逐帧动画替换成一次瞬移，
+     吸附就只剩下最后一帧。落定时 stepSpring 会自己 commit。 */
+  const springing = Boolean(springs.lo.frame || springs.hi.frame)
+  if (dragging.value || springing || !Array.isArray(value)) return
   const pair = sanitizePair(
     sanitize(value[0], props.min),
     sanitize(value[1], props.max)
@@ -310,6 +336,7 @@ watch(() => props.modelValue, value => {
 onBeforeUnmount(() => {
   stopSpring('lo')
   stopSpring('hi')
+  clearTimeout(releaseTimer)
 })
 </script>
 
@@ -338,7 +365,7 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="ui-range__thumb"
-        :class="{ 'is-active': activeHead === 'lo' }"
+        :class="{ 'is-active': activeHead === 'lo', 'is-released': releasedHead === 'lo' }"
         role="slider"
         aria-label="最小值"
         :aria-valuemin="min"
@@ -346,11 +373,11 @@ onBeforeUnmount(() => {
         :aria-valuenow="displayLo"
         :style="{ left: percentLo + '%' }"
         @keydown="onKeyDown('lo', $event)"
-      ></button>
+      ><span class="ui-range__thumb-body" aria-hidden="true"></span></button>
       <button
         type="button"
         class="ui-range__thumb"
-        :class="{ 'is-active': activeHead === 'hi' }"
+        :class="{ 'is-active': activeHead === 'hi', 'is-released': releasedHead === 'hi' }"
         role="slider"
         aria-label="最大值"
         :aria-valuemin="min"
@@ -358,7 +385,7 @@ onBeforeUnmount(() => {
         :aria-valuenow="displayHi"
         :style="{ left: percentHi + '%' }"
         @keydown="onKeyDown('hi', $event)"
-      ></button>
+      ><span class="ui-range__thumb-body" aria-hidden="true"></span></button>
     </div>
   </div>
 </template>
@@ -433,23 +460,40 @@ onBeforeUnmount(() => {
   height: 20px;
   margin: 0;
   padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  touch-action: none;
+  display: grid;
+  place-items: center;
+}
+.ui-range__thumb-body {
+  position: absolute;
+  inset: 0;
   border: 3px solid var(--surface);
   border-radius: 50%;
   background: var(--primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
-  transform: translate(-50%, -50%) scale(1);
-  cursor: grab;
-  touch-action: none;
-  transition: transform var(--t-feedback), background var(--t-fade), box-shadow var(--t-fade);
+  transform: scale(1);
+  transition: transform var(--t-pop), background var(--t-fade), box-shadow var(--t-fade);
 }
-.ui-range__thumb:hover { background: color-mix(in oklab, var(--primary) 88%, var(--on-primary)); }
+.ui-range__thumb:hover .ui-range__thumb-body { background: color-mix(in oklab, var(--primary) 88%, var(--on-primary)); }
 .ui-range__thumb:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 22%, transparent);
 }
-.ui-range.is-dragging .ui-range__thumb {
-  cursor: grabbing;
-  transform: translate(-50%, -50%) scale(1.14);
+.ui-range.is-dragging .ui-range__thumb { cursor: grabbing; }
+.ui-range.is-dragging .ui-range__thumb-body { transform: scale(1.16); }
+[data-motion="lively"] .ui-range.is-dragging .ui-range__thumb-body { transform: scale(1.28); }
+[data-motion="lively"] .ui-range__thumb.is-released .ui-range__thumb-body {
+  animation: uiRangeDuang calc(var(--spring-pop-dur) * 1.35) cubic-bezier(.3, .8, .3, 1) both;
+}
+@keyframes uiRangeDuang {
+  0% { transform: scale(.7); }
+  22% { transform: scale(.7); }
+  58% { transform: scale(1.18); }
+  100% { transform: scale(1); }
 }
 /* 覆盖头修正：当前活动的把手永远盖在另一个把手上（含贴身相邻时）。 */
 .ui-range__thumb.is-active { z-index: 3; }
