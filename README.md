@@ -50,7 +50,7 @@ const options = [
 
 按钮与操作：`UiButton` `UiChip` `UiBadge` `UiFloatingMenu` `UiToolMenu` `UiSegmented` `UiStepper` `UiRating`
 
-表单：`UiInput` `UiTextarea` `UiSelect` `UiSwitch` `UiCheckbox` `UiRadioGroup` `UiSlider` `UiRangeSlider` `UiRingSlider` `UiGaugeSlider` `UiDatePicker` `UiTimePicker` `UiRangeDatePicker` `UiWheelDatePicker` `UiRangeTimePicker` `UiStepper`
+表单：`UiInput` `UiTextarea` `UiSelect`（含多选）`UiAutocomplete`（下拉同款形变 + 展开层内输入）`UiColorPicker`（自绘 HSV 取色盘）`UiSwitch` `UiCheckbox` `UiRadioGroup` `UiSlider` `UiRangeSlider` `UiRingSlider` `UiGaugeSlider` `UiDatePicker` `UiTimePicker` `UiRangeDatePicker` `UiWheelDatePicker` `UiRangeTimePicker` `UiStepper`
 
 数据录入：`UiTagInput` `UiKeyValueEditor` `UiSchemaForm`（JSON Schema 生成表单）
 
@@ -58,7 +58,7 @@ const options = [
 
 工程与代码：`UiCodeEditor`（行号 / 高亮 / Tab 缩进）、`UiTerminalOutput`（ANSI 着色 + 跟随滚动）
 
-反馈与浮层：`UiAlert` `UiTooltip` `UiToastHost`（success/error/warning/info + 队列）`UiEmptyState` `UiModal` `UiBottomSheet` `UiAccordion` `UiConfirmDialog` / `confirmDialog()`（替代 window.confirm）、`UiMediaViewer`（缩放 / 旋转 / 下载）、`UiFileDropzone`（拖拽上传）
+反馈与浮层：`UiAlert` `UiTooltip` `UiToastHost`（success/error/warning/info + 队列）`UiEmptyState` `UiModal` `UiBottomSheet` `UiAccordion` `UiConfirmDialog` / `confirmDialog()`（替代 window.confirm）、`UiSlideover`（抽屉）`UiTour`（整体聚焦到一点的巡览）`UiFileDropzone`（拖拽上传）
 
 搜索与状态：`UiSearchField`（图标原地形变）
 
@@ -66,11 +66,11 @@ const options = [
 
 导航：`UiTabBar`（移动端贴底铺满整宽、桌面端贴左竖排铺满整高，两套定位互斥不冲突）
 
-动效与手势：`UiRotatingText`（循环短语）、`UiText`（打字机 / 掠光 / 流动渐变）、`UiStatusMark`、`UiToolCallChip`、`UiCodeSlots`、`UiScrubField`、`UiSwipeRow`、`UiStepFlow`、`UiTooltipGroup`、`UiMediaViewer`、`UiCardGroup`（8 种形态）
+动效与手势：`UiRotatingText`（循环短语）、`UiText`（打字机 / 掠光 / 流动渐变）、`UiStatusMark`、`UiToolCallChip`、`UiCodeSlots`、`UiScrubField`、`UiSwipeRow`、`UiStepFlow`、`UiTooltipGroup`、`UiCardGroup`（8 种形态）
 
 交互基座：`UiMorphPanel`（泛用「按钮 ⇄ 任意组件」形变容器）、`UiWheel`（通用多列波轮基座，时间 / 日期波轮共用）
 
-布局与卡片：`UiAvatar` `UiEmptyState` `ExpandableCard` `RouteExpandCard`
+布局与卡片：`UiAvatar` `UiAvatarTag`（异形遮罩图 / 任意 SVG 且无遮罩）`UiCard`（含 `variant="product"` 产品授权卡）`UiSidebar` `UiSplitter` `UiGrid` / `UiRow` / `UiCol` `UiCarousel` / `UiPagerDots` `UiEmptyState` `ExpandableCard` `RouteExpandCard`
 
 组合式函数：`usePress`（按压反馈）、`useMorphWindow`（从输入框形变成浮动窗口）
 

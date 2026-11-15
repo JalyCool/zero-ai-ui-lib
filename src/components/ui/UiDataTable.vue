@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import UiSelect from './UiSelect.vue'
 
 const props = defineProps({
   /* [{ key, label, width?, align?, sortable?, hidden? }] */
@@ -47,8 +48,16 @@ const emit = defineEmits([
    ============================================================ */
 
 const sort = ref({ key: '', dir: 0 })
-const columnPanel = ref(false)
 const localSelected = ref([...props.selected])
+
+/* 列显隐直接用库里的下拉（多选模式）：和「选择」是同一套形变 / 弹层语言，
+   不再单独维护一套复选框浮层。 */
+const columnOptions = computed(() => props.columns
+  .filter(column => !column.hidden)
+  .map(column => ({ label: column.label, value: column.key })))
+const visibleKeys = computed(() => props.visible === null
+  ? columnOptions.value.map(column => column.value)
+  : props.visible)
 
 watch(() => props.selected, value => { localSelected.value = [...(value || [])] }, { deep: true })
 
@@ -142,11 +151,7 @@ function toggleAll() {
   commitSelection(allSelected.value ? [] : props.rows.map(row => keyOf(row)))
 }
 
-function toggleColumn(column) {
-  const allow = props.visible === null ? props.columns.map(item => item.key) : [...props.visible]
-  const next = allow.includes(column.key)
-    ? allow.filter(key => key !== column.key)
-    : [...allow, column.key]
+function updateVisible(next) {
   emit('update:visible', next)
 }
 
@@ -164,18 +169,14 @@ const showPager = computed(() => props.server || props.total > props.pageSize)
 <template>
   <div class="ui-table-wrap">
     <div v-if="showColumnPanel" class="ui-table__tools">
-      <button type="button" class="ui-table__col-btn" :aria-expanded="columnPanel" @click="columnPanel = !columnPanel">
-        列
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6" /></svg>
-      </button>
-      <Transition name="ui-table-cols">
-        <div v-if="columnPanel" class="ui-table__cols" role="group" aria-label="显示哪些列">
-          <label v-for="column in columns" :key="column.key" class="ui-table__col-item">
-            <input type="checkbox" :checked="shownColumns.some(item => item.key === column.key)" @change="toggleColumn(column)" />
-            <span>{{ column.label }}</span>
-          </label>
-        </div>
-      </Transition>
+      <UiSelect
+        class="ui-table__cols-select"
+        :model-value="visibleKeys"
+        multiple
+        :options="columnOptions"
+        placeholder="显示列"
+        @update:model-value="updateVisible"
+      />
     </div>
 
     <div class="ui-table" :class="{ 'is-striped': striped, 'is-scroll': maxHeight }" :style="maxHeight ? { maxHeight: maxHeight + 'px' } : undefined">
@@ -286,54 +287,9 @@ const showPager = computed(() => props.server || props.total > props.pageSize)
 <style scoped>
 .ui-table-wrap { position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 
-/* ---------- 列显隐 ---------- */
+/* ---------- 列显隐（复用下拉的多选模式） ---------- */
 .ui-table__tools { position: relative; display: flex; justify-content: flex-end; }
-.ui-table__col-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border: var(--border-w) solid var(--outline-variant);
-  border-radius: 999px;
-  background: var(--surface-container-low);
-  color: var(--on-surface-variant);
-  font-size: var(--fs-micro);
-  font-weight: var(--w-label);
-  cursor: pointer;
-  transition: border-color var(--t-fade), color var(--t-fade), transform var(--t-pop);
-}
-.ui-table__col-btn:active { transform: scale(var(--press-scale)); }
-.ui-table__col-btn svg { width: 11px; height: 11px; }
-.ui-table__cols {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  z-index: 4;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
-  padding: 6px;
-  border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(12px * var(--radius-scale));
-  background: var(--surface);
-  box-shadow: var(--elev-tip);
-  min-width: 140px;
-}
-.ui-table__col-item {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 8px;
-  border-radius: calc(8px * var(--radius-scale));
-  color: var(--on-surface);
-  font-size: var(--fs-tiny);
-  cursor: pointer;
-}
-.ui-table__col-item:hover { background: var(--surface-container); }
-.ui-table__col-item input { accent-color: var(--primary); }
-.ui-table-cols-enter-active, .ui-table-cols-leave-active { transition: opacity var(--t-fade), transform var(--t-panel); }
-.ui-table-cols-enter-from, .ui-table-cols-leave-to { opacity: 0; transform: translateY(-4px) scale(.97); }
+.ui-table__cols-select { width: min(220px, 100%); }
 
 /* ---------- 表格 ---------- */
 .ui-table {

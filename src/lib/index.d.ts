@@ -7,11 +7,6 @@ import type { App, DefineComponent, ObjectDirective } from 'vue'
 
 type AnyProps = Record<string, unknown>
 
-declare const UiMediaViewer: DefineComponent<{
-  src: string; kind?: 'auto' | 'image' | 'video'; poster?: string; label?: string; alt?: string
-  aspect?: string; thumbWidth?: string; zoomable?: boolean; maxZoom?: number
-  modelValue?: boolean
-}, AnyProps, unknown>
 declare const UiCardGroup: DefineComponent<{
   variant?: 'gallery' | 'circular' | 'depth' | 'wall' | 'scroll-stack' | 'stack' | 'swap' | 'bounce'
   items?: { title: string; meta?: string; tone?: string; image?: string }[]
@@ -75,6 +70,15 @@ declare const UiBadge: DefineComponent<{ tone?: 'primary' | 'success' | 'warning
 declare const UiBarChart: DefineComponent<{ data?: number[]; labels?: string[]; height?: number }, AnyProps, unknown>
 declare const UiBottomSheet: DefineComponent<{ modelValue?: boolean; title?: string; maxHeight?: string; closeOnBackdrop?: boolean; scrim?: boolean; anchors?: number[] }, AnyProps, unknown>
 declare const UiCheckbox: DefineComponent<{ modelValue?: boolean; label?: string; disabled?: boolean }, AnyProps, unknown>
+declare const UiAvatarTag: DefineComponent<{
+  name?: string
+  src?: string
+  /** SVG 内部标记；图标模式不做遮罩 */
+  icon?: string
+  iconViewBox?: string
+  shape?: 'circle' | 'squircle' | 'square' | 'hexagon' | 'diamond' | 'blob'
+  size?: 'sm' | 'md' | 'lg'
+}, AnyProps, unknown>
 declare const UiCard: DefineComponent<{
   title?: string
   description?: string
@@ -82,8 +86,15 @@ declare const UiCard: DefineComponent<{
   icon?: string
   divider?: boolean
   size?: 'sm' | 'md' | 'lg'
-  variant?: 'outline' | 'filled' | 'plain'
+  variant?: 'outline' | 'filled' | 'plain' | 'product'
   clickable?: boolean
+  /* ---------- variant=product（产品授权卡） ---------- */
+  productName?: string
+  /** SVG 内部标记；viewBox 可自定义（品牌图标多半不是 24×24） */
+  productIcon?: string
+  productIconViewBox?: string
+  /** 品牌强调色：图标底色、底部光晕、渐变文字与动作按钮 */
+  accent?: string
 }, AnyProps, unknown>
 declare const UiCodeImage: DefineComponent<{ type: string | string[]; options?: Record<string, Record<string, unknown>>; width?: number }, AnyProps, unknown>
 declare const UiChip: DefineComponent<{ variant?: string; selected?: boolean; removable?: boolean; dot?: boolean }, AnyProps, unknown>
@@ -147,9 +158,21 @@ declare const UiRingSlider: DefineComponent<{
 declare const UiRollNumber: DefineComponent<{ value?: number | string; directionKey?: number | null; reverse?: boolean; distance?: string; step?: number; instant?: boolean }, AnyProps, unknown>
 declare const UiSchemaForm: DefineComponent<{ schema: Record<string, unknown>; modelValue?: Record<string, unknown>; arrayMode?: string; disabled?: boolean }, AnyProps, unknown>
 declare const UiSearchField: DefineComponent<{ modelValue?: string; placeholder?: string; keepValue?: boolean; disabled?: boolean }, AnyProps, unknown>
+declare const UiPagerDots: DefineComponent<{
+  /** 总页数 */
+  total?: number
+  modelValue?: number
+  clickable?: boolean
+  /** sm | md */
+  size?: 'sm' | 'md'
+  label?: string
+}, AnyProps, unknown>
+
 declare const UiSelect: DefineComponent<{
-  modelValue?: string | number
+  modelValue?: string | number | (string | number)[]
   options?: { label: string; value: string | number; icon?: string; disabled?: boolean }[]
+  /** 多选：modelValue 为数组，勾选不收回面板 */
+  multiple?: boolean
   label?: string; placeholder?: string; disabled?: boolean
   /** 选项图标位置：leading 在文字前端；top 在文字上方（面板变卡片网格） */
   iconPlacement?: 'leading' | 'top'
@@ -382,7 +405,7 @@ export declare function getZeroConfig(): ZeroConfig | null
 export declare function getAppliedZeroConfig(): { source: string | null; ui: ZeroUiConfig; keys: string[] } | null
 
 /* ---------- 第二批：表单 / 导航 / 浮层 / 数据展示 ---------- */
-declare const UiColorPicker: DefineComponent<{ modelValue?: string; label?: string; swatches?: string[] }, AnyProps, unknown>
+declare const UiColorPicker: DefineComponent<{ modelValue?: string; label?: string; disabled?: boolean; swatches?: string[] }, AnyProps, unknown>
 declare const UiAutocomplete: DefineComponent<{ modelValue?: string; label?: string; placeholder?: string; options?: { label: string; value: string | number; hint?: string }[]; free?: boolean; max?: number }, AnyProps, unknown>
 declare const UiForm: DefineComponent<{ validateOnSubmit?: boolean }, AnyProps, unknown>
 declare const UiFormField: DefineComponent<{ label?: string; hint?: string; rules?: ((value: unknown) => true | string)[]; value?: unknown; required?: boolean }, AnyProps, unknown>
@@ -409,12 +432,12 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 
 /* ---------- components ---------- */
 export {
-  UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiMarquee,
-  UiCard, UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
+  UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
+  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
-  UiCardGroup, UiCodeSlots, UiMediaViewer, UiRotatingText, UiScrubField, UiStatusMark,
+  UiCardGroup, UiCodeSlots, UiRotatingText, UiScrubField, UiStatusMark,
   UiStepFlow, UiSwipeRow, UiText, UiToolCallChip, UiTooltipGroup,
   UiRating, UiRingProgress, UiRingSlider, UiRollNumber, UiSchemaForm,
   UiSearchField, UiSelect, UiSegmented, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,

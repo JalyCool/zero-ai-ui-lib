@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue'
+
 /* ============================================================
    卡片（参考 Nuxt UI 的 Card）
    ------------------------------------------------------------
@@ -20,8 +22,17 @@ const props = defineProps({
   size: { type: String, default: 'md' },
   variant: { type: String, default: 'outline' },
   /* 仅表现：悬停抬色 + 按下收缩；点击事件由应用自己绑 */
-  clickable: { type: Boolean, default: false }
+  clickable: { type: Boolean, default: false },
+  /* ---------- variant="product"（产品授权卡） ---------- */
+  productName: { type: String, default: '' },
+  /* SVG 内部标记；viewBox 可自定义（品牌图标多半不是 24×24） */
+  productIcon: { type: String, default: '' },
+  productIconViewBox: { type: String, default: '0 0 24 24' },
+  /* 品牌强调色：只用于图标底色、底部光晕与渐变文字 */
+  accent: { type: String, default: '#3ecf8e' }
 })
+
+const isProduct = computed(() => props.variant === 'product')
 
 </script>
 
@@ -29,19 +40,43 @@ const props = defineProps({
   <section
     class="ui-card"
     :class="[`ui-card--${variant}`, `ui-card--${size}`, {
-      'has-divider': divider,
+      /* 产品卡不分段画线：品牌卡是一整块，不要被分隔线切碎。 */
+      'has-divider': divider && !isProduct,
       'is-clickable': clickable
     }]"
+    :style="isProduct ? { '--card-accent': accent } : undefined"
   >
-    <header v-if="$slots.header || title || description || icon || $slots.actions" class="ui-card__header">
+    <!-- 产品卡底部的一圈品牌色光晕：随主题 / accent 变化，不用固定位图 -->
+    <span v-if="isProduct" class="ui-card__glow" aria-hidden="true"></span>
+
+    <header
+      v-if="$slots.header || title || description || icon || productName || productIcon || $slots.actions"
+      class="ui-card__header"
+    >
       <slot name="header">
-        <span v-if="icon" class="ui-card__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" v-html="icon"></svg>
-        </span>
-        <span class="ui-card__titles">
-          <b v-if="title" class="ui-card__title">{{ title }}</b>
-          <span v-if="description" class="ui-card__description">{{ description }}</span>
-        </span>
+        <template v-if="isProduct">
+          <span class="ui-card__product-icon" aria-hidden="true">
+            <svg
+              v-if="productIcon"
+              :viewBox="productIconViewBox"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              v-html="productIcon"
+            ></svg>
+          </span>
+          <span class="ui-card__titles">
+            <b class="ui-card__title">{{ productName || title }}</b>
+          </span>
+        </template>
+        <template v-else>
+          <span v-if="icon" class="ui-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" v-html="icon"></svg>
+          </span>
+          <span class="ui-card__titles">
+            <b v-if="title" class="ui-card__title">{{ title }}</b>
+            <span v-if="description" class="ui-card__description">{{ description }}</span>
+          </span>
+        </template>
       </slot>
       <div v-if="$slots.actions" class="ui-card__actions">
         <slot name="actions" />
@@ -127,6 +162,104 @@ const props = defineProps({
 .ui-card.has-divider .ui-card__header { border-bottom: var(--border-w) solid color-mix(in oklab, var(--outline-variant) 70%, transparent); }
 .ui-card.has-divider .ui-card__footer { border-top: var(--border-w) solid color-mix(in oklab, var(--outline-variant) 70%, transparent); }
 /* 没有页眉时，主体顶部不需要再留一份视觉重量；页脚同理由 border-top 表达。 */
+
+/* ---------- variant="product" ---------- */
+.ui-card--product {
+  position: relative;
+  gap: 10px;
+  padding: 14px;
+  overflow: clip;
+  border-color: transparent;
+  border-radius: calc(20px * var(--radius-scale));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--card-accent) 5%, var(--surface)) 0%, var(--surface) 100%);
+}
+.ui-card--product .ui-card__glow {
+  position: absolute;
+  left: 50%;
+  bottom: -66px;
+  width: 100%;
+  height: 97px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center,
+    color-mix(in oklab, var(--card-accent) 26%, transparent), transparent 68%);
+  filter: blur(26px);
+  opacity: .9;
+  pointer-events: none;
+}
+.ui-card--product .ui-card__header {
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  position: relative;
+  z-index: 1;
+}
+.ui-card--product .ui-card__product-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: calc(12px * var(--radius-scale));
+  background: var(--surface);
+}
+.ui-card--product .ui-card__product-icon svg { width: 20px; height: 20px; overflow: visible; }
+.ui-card--product .ui-card__title {
+  font-size: calc(16px * var(--font-scale, 1));
+  font-weight: var(--w-heading);
+  color: var(--on-surface);
+}
+.ui-card--product .ui-card__actions { margin-left: auto; }
+.ui-card--product .ui-card__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  font-size: calc(15px * var(--font-scale, 1));
+  line-height: 1.35;
+  color: var(--on-surface);
+}
+.ui-card--product .ui-card__body :deep(.ui-avatar-tag) { margin-right: 4px; }
+.ui-card__accent {
+  font-weight: var(--w-strong);
+  background: linear-gradient(90deg, var(--card-accent), color-mix(in oklab, var(--card-accent) 55%, var(--on-surface)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ui-card--product .ui-card__footer {
+  position: relative;
+  z-index: 1;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+}
+.ui-card--product .ui-card__footer {
+  justify-content: flex-end;
+}
+.ui-card--product .ui-card__footer :deep(.ui-btn) {
+  min-height: 40px;
+  padding: 0 20px;
+  border-radius: calc(12px * var(--radius-scale));
+  font-size: calc(15px * var(--font-scale, 1));
+}
+/* 产品卡里的动作按钮跟随品牌色，而不是全局主色：
+   授权 = 实心 accent，拒绝 = accent 淡底。 */
+.ui-card--product .ui-card__footer :deep(.ui-btn--primary) {
+  background: var(--card-accent);
+  border-color: var(--card-accent);
+  color: #fff;
+}
+.ui-card--product .ui-card__footer :deep(.ui-btn--tonal) {
+  background: color-mix(in oklab, var(--card-accent) 16%, var(--surface));
+  border-color: transparent;
+  color: color-mix(in oklab, var(--card-accent) 30%, var(--on-surface));
+}
 
 /* ---------- 可点击 ---------- */
 .ui-card.is-clickable { cursor: pointer; }

@@ -949,7 +949,7 @@ watch(() => props.modelValue, value => {
 .ui-card-group__gallery .ui-card-group__card {
   width: var(--cg-card-width);
   height: 74%;
-  transition: transform var(--t-panel) var(--spring-view), opacity var(--t-fade), filter var(--t-fade), border-color var(--t-fade);
+  transition: transform var(--t-panel), opacity var(--t-fade), filter var(--t-fade), border-color var(--t-fade);
 }
 
 /* ---------- circular ---------- */
@@ -981,7 +981,7 @@ watch(() => props.modelValue, value => {
   position: absolute;
   width: calc(var(--cg-card-width) * 0.9);
   aspect-ratio: 4 / 3;
-  transition: transform var(--t-panel) var(--spring-view), opacity var(--t-fade), filter var(--t-fade);
+  transition: transform var(--t-panel), opacity var(--t-fade), filter var(--t-fade);
 }
 
 /* ---------- wall ---------- */
@@ -1012,7 +1012,7 @@ watch(() => props.modelValue, value => {
   border-radius: calc(12px * var(--radius-scale));
   border: var(--border-w) solid var(--outline-variant);
   background: var(--surface-container-low);
-  transition: transform var(--t-panel) var(--spring-view), box-shadow var(--t-fade), border-color var(--t-fade);
+  transition: transform var(--t-panel), box-shadow var(--t-fade), border-color var(--t-fade);
 }
 .ui-card-group__tile img { width: 100%; height: 100%; object-fit: cover; }
 .ui-card-group__tile-label {
@@ -1122,7 +1122,7 @@ watch(() => props.modelValue, value => {
   position: absolute;
   width: calc(var(--cg-card-width) * 0.68);
   aspect-ratio: 4 / 3;
-  transition: transform var(--t-panel) var(--spring-view), box-shadow var(--t-fade), border-color var(--t-fade);
+  transition: transform var(--t-panel), box-shadow var(--t-fade), border-color var(--t-fade);
   animation: cgBounceIn 620ms var(--spring-view) both;
   animation-delay: calc(var(--i, 0) * 60ms);
 }

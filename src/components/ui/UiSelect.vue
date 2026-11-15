@@ -4,7 +4,9 @@ import { usePress } from '../../core/pressFeedback'
 import { toFixedBox } from '../../core/fixedBox'
 
 const props = defineProps({
-  modelValue: { type: [String, Number], default: '' },
+  modelValue: { type: [String, Number, Array], default: '' },
+  /* 多选：modelValue 为数组，勾选不收回面板 */
+  multiple: { type: Boolean, default: false },
   label: { type: String, default: '' },
   options: { type: Array, default: () => [] },
   hint: { type: String, default: '' },
@@ -64,7 +66,7 @@ function setGlide(index) {
 }
 
 function resetGlide() {
-  const index = props.options.findIndex(item => item.value === props.modelValue)
+  const index = props.options.findIndex(item => isChosen(item))
   setGlide(index)
 }
 const closing = ref(false)
@@ -81,10 +83,24 @@ let openedBox = null
 let borderX = 0
 let borderY = 0
 
-const selectedOption = computed(() => props.options.find(item => item.value === props.modelValue) || null)
+const selectedValues = computed(() => {
+  if (!props.multiple) return [props.modelValue]
+  return (Array.isArray(props.modelValue) ? props.modelValue : []).map(String)
+})
+function isChosen(option) {
+  return props.multiple
+    ? selectedValues.value.includes(String(option.value))
+    : option.value === props.modelValue
+}
+const selectedOption = computed(() => props.options.find(item => isChosen(item)) || null)
 const showFieldIcon = computed(() => props.showIcon && !!selectedOption.value?.icon)
 
 const selectedLabel = computed(() => {
+  if (props.multiple) {
+    const picked = props.options.filter(item => isChosen(item))
+    if (!picked.length) return props.placeholder
+    return picked.map(item => item.label).join('、')
+  }
   const option = props.options.find(item => item.value === props.modelValue)
   if (option) return option.label
   return props.modelValue === '' || props.modelValue === null || props.modelValue === undefined
@@ -351,6 +367,18 @@ function onTriggerClick(event) {
 function choose(option) {
   /* 单个选项禁用：可见但不可选。 */
   if (option.disabled) return
+  if (props.multiple) {
+    /* 保留原始类型（value 可能是数字）：只拿字符串做比较。 */
+    const next = Array.isArray(props.modelValue) ? [...props.modelValue] : []
+    const at = next.findIndex(item => String(item) === String(option.value))
+    if (at >= 0) next.splice(at, 1)
+    else next.push(option.value)
+    /* 多选不收回：勾选是连续动作，收面板由用户再点字段 / Esc 触发。
+       把滑行高亮留在刚勾选的那一行，视觉上有落点。 */
+    setGlide(props.options.indexOf(option))
+    emit('update:modelValue', next)
+    return
+  }
   if (option.value === props.modelValue) {
     close()
     return
@@ -414,7 +442,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="ui-field ui-select" :class="{ 'is-open': open, 'is-closing': closing, 'is-disabled': disabled }">
+  <div class="ui-field ui-select" :class="{ 'is-open': open, 'is-closing': closing, 'is-disabled': disabled, 'is-multiple': multiple }">
     <span v-if="label" class="ui-field__label">{{ label }}</span>
 
     <div
@@ -458,6 +486,7 @@ onBeforeUnmount(() => {
         ref="panelEl"
         class="ui-select__panel"
         role="listbox"
+        :aria-multiselectable="multiple ? 'true' : undefined"
         :aria-label="label || '选项'"
         :aria-hidden="open ? 'false' : 'true'"
         :inert="open ? null : ''"
@@ -475,11 +504,11 @@ onBeforeUnmount(() => {
             :key="option.value"
             type="button"
             role="option"
-            :aria-selected="option.value === modelValue"
+            :aria-selected="isChosen(option)"
             :aria-disabled="option.disabled ? 'true' : undefined"
             :tabindex="open && !option.disabled ? 0 : -1"
             class="ui-select__option"
-            :class="{ 'is-selected': option.value === modelValue, 'is-disabled': !!option.disabled }"
+            :class="{ 'is-selected': isChosen(option), 'is-disabled': !!option.disabled }"
             @mouseenter="!option.disabled && setGlide(options.indexOf(option))"
             @mouseleave="resetGlide"
             @focus="!option.disabled && setGlide(options.indexOf(option))"
@@ -489,7 +518,7 @@ onBeforeUnmount(() => {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" v-html="option.icon"></svg>
             </span>
             <span class="ui-select__option-label">{{ option.label }}</span>
-            <svg v-if="option.value === modelValue" class="ui-select__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg v-if="isChosen(option)" class="ui-select__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M5 12.5l4.2 4.2L19 7" />
             </svg>
           </button>
@@ -601,6 +630,8 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
 }
 .ui-select__value.is-placeholder { color: var(--on-surface-variant); opacity: .78; }
+/* 多选：字段里的已选项相当于摘要，用不抢眼的次级文字色。 */
+.ui-select.is-multiple .ui-select__value { color: var(--on-surface); }
 .ui-select__chevron {
   display: grid;
   place-items: center;
@@ -665,7 +696,7 @@ onBeforeUnmount(() => {
   border-radius: calc(10px * var(--radius-scale));
   background: var(--surface-container-low);
   pointer-events: none;
-  transition: transform var(--t-panel) var(--spring-view), height var(--t-panel) var(--spring-view);
+  transition: transform var(--t-panel), height var(--t-panel);
 }
 .ui-select__option {
   position: relative;

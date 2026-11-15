@@ -151,7 +151,7 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
   border-radius: calc(12px * var(--radius-scale));
   background: var(--primary-container);
   /* 宽高按 calc 一次算定，位移用百分比 translate：换步时就是平移。 */
-  transition: transform var(--t-panel) var(--spring-view), width var(--t-panel), height var(--t-panel);
+  transition: transform var(--t-panel), width var(--t-panel), height var(--t-panel);
   pointer-events: none;
   will-change: transform;
 }

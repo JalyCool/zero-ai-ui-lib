@@ -4,7 +4,7 @@ import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
-  UiMediaViewer, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
+  UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
   UiText, UiToolCallChip, UiTooltipGroup,
   UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
   UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
@@ -15,10 +15,18 @@ import {
   UiAutocomplete, UiBreadcrumb, UiCalendar, UiCarousel, UiCol, UiColorPicker,
   UiCommandPalette, UiContextMenu, UiForm, UiFormField,
   UiGrid, UiIcon, UiKbd, UiMarquee, UiNavigationMenu, UiPagination,
-  UiPopover, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter,
+  UiPagerDots, UiPopover, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter,
   UiTimeline, UiTour
 } from '../components/ui'
 import { confirmDialog } from '../lib'
+import supabaseSvg from '../assets/figma/supabase.svg?raw'
+
+/* Figma 5:454 里的品牌图标：留内部标记，viewBox 由 prop 传 0 0 20 20 */
+const supabaseGlyph = supabaseSvg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '')
+/* ZERO 头像（黑底两只白眼睛），作为「SVG 图标无遮罩」的示例 */
+const zeroFace = '<rect width="24" height="24" rx="12" fill="#111"/><rect x="8.4" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/><rect x="13" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/>'
+/* 任意形状的 SVG：五角星，不套遮罩，露出的就是星形本身 */
+const starGlyph = '<path d="M12 2l2.9 6.2 6.8.9-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.9z" fill="#f59e0b"/>'
 
 /* ============================================================
    组件库示例 · 重写版
@@ -352,6 +360,7 @@ const jellyPick = ref('a')
 /* ---------- 第二批组件（表单 / 布局 / 导航 / 浮层 / 数据展示） ---------- */
 const colorPick = ref('#3f5f90')
 const autoPick = ref('')
+const formName = ref('')
 const autoOptions = [
   { label: '晨跑', value: 'run' },
   { label: '骑行', value: 'ride' },
@@ -371,7 +380,7 @@ const navItems = [
     { label: '提醒', description: '每天 20:00', value: 'remind' }
   ] }
 ]
-const splitRatio = ref(42)
+const splitRatio = ref(0.42)
 const ctxLog = ref('在灰色区域里右键 / 长按试试')
 const ctxItems = [
   { label: '复制', shortcut: '⌘C', icon: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>' },
@@ -409,8 +418,6 @@ const carouselItems = [
 ]
 const carouselIndex = ref(0)
 
-const viewerMotion = ref(false)
-const viewerOverlay = ref(false)
 const viewerSrc = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d7e2ff"/><stop offset="1" stop-color="#3f5f90"/></linearGradient></defs><rect width="640" height="360" fill="url(#g)"/><circle cx="180" cy="140" r="60" fill="#faf9fd" opacity=".9"/><path d="M60 300 L260 180 L420 260 L600 140 L600 360 L60 360 Z" fill="#3f5f90" opacity=".55"/></svg>')
 
@@ -514,7 +521,7 @@ onMounted(() => {
   <section class="view active lib" data-view="components">
     <div class="lib-hero">
       <h2 class="lib-hero__title">组件库</h2>
-      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。8 个分区、93 个组件，窄屏单列、宽屏自动多列。</p>
+      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。8 个分区、94 个组件，窄屏单列、宽屏自动多列。</p>
     </div>
 
     <!-- 分类选择器：一次只展示一个分区，避免把几十个组件全排在一页里 -->
@@ -578,8 +585,44 @@ onMounted(() => {
             <UiCard title="纯文字卡" description="variant=plain、无页脚" variant="plain" :divider="false" size="sm">
               <span class="lib-muted">没有描边与底色，只保留排版。</span>
             </UiCard>
+
+            <UiCard
+              variant="product"
+              product-name="Supabase"
+              :product-icon="supabaseGlyph"
+              product-icon-view-box="0 0 20 20"
+              accent="#3ecf8e"
+            >
+              <UiAvatarTag name="ZERO" :icon="zeroFace" />
+              <span>需要连接到</span>
+              <b style="font-weight: 700; background: linear-gradient(90deg, var(--card-accent), color-mix(in oklab, var(--card-accent) 55%, var(--on-surface))); -webkit-background-clip: text; background-clip: text; color: transparent;">Supabase</b>
+              <span>来创建数据库和获取连接信息</span>
+              <template #footer>
+                <UiButton variant="tonal">拒绝</UiButton>
+                <UiButton>授权</UiButton>
+              </template>
+            </UiCard>
           </div>
           <span class="lib-cell__note">#header / 默认插槽 / #footer 三段；#actions 在页眉右侧；divider 控制分隔线。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">头像标签 <small>AvatarTag</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div class="lib-demo-row">
+              <UiAvatarTag name="圆形" :src="viewerSrc" shape="circle" />
+              <UiAvatarTag name="圆角方形" :src="viewerSrc" shape="squircle" />
+              <UiAvatarTag name="六边形" :src="viewerSrc" shape="hexagon" />
+              <UiAvatarTag name="菱形" :src="viewerSrc" shape="diamond" />
+            </div>
+            <div class="lib-demo-row">
+              <UiAvatarTag name="图标 · 无遮罩" :icon="zeroFace" />
+              <UiAvatarTag name="星形" :icon="starGlyph" />
+              <UiAvatarTag name="星形 · md" :icon="starGlyph" size="md" />
+              <UiAvatarTag name="ZERO" :icon="zeroFace" size="md" />
+              <UiAvatarTag name="自定义形状" :src="viewerSrc" shape="blob" size="lg" />
+            </div>
+          </div>
+          <span class="lib-cell__note">图片按 shape 裁切；icon 模式不套遮罩，保留 SVG 自身形状。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">分段 / 步进 / 评分</span>
@@ -641,8 +684,8 @@ onMounted(() => {
           <span class="lib-cell__label">表单与校验 <small>Form / FormField</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiForm :validate-on-submit="true">
-              <UiFormField label="目标名称" hint="必填，至少 2 个字" :value="autoPick">
-                <UiInput v-model="autoPick" placeholder="例如：每天喝水 8 杯" />
+              <UiFormField label="目标名称" hint="必填，至少 2 个字" :value="formName">
+                <UiInput v-model="formName" placeholder="例如：每天喝水 8 杯" />
               </UiFormField>
             </UiForm>
           </div>
@@ -786,10 +829,12 @@ onMounted(() => {
               <UiCol :span="5"><div class="lib-tile">span 5 / 12</div></UiCol>
               <UiCol :span="5"><div class="lib-tile">span 5 / 12</div></UiCol>
             </UiRow>
-            <UiSplitter v-model="splitRatio" :min="20" :max="80" :handle="16">
-              <template #first><div class="lib-tile">上</div></template>
-              <div class="lib-tile">下</div>
-            </UiSplitter>
+            <div class="lib-splitter-demo">
+              <UiSplitter v-model="splitRatio" :min="0.2" :max="0.8" :handle="14">
+                <template #first><div class="lib-tile">左侧 {{ Math.round(splitRatio * 100) }}%</div></template>
+                <div class="lib-tile">右侧</div>
+              </UiSplitter>
+            </div>
           </div>
           <span class="lib-cell__note">Grid 按最小列宽铺满；Splitter 拖动分隔条实时改比例。</span>
         </div>
@@ -843,13 +888,13 @@ onMounted(() => {
             :total="groupTableRows.length"
             @page-change="p => tablePage = p.page"
           />
-          <span class="lib-cell__note">「列」按钮控制显隐；表头全选、行首多选；组标题整行合并；服务端模式下排序 / 分页只发事件。</span>
+          <span class="lib-cell__note">列显隐直接用下拉的多选模式；表头全选、行首多选；组标题整行合并；服务端模式下排序 / 分页只发事件。</span>
           <span class="lib-muted">已选 {{ tableSelected.length }} 行 · 第 {{ tablePage }} 页</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">文件树</span>
           <UiTreeView :nodes="tree" v-model="treePick" :default-open="['src']" />
-          <span class="lib-muted">选中：{{ treePick }}；分组展开 / 折叠是 0 ↔ 自然高度的连续过渡。</span>
+          <span class="lib-muted">选中：{{ treePick }}；分组用 grid 行高 0fr ↔ 1fr 连续过渡，嵌套子树也跟手。</span>
         </div>
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">文件树 · 过滤 / 级联多选 / 拖拽换父</span>
@@ -891,6 +936,10 @@ onMounted(() => {
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiTimeline :items="timelineItems" />
             <UiCarousel v-model="carouselIndex" :items="carouselItems" :height="120" :autoplay="true" />
+            <div class="lib-demo-row lib-dots-demo">
+              <span class="lib-muted">翻页指示器</span>
+              <UiPagerDots :total="carouselItems.length" :model-value="carouselIndex" @update:model-value="carouselIndex = $event" />
+            </div>
             <UiMarquee text="跑马灯：记录不中断 · 数据自己会说话 · 每天一点点" :speed="60" />
           </div>
           <span class="lib-cell__note">时间线按时间轴铺点；轮播可拖拽翻页；跑马灯悬停暂停。</span>
@@ -946,12 +995,9 @@ onMounted(() => {
       <h3 class="lib-sec__title">浮层与反馈</h3>
       <div class="lib-cells">
         <div class="lib-cell">
-          <span class="lib-cell__label">侧栏 / 抽屉</span>
+          <span class="lib-cell__label">侧栏 <small>Sidebar</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <div class="lib-demo-row">
-              <UiButton size="sm" variant="outline" @click="sidebarOpen = !sidebarOpen">侧栏 {{ sidebarOpen ? '展开' : '收起' }}</UiButton>
-              <UiButton size="sm" variant="outline" @click="slideoverOpen = true">打开抽屉</UiButton>
-            </div>
+            <UiButton size="sm" variant="outline" @click="sidebarOpen = !sidebarOpen">侧栏 {{ sidebarOpen ? '展开' : '收起' }}</UiButton>
             <div class="lib-sidebar-demo">
               <UiSidebar v-model="sidebarOpen" label="示例侧栏" :width="196" :collapsed-width="56">
                 <template #head><b>目录</b></template>
@@ -959,7 +1005,7 @@ onMounted(() => {
               </UiSidebar>
             </div>
           </div>
-          <span class="lib-cell__note">侧栏收起只留图标；抽屉从右侧推入。</span>
+          <span class="lib-cell__note">宽度走 view 弹簧，内容随收拢淡出，箭头同时翻转。</span>
         </div>
 
         <div class="lib-cell">
@@ -998,21 +1044,22 @@ onMounted(() => {
           <span class="lib-cell__note">超出 3 条自动排队，前一条退场后顶上。</span>
         </div>
         <div class="lib-cell">
-          <span class="lib-cell__label">确认与图片</span>
+          <span class="lib-cell__label">确认对话框 <small>confirmDialog</small></span>
           <div class="lib-cell__stage">
-            <UiButton variant="danger" @click="askDemo">confirmDialog 演示</UiButton>
-            <UiButton variant="outline" @click="viewerOverlay = true">查看图片</UiButton>
+            <UiButton variant="danger" @click="askDemo">删除记录</UiButton>
+            <UiButton variant="outline" @click="askDemo">发布周报</UiButton>
           </div>
-          <span class="lib-cell__note">确认框有意不接 Esc / Enter。媒体查看器从缩略位置长开，支持捏合 / 双击缩放、下拉关闭。</span>
+          <span class="lib-cell__note">统一替代 window.confirm；有意不接 Esc / Enter，确认必须显式点按钮。</span>
         </div>
         <div class="lib-cell">
-          <span class="lib-cell__label">弹层三件套</span>
+          <span class="lib-cell__label">弹层</span>
           <div class="lib-cell__stage">
             <UiButton variant="outline" @click="modalOpen = true">对话框</UiButton>
             <UiButton variant="outline" @click="bottomSheetOpen = true">底部面板</UiButton>
             <UiButton variant="outline" @click="sheetBareOpen = true">无背景面板</UiButton>
+            <UiButton variant="outline" @click="slideoverOpen = true">抽屉</UiButton>
           </div>
-          <span class="lib-cell__note">遮罩只压暗 16%，同时模糊 0→5px 连续过渡。</span>
+          <span class="lib-cell__note">遮罩只压暗 16%，同时模糊 0→5px；抽屉从右侧整块推入，内容随后浮入。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">提示 / 折叠 / 空状态</span>
@@ -1144,14 +1191,6 @@ onMounted(() => {
           </div>
           <span class="lib-cell__note">图标按钮组（工具栏场景）：第一次悬停要等 520ms，热了之后兄弟项瞬开；气泡只渲染一个，跟着指针走。</span>
         </div>
-        <div class="lib-cell">
-          <span class="lib-cell__label">媒体查看 <small>MediaViewer</small></span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiMediaViewer v-model="viewerMotion" kind="image" :src="viewerSrc" label="训练场地" aspect="4 / 3" />
-            <UiButton size="sm" variant="outline" @click="viewerMotion = true">打开</UiButton>
-          </div>
-          <span class="lib-cell__note">缩略预览点击后原地长开，支持捏合 / 双击缩放、下拉关闭。</span>
-        </div>
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">卡片组 <small>CardGroup · 8 种形态</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
@@ -1214,7 +1253,6 @@ onMounted(() => {
       </div>
     </UiBottomSheet>
 
-    <UiMediaViewer v-model="viewerOverlay" :src="viewerSrc" label="示例图片" />
     <UiToastHost ref="toast" />
   </section>
 </template>
@@ -1326,6 +1364,10 @@ onMounted(() => {
   background: var(--surface-container-low);
 }
 .lib-sidebar-demo .ui-sidebar { height: 100%; }
+.lib-splitter-demo { display: flex; height: 148px; min-width: 0; }
+.lib-splitter-demo > * { flex: 1; min-width: 0; }
+.lib-splitter-demo .lib-tile { height: 100%; border-radius: 0; }
+.lib-dots-demo { gap: 10px; padding: 2px 0; }
 .lib-tile {
   display: grid;
   place-items: center;

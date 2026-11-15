@@ -404,7 +404,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: opacity var(--t-fade), transform var(--t-panel) var(--spring-view);
+  transition: opacity var(--t-fade), transform var(--t-panel);
 }
 /* 三个面叠在同一格：同一时间只有一个是可见可交互的。 */
 .ui-btn__face--undo,

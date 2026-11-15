@@ -4,7 +4,7 @@ const ROOT_KEY = Symbol('ui-tree-root')
 </script>
 
 <script setup>
-import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
+import { computed, inject, provide, ref } from 'vue'
 
 const props = defineProps({
   /* [{ label, value?, children?, kind? }]；kind 决定图标 */
@@ -68,13 +68,9 @@ const state = isRoot ? {
       emit('update:modelValue', value)
     }
   },
-  groups: new Map(),
   /* 拖拽中的源节点 value（全树共享，避免每个递归实例各存一份） */
   dragging: ref(''),
   dropKey: ref(''),
-  supportsInterpolation:
-    typeof CSS !== 'undefined' && typeof CSS.supports === 'function' &&
-    CSS.supports('interpolate-size', 'allow-keywords')
 } : null
 
 if (isRoot) provide(ROOT_KEY, state)
@@ -173,33 +169,6 @@ function iconOf(node) {
   return node.kind || 'file'
 }
 
-/* ---------- 分组高度动画（无 interpolate-size 时兜底） ---------- */
-function registerGroup(key, el) {
-  if (el) shared.groups.set(key, el)
-  else shared.groups.delete(key)
-}
-
-function animateGroup(key, open) {
-  if (shared.supportsInterpolation) return
-  const el = shared.groups.get(key)
-  if (!el) return
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (reduce) { el.style.height = open ? 'auto' : '0px'; return }
-  const from = open ? 0 : el.scrollHeight
-  const to = open ? el.scrollHeight : 0
-  el.style.transition = 'none'
-  el.style.height = from + 'px'
-  void el.offsetHeight
-  el.style.transition = ''
-  requestAnimationFrame(() => { el.style.height = to + 'px' })
-  if (open) setTimeout(() => { if (isOpen(key)) el.style.height = 'auto' }, 700)
-}
-
-watch(() => shared.openMap.value, map => {
-  for (const [key, value] of map.entries()) animateGroup(key, !!value)
-})
-
-onBeforeUnmount(() => { if (isRoot) shared.groups.clear() })
 
 /* defineExpose 是编译宏，必须无条件出现在 setup 顶层；
    递归子实例只暴露一个空对象，openAll 只在根实例上有效。 */
@@ -269,10 +238,10 @@ defineExpose(isRoot ? {
       <!-- 子级分组：常驻 DOM，高度 0 <-> auto 连续过渡，行内容从模糊中浮现。 -->
       <div
         v-if="row.hasChildren"
-        :ref="el => registerGroup(row.key, el)"
         class="ui-tree__group"
         :class="{ 'is-open': isOpen(row.key) }"
       >
+        <div class="ui-tree__group-clip">
         <UiTreeView
           :nodes="row.children"
           :depth="depth + 1"
@@ -287,6 +256,7 @@ defineExpose(isRoot ? {
           @move="payload => emit('move', payload)"
           @update:model-value="value => emit('update:modelValue', value)"
         />
+        </div>
       </div>
     </template>
   </div>
@@ -298,8 +268,6 @@ defineExpose(isRoot ? {
   flex-direction: column;
   gap: 1px;
   min-width: 0;
-  /* 关键字插值：block-size 0 <-> auto 可原生过渡（Chrome/Edge）。 */
-  interpolate-size: allow-keywords;
 }
 .ui-tree__inner { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .ui-tree__row {
@@ -359,19 +327,20 @@ defineExpose(isRoot ? {
 .ui-tree__icon[data-kind="image"] { color: var(--secondary); }
 .ui-tree__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 分组：0 <-> 自然高度连续过渡；内容从模糊中浮现。 */
+/* 分组：grid 的 0fr <-> 1fr 在任意高度下都能原生过渡（含嵌套子树），
+   不再依赖 interpolate-size 或 JS 量像素；内容一起从模糊里浮现。 */
 .ui-tree__group {
-  block-size: 0;
-  overflow: hidden;
+  display: grid;
+  grid-template-rows: 0fr;
   opacity: 0;
-  filter: blur(6px);
-  transition: block-size var(--t-view), opacity var(--t-fade), filter var(--t-fade);
+  filter: blur(5px);
+  transition:
+    grid-template-rows var(--t-view),
+    opacity var(--t-fade),
+    filter var(--t-fade);
 }
-.ui-tree__group.is-open {
-  block-size: auto;
-  opacity: 1;
-  filter: blur(0);
-}
+.ui-tree__group.is-open { grid-template-rows: 1fr; opacity: 1; filter: blur(0); }
+.ui-tree__group-clip { min-height: 0; overflow: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-tree__group { transition-duration: .01ms !important; filter: none; }

@@ -76,6 +76,6 @@ onBeforeUnmount(() => clearTimeout(closeTimer))
 .ui-navmenu__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .ui-navmenu__text b { font-size: var(--fs-tiny); font-weight: var(--w-label); }
 .ui-navmenu__text small { font-size: var(--fs-micro); color: var(--on-surface-variant); }
-.ui-nav-enter-active, .ui-nav-leave-active { transition: opacity var(--t-fade), transform var(--t-panel) var(--spring-view), filter var(--t-fade); }
+.ui-nav-enter-active, .ui-nav-leave-active { transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade); }
 .ui-nav-enter-from, .ui-nav-leave-to { opacity: 0; transform: translateY(-6px) scale(.98); filter: blur(8px); }
 </style>

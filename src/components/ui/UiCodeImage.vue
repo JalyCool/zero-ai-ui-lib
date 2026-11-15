@@ -312,6 +312,9 @@ onBeforeUnmount(() => {
   border-radius: calc(16px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
+  /* 切换层是横向滑入的，会临时探出 24%：舞台裁掉它，
+     否则探出的那一截会撑出页面横向滚动条。 */
+  overflow: hidden;
 }
 .ui-code-image__stage > * { grid-area: 1 / 1; }
 /* 空状态叠在同一格，靠 v-show 控制，不参与尺寸竞争。 */

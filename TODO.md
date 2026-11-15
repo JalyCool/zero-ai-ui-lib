@@ -9,9 +9,6 @@
 |---|---|---|---|---|
 | UiColorPicker / UiAutocomplete | ✅ | ✅ | ✅ | ✅ |
 | UiForm / UiFormField | ✅ | ✅ | ✅ | ✅ |
-| UiNumberInput | ✅ | ✅ | ✅ | ✅ |
-| UiDateInput / UiTimeInput | ✅ | ✅ | ✅ | ✅ |
-| UiFileUpload | ✅ | ✅ | ✅ | ✅ |
 | UiBreadcrumb / UiPagination | ✅ | ✅ | ✅ | ✅ |
 | UiSidebar / UiSlideover | ✅ | ✅ | ✅ | ✅ |
 | UiNavigationMenu | ✅ | ✅ | ✅ | ✅ |
@@ -19,13 +16,13 @@
 | UiSplitter | ✅ | ✅ | ✅ | ✅ |
 | UiScrollArea | ✅ | ✅ | ✅ | ✅ |
 | UiContextMenu / UiCommandPalette | ✅ | ✅ | ✅ | ✅ |
-| UiTour / UiPopover / UiBanner | ✅ | ✅ | ✅ | ✅ |
-| UiToastQueue | ✅ | ✅ | ✅ | ✅ |
-| UiKbd / UiIcon / UiVirtualScroll | ✅ | ✅ | ✅ | ✅ |
+| UiTour / UiPopover | ✅ | ✅ | ✅ | ✅ |
+| UiKbd / UiIcon | ✅ | ✅ | ✅ | ✅ |
 | UiCalendar / UiTimeline / UiCarousel / UiMarquee | ✅ | ✅ | ✅ | ✅ |
+| UiAvatarTag / UiPagerDots / UiCard（product 变体） | ✅ | ✅ | ✅ | ✅ |
 | core：a11y / directives / shortcuts / icons / springPhysics | ✅ lib 入口导出 | ✅ | 部分 | 不适用 |
 
-→ 31 个组件的 d.ts / AGENTS 组件表 / 示例页分区演示**全部接线完成**。
+→ 上述组件的 d.ts / AGENTS 组件表 / 示例页分区演示**全部接线完成**。重复实现已删除（UiNumberInput → UiStepper、UiDateInput / UiTimeInput → 日期时间选择器、UiFileUpload → UiFileDropzone、UiToastQueue → UiToastHost、UiVirtualScroll → UiVirtualList、UiBanner → UiAlert、UiMediaViewer 按反馈整只删除）。
 
 ## B. 完全没实现的能力
 
@@ -51,7 +48,17 @@
 6. ✅ **Playground**：UiBottomSheet + StyleLab，并加了「预览组件」选择器（按钮 / 标签复选 / 开关 / 状态标记 / 滑轨 / 文字动效 / 工具调用胶囊）。
 7. ✅ **颜色生成本地化**：调色板改为官方 `@material/material-color-utilities@0.3.0` 本地依赖，断网可用；实测 seed #3b82f6 → #005ac2、#10b981 → #006c49，与库自身输出一致，无外部请求。
 
-## C. 进度记录（最近提交）
+## C. 本轮（第十二段）反馈修复
+
+- [x] 卡片 variant="product"：品牌图标 + 底部光晕 + 不分段画线 + accent 动作按钮；UiAvatarTag 支持异形遮罩图与任意 SVG（无遮罩）。
+- [x] 自绘取色盘（Nuxt UI 结构，HSV / RGB / HEX 本地换算），不再调用系统 input type=color。
+- [x] 自动完成改成与下拉同款的固定定位形变展开，输入框在展开层内实现；选中回填 label。
+- [x] 删除 UiMediaViewer 及两处演示。
+- [x] 侧栏 / 抽屉 / 巡览 / 轮播 / 文件树动画：修掉 28 处「transition: X var(--t-*) var(--spring-*)」的非法写法（--t-* 已含时长 + 曲线，再拼一条曲线会让整条声明失效）；树改用 grid-template-rows 0fr ↔ 1fr；巡览进场从整屏收拢到目标、退场再张回；翻页指示器抽成 UiPagerDots，轮播引用它。
+- [x] UiRow / UiCol 改 12 轨 grid（gap 由轨道承担）；UiSplitter 只分配「总长 - 分隔条」且兼容 20 / 80 百分数；修掉分隔条跑到滚动条、UiCodeImage 滑入层撑出横向滚动。
+- [x] UiDataTable 列显隐改用 UiSelect 的 multiple 多选下拉；增强表格与基础表格仍是同一个组件、同一套实现。
+
+## D. 进度记录（最近提交）
 
 - 本轮（第十一段）：清理重复组件 —— 删除 UiNumberInput（UiStepper）、UiDateInput/UiTimeInput
   （日期 / 时间选择器自带字段）、UiFileUpload（UiFileDropzone）、UiToastQueue（UiToastHost）、
