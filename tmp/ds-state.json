@@ -1,20 +1,66 @@
 {
   "runId": "ds-build-zero-ai-ui-lib",
   "fileKey": "D2kRVXBNBAhknbTIQoTquB",
+  "url": "https://www.figma.com/design/D2kRVXBNBAhknbTIQoTquB/UI-Kit",
   "sessionId": "8bd857eb-b685-4734-9701-bdae7649a2db",
   "scope": "full-library",
-  "font": { "ui": "Noto Sans SC", "mono": "Roboto Mono", "note": "近似 -apple-system/BlinkMacSystemFont/Segoe UI/Roboto/PingFang SC 系统栈" },
+  "sourceOfTruth": "D:\\\\Downloads\\\\apks\\\\sap-test (zero-ai-ui-lib v0.1.1) — src/styles/tokens.css, src/styles/ui.css",
+  "font": { "ui": "Noto Sans SC", "mono": "Roboto Mono", "note": "近似 -apple-system/BlinkMacSystemFont/Segoe UI/Roboto/PingFang SC 系统字体栈；Noto Sans SC 只有 Regular/Medium/Bold 三档，600–650 映射到 Medium/Bold" },
   "collections": {
-    "Color": "VariableCollectionId:7:2",
-    "Spacing": "VariableCollectionId:7:24",
-    "Radius": "VariableCollectionId:7:40",
-    "Size": "VariableCollectionId:7:50"
+    "Color": { "id": "VariableCollectionId:7:2", "count": 24 },
+    "Spacing": { "id": "VariableCollectionId:7:24", "count": 15 },
+    "Radius": { "id": "VariableCollectionId:7:40", "count": 9 },
+    "Size": { "id": "VariableCollectionId:7:50", "count": 16 }
   },
-  "counts": { "colors": 21, "spacing": 15, "radius": 9, "size": 16, "textStyles": 9 },
   "textStyles": ["Heading/H1", "Heading/Section", "Numeric/Value", "Body/Default", "Body/Small", "Label/Strong", "Label/Tiny", "Label/Micro", "Code/Mono"],
-  "documents": {
-    "pages": ["00 · Cover", "01 · Foundations", "02 · Actions", "03 · Forms", "04 · Feedback", "05 · Data", "06 · Overlays", "07 · Charts", "08 · Advanced"]
+  "pages": {
+    "00 · Cover": "7:76",
+    "01 · Foundations": "0:1",
+    "02 · Actions": "7:77",
+    "03 · Forms": "7:78",
+    "04 · Feedback": "7:79",
+    "05 · Data": "7:80",
+    "06 · Overlays": "7:81",
+    "07 · Charts": "7:82",
+    "08 · Advanced": "7:83"
   },
-  "completedSteps": ["foundations/variables", "foundations/text-styles", "page-structure", "cover"],
-  "pending": ["foundations/page-specimens", "components/Actions", "components/Forms", "components/Feedback", "components/Data", "components/Overlays", "components/Charts", "components/Advanced"]
+  "componentSets": {
+    "Button": "11:32", "Icon Button": "11:42", "Chip": "11:107", "Badge": "11:123", "Segmented": "11:145",
+    "Text Field": "13:22", "Textarea": "13:38", "Select": "13:60", "Checkbox": "13:73", "Radio": "13:81",
+    "Switch": "13:86", "Slider": "13:105", "Range Slider": "13:115", "Stepper": "13:126", "Rating": "13:138",
+    "Tag Input": "13:148", "Search Field": "13:158",
+    "Avatar": "15:23", "Progress": "15:42", "Ring Progress": "15:64", "Gauge": "15:79", "Spinner": "15:92",
+    "Skeleton": "15:101", "Alert": "15:147", "Empty State": "15:156", "Accordion": "15:169", "Tooltip": "15:172", "Toast": "15:191",
+    "Card": "16:24", "Data Table": "16:65", "Tree View": "16:109", "Virtual List": "16:126", "Key Value Editor": "16:148",
+    "Code Editor": "16:163", "Terminal Output": "16:173", "Schema Form": "16:194", "Code Image": "16:249",
+    "Modal": "19:14", "Bottom Sheet": "19:40", "Confirm Dialog": "19:50", "Floating Menu": "19:51", "Tool Menu": "19:72", "Morph Panel": "19:93",
+    "Sparkline": "19:306", "Bar Chart": "19:333", "Line Chart": "19:354", "Heatmap": "19:431",
+    "Date Picker": "20:403", "Range Date Picker": "20:528", "Wheel": "20:539", "Time Picker": "20:557",
+    "Wheel Date Picker": "20:569", "Range Time Picker": "20:580",
+    "Ring Slider": "21:87", "Gauge Slider": "21:110", "Roll Number": "21:114", "File Dropzone": "21:121", "Image Viewer": "21:140"
+  },
+  "counts": { "componentSets": 58, "variants": 133, "colorVariables": 24, "spacing": 15, "radius": 9, "size": 16, "textStyles": 9 },
+  "completedSteps": [
+    "cover", "foundations/variables", "foundations/text-styles", "foundations/specimens",
+    "components/Actions", "components/Forms", "components/Feedback", "components/Data",
+    "components/Overlays", "components/Charts", "components/Advanced",
+    "visual-qa/cover", "visual-qa/foundations", "visual-qa/actions", "visual-qa/forms",
+    "visual-qa/feedback", "visual-qa/data", "visual-qa/overlays", "visual-qa/advanced"
+  ],
+  "visualFixesApplied": [
+    "auto-layout sizing modes reset after resize (cards clipped)",
+    "text nodes switched to WIDTH_AND_HEIGHT so instance labels don't wrap",
+    "Segmented height hug; Checkbox/Radio fixed 20px boxes restored",
+    "color-mix badge containers created as variables and rebound",
+    "Rating stars filled; Empty State got a tonal action button",
+    "Foundations color grid fits 1440; type ramp fixed width 1312",
+    "Cover rebuilt: meta cells, description and footer restored"
+  ],
+  "knownLimitations": [
+    "深色模式：代码在运行期按 seed 生成，文件里只固化浅色静态令牌（与 tokens.css 一致），未建 Dark mode。",
+    "字重：Noto Sans SC 无 Semi Bold，--w-heading 650 / --w-label 600 分别映射到 Bold / Medium。",
+    "图标：库内图标是内联 SVG，Figma 中以等价矢量导入并按语义色绑定；语义上应通过 INSTANCE_SWAP 替换。",
+    "图表为静态示意（柱/折线/热力/火花线），未做交互与真实数据绑定。",
+    "浮层组件以静态面板表达：遮罩（16% 压暗 + 5px 背景模糊）只在文档预览卡中示意。"
+  ]
 }

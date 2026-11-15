@@ -94,8 +94,10 @@
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   }
 }
+/* 默认按内容尺寸：不沿主轴拉伸填充容器。
+   需要等分铺满的场景在各自的 media 查询里显式声明。 */
 .tab {
-  flex: 1;
+  flex: 0 0 auto;
   background: none;
   border: none;
   display: flex;
@@ -111,6 +113,11 @@
   transition: color var(--t-fade), transform var(--t-feedback);
 }
 .tab:active { transform: scale(var(--press-scale)); }
+/* 移动端底部横排：等分整条宽度（交叉轴不拉伸，高度由内容决定）。
+   必须写在基础 .tab 之后，否则同特异度会被 flex: 0 0 auto 覆盖。 */
+@media (max-width: 899.98px) {
+  .tab { flex: 1 1 0; min-width: 0; }
+}
 .tab-icon {
   width: 48px;
   height: 28px;
