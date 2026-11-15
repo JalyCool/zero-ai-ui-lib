@@ -7,25 +7,25 @@
 
 | 组件 | ui/index 导出 | d.ts 声明 | AGENTS 组件表 | 示例页 |
 |---|---|---|---|---|
-| UiColorPicker / UiAutocomplete | ✅ | ❌ | ❌ | ❌ |
-| UiForm / UiFormField | ✅ | ❌ | ❌ | ❌ |
-| UiNumberInput | ✅（本轮补） | ❌ | ❌ | ❌ |
-| UiDateInput / UiTimeInput | ✅（TimeInput 本轮新建） | ❌ | ❌ | ❌ |
-| UiFileUpload | ✅ | ❌ | ❌ | ❌ |
-| UiBreadcrumb / UiPagination | ✅ | ❌ | ❌ | ❌ |
-| UiSidebar / UiSlideover | ✅ | ❌ | ❌ | ❌ |
-| UiNavigationMenu | ✅ | ❌ | ❌ | ❌ |
-| UiGrid / UiRow / UiCol | ✅ | ❌ | ❌ | ❌ |
-| UiSplitter | ✅ | ❌ | ❌ | ❌ |
-| UiScrollArea | ✅（本轮新建） | ❌ | ❌ | ❌ |
-| UiContextMenu / UiCommandPalette | ✅ | ❌ | ❌ | ❌ |
-| UiTour / UiPopover / UiBanner | ✅ | ❌ | ❌ | ❌ |
-| UiToastQueue | ✅ | ❌ | ❌ | ❌ |
-| UiKbd / UiIcon / UiVirtualScroll | ✅ | ❌ | ❌ | ❌ |
-| UiCalendar / UiTimeline / UiCarousel / UiMarquee | ✅ | ❌ | ❌ | ❌ |
+| UiColorPicker / UiAutocomplete | ✅ | ✅ | ❌ | ❌ |
+| UiForm / UiFormField | ✅ | ✅ | ❌ | ❌ |
+| UiNumberInput | ✅ | ✅ | ❌ | ❌ |
+| UiDateInput / UiTimeInput | ✅ | ✅ | ❌ | ❌ |
+| UiFileUpload | ✅ | ✅ | ❌ | ❌ |
+| UiBreadcrumb / UiPagination | ✅ | ✅ | ❌ | ❌ |
+| UiSidebar / UiSlideover | ✅ | ✅ | ❌ | ❌ |
+| UiNavigationMenu | ✅ | ✅ | ❌ | ❌ |
+| UiGrid / UiRow / UiCol | ✅ | ✅ | ❌ | ❌ |
+| UiSplitter | ✅ | ✅ | ❌ | ❌ |
+| UiScrollArea | ✅ | ✅ | ❌ | ❌ |
+| UiContextMenu / UiCommandPalette | ✅ | ✅ | ❌ | ❌ |
+| UiTour / UiPopover / UiBanner | ✅ | ✅ | ❌ | ❌ |
+| UiToastQueue | ✅ | ✅ | ❌ | ❌ |
+| UiKbd / UiIcon / UiVirtualScroll | ✅ | ✅ | ❌ | ❌ |
+| UiCalendar / UiTimeline / UiCarousel / UiMarquee | ✅ | ✅ | ❌ | ❌ |
 | core：a11y / directives / shortcuts / icons / springPhysics | ✅ lib 入口导出 | ❌ | 部分 | ❌ |
 
-→ 待办：一次性补齐 **d.ts 声明（31 个）+ AGENTS 组件表 + 示例页分区演示**。
+→ d.ts 31 个声明**已补**（本轮）。待办：**AGENTS 组件表行 + 示例页分区演示**。
 
 ## B. 完全没实现的能力
 
@@ -49,6 +49,8 @@
 6. **Playground**：本轮已改成 UiBottomSheet + StyleLab；后续可加组件级预览选择器。
 
 ## C. 进度记录（最近提交）
+
+- 本轮：新增 `--spring-pop` / `--spring-pop-dur` / `--t-pop`（克制模式纯减速不回弹，活泼模式过冲 2.6）并接到开关把手、勾选框、分段指示器、Chip、滑块把手、单选圆点、评分星、Tab 图标、波轮行；补齐 31 个组件的 d.ts 声明
 
 - `6115c39` 活泼模式加强 / 字体栈（阿里巴巴普惠体 3.0 优先）/ Playground 重写 / 示例页分类选择器 / 修全屏遮罩导致交互失效
 - `b581a85` StepFlow 指示器、MediaViewer 关闭、StatusMark 底槽、保险丝初始隐藏与尺寸、slide 圆角、删除线擦除方向、TooltipGroup 图标按钮

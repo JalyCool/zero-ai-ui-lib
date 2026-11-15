@@ -81,13 +81,13 @@
   --spring-expand-dur: 0.6s;
   --spring-fade: cubic-bezier(.25,.1,.25,1);
   --spring-fade-dur: 0.3s;
+  /* 「小东西弹一下」专用曲线：克制模式**不回弹**（纯减速），
+     活泼模式换成强过冲（见 data-motion=lively）—— 原本不生硬的控件
+     也会跟着一起弹，动效语言才统一。 */
+  --spring-pop: cubic-bezier(.25,.1,.25,1);
+  --spring-pop-dur: 0.3s;
   --spring-exit: cubic-bezier(.25,.1,.25,1);
   --spring-exit-dur: 0.4s;
-
-  /* 「小东西弹一下」的专用曲线：克制模式**不回弹**（纯减速），
-     活泼模式换成强过冲 —— 这样原本不生硬的控件也会跟着弹。 */
-  --spring-pop: cubic-bezier(.25, .1, .25, 1);
-  --spring-pop-dur: 0.3s;
 
   --t-feedback: var(--spring-feedback-dur) var(--spring-feedback);
   --t-view: var(--spring-view-dur) var(--spring-view);
@@ -95,8 +95,8 @@
   --t-expand: var(--spring-expand-dur) var(--spring-expand);
   --t-panel: var(--t-view);
   --t-fade: var(--spring-fade-dur) var(--spring-fade);
-  --t-exit: var(--spring-exit-dur) var(--spring-exit);
   --t-pop: var(--spring-pop-dur) var(--spring-pop);
+  --t-exit: var(--spring-exit-dur) var(--spring-exit);
 
   --accent: var(--primary);
   --accent-container: var(--primary-container);
@@ -223,7 +223,7 @@
   --spring-fade-dur: 0.2s;
   --spring-exit: cubic-bezier(.3, 1.5, .4, 1);
   --spring-exit-dur: 0.26s;
-
+  /* 活泼模式：小控件也明显弹 —— 过冲 2.6，比大控件（2.1）更强。 */
   --spring-pop: cubic-bezier(.14, 2.6, .3, 1);
   --spring-pop-dur: 0.34s;
 }

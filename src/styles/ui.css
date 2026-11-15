@@ -799,3 +799,23 @@
 [data-motion="lively"] .ui-switch.is-on .ui-switch__thumb { transition: transform var(--t-pop); }
 [data-motion="lively"] .ui-check__box,
 [data-motion="lively"] .ui-check__box svg { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade); }
+
+/* ============================================================
+   小控件统一走 pop 弹簧
+   这些控件原本只有颜色 / 位置过渡，没有回弹；换成 --t-pop 之后
+   克制模式仍然稳，活泼模式会一起弹（过冲 2.4）。
+   ============================================================ */
+.ui-switch__thumb { transition: transform var(--t-pop), background var(--t-fade); }
+.ui-check__box,
+.ui-check__box svg { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade), color var(--t-fade); }
+.ui-segmented__indicator { transition: transform var(--t-pop), width var(--t-pop), height var(--t-pop), background var(--t-fade), opacity var(--t-fade); }
+.ui-segmented button { transition: color var(--t-fade), transform var(--t-pop); }
+.ui-chip { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade), color var(--t-fade); }
+.ui-slider__thumb,
+.ui-range-slider__thumb { transition: transform var(--t-pop), box-shadow var(--t-fade), background var(--t-fade); }
+.ui-radio__dot,
+.ui-radio__dot::after { transition: transform var(--t-pop), background var(--t-fade), border-color var(--t-fade); }
+.ui-rating button { transition: transform var(--t-pop), color var(--t-fade); }
+.ui-tab__icon,
+.ui-tabbar__icon { transition: background var(--t-fade), transform var(--t-pop); }
+.ui-wheel__column button { transition: color var(--t-fade), background var(--t-fade), transform var(--t-pop); }
