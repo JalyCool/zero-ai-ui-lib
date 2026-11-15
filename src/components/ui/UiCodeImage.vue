@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, useSlots, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue'
 import UiSegmented from './UiSegmented.vue'
 import UiSelect from './UiSelect.vue'
 import UiEmptyState from './UiEmptyState.vue'
@@ -174,10 +174,15 @@ watch(active, (next, prev) => {
 })
 let leavingTimer = 0
 
-/* 内容 / 选项 / 参数变化 -> 全量重渲染（预渲染保证切换时零开销）。 */
+/* 内容 / 选项 / 参数变化 -> 全量重渲染（预渲染保证切换时零开销）。
+   高度与可见性只靠显示 / 隐藏切换，绝不销毁重建层：
+   重建会让描边与图形在重建帧消失，看起来就是「码不见了」。 */
 watch([contentText, optionsList, () => props.options, () => props.width], () => {
   nextTick(renderAll)
 }, { deep: true })
+
+/* 首帧必须渲染一次：层是空 div，不画就什么都不显示。 */
+onMounted(() => { nextTick(renderAll) })
 
 onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
 </script>
@@ -190,22 +195,21 @@ onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
       :data-empty="!anyUsable || !contentText ? '' : undefined"
       :style="{ '--pan-dir': panDir }"
     >
-      <template v-if="anyUsable && contentText">
-        <!-- 所有可用码制叠放预渲染，同格堆叠保证尺寸取最大值、切换不跳变。 -->
-        <div
-          v-for="item in items.filter(i => i.usable)"
-          :key="item.format"
-          :ref="el => setLayerEl(el, item.format)"
-          class="ui-code-image__layer"
-          :class="{
-            'is-active': active === item.format,
-            'is-leaving': leavingFormat === item.format
-          }"
-          aria-hidden="true"
-        ></div>
-      </template>
+      <!-- 所有可用码制叠放预渲染，同格堆叠保证尺寸取最大值、切换不跳变。
+           层常驻 DOM：可见性只用 is-active 切换，不做 v-if 销毁重建。 -->
+      <div
+        v-for="item in items"
+        :key="item.format"
+        :ref="el => setLayerEl(el, item.format)"
+        class="ui-code-image__layer"
+        :class="{
+          'is-active': anyUsable && !!contentText && active === item.format,
+          'is-leaving': leavingFormat === item.format
+        }"
+        aria-hidden="true"
+      ></div>
       <UiEmptyState
-        v-else
+        v-show="!anyUsable || !contentText"
         :title="contentText ? '无法生成' : '暂无内容'"
         :description="contentText ? '当前内容不符合任何可选码制，请调整内容或码制' : '请在 children 里传入要编码的文本'"
       />
@@ -272,6 +276,7 @@ onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
   color: var(--on-surface);
 }
 .ui-code-image__stage > * { grid-area: 1 / 1; }
+/* 空状态叠在同一格，靠 v-show 控制，不参与尺寸竞争。 */
 .ui-code-image__layer {
   display: grid;
   place-items: center;

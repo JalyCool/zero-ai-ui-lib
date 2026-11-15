@@ -39,6 +39,9 @@ const DISMISS_PX = 72
 
 const panel = ref(null)
 const bodyEl = ref(null)
+const handleEl = ref(null)
+const headEl = ref(null)
+const footerEl = ref(null)
 const rendered = ref(false)
 const open = ref(false)
 const closing = ref(false)
@@ -75,10 +78,14 @@ function viewportHeight() {
 
 /* 全内容锚点：把手 + 头部 + 内容完整高度 + 底部，夹在视口上限内。 */
 function fullFraction() {
-  const panelEl = panel.value
   const body = bodyEl.value
-  if (!panelEl || !body) return 0.9
-  const chrome = panelEl.offsetHeight - body.clientHeight
+  if (!body) return 0.9
+  /* chrome = 把手 + 头部 + 底部（都是 flex-shrink:0 的固定段）。
+     面板自身高度在收起态是 0，不能用 offsetHeight - clientHeight 反推。 */
+  const chrome =
+    (handleEl.value?.offsetHeight || 0) +
+    (headEl.value?.offsetHeight || 0) +
+    (footerEl.value?.offsetHeight || 0)
   const needed = chrome + body.scrollHeight
   /* maxHeight 上限（px / dvh 都折算成视口比例） */
   const capMatch = /^(\d+(?:\.\d+)?)(dvh|vh|px|%)$/.exec(props.maxHeight)
@@ -90,8 +97,10 @@ function fullFraction() {
   return Math.min(cap, needed / viewportHeight())
 }
 
-/* 组装锚点：固定档里只保留 <= 全内容档的；全内容档永远存在；
-   全内容档不足 60% 时 60% 档不出现（去重 + 就近合并）。 */
+/* 组装锚点：
+   · 「全内容」档永远存在（两种版本都要有，它是能看全内容的最小高度）；
+   · 固定档只保留 <= 全内容档的：有压暗背景时不放 20% 档（默认 [0.6]），
+     且当全内容不足 60% 时，60% 档也一并去掉。 */
 function computeAnchors() {
   const full = fullFraction()
   const base = props.anchors || (props.scrim ? [0.6] : [0.2, 0.6])
@@ -288,16 +297,27 @@ function onHandleUp() {
   if (!dragging.value) return
   dragging.value = false
   const vp = viewportHeight()
-  const lowest = anchorList.value[0] || 0.2
+  const list = anchorList.value
+  const lowest = list[0] || 0.2
+  const highest = list[list.length - 1] || lowest
   const current = heightPx.value / vp
-  /* 关闭意图：拖到最低锚点之下足够多，或向下快甩。 */
-  if (heightPx.value < lowest * vp - DISMISS_PX ||
-      (dragVelocity > 0.8 && current < lowest - 0.02)) {
+  /* 速度限幅：合成事件 / 高采样率下 velocity 可能异常大，
+     不限幅会把投射量算成整屏，吸附直接跳到端点。 */
+  const clampedVelocity = Math.max(-3, Math.min(3, dragVelocity))
+  /* 关闭意图：必须真的拖到最低锚点之下足够多（位移门槛），
+     或者「已经明显低于最低锚点」且向下快甩 —— 两个条件都要求
+     位置先越界，避免正常小幅下拉被误判成关闭。 */
+  const belowBy = lowest - current
+  const dismissByDistance = heightPx.value < lowest * vp - DISMISS_PX
+  const dismissByFling = clampedVelocity > 0.9 && belowBy > 0.06
+  if (dismissByDistance || dismissByFling) {
     close()
     return
   }
-  /* 速度投射后吸附最近锚点。 */
-  const projected = current + (-dragVelocity * FLING_MS) / vp
+  /* 投射：位移 + 速度 * 时长，但投射量限制在 ±12% 视口内，
+     然后吸附到最近的锚点。 */
+  const projection = Math.max(-0.12, Math.min(0.12, (-clampedVelocity * FLING_MS) / vp))
+  const projected = Math.min(highest, Math.max(lowest, current + projection))
   setHeight(nearestAnchor(current, projected))
 }
 
@@ -349,6 +369,7 @@ onBeforeUnmount(() => {
         tabindex="-1"
       >
         <div
+          ref="handleEl"
           class="ui-sheet-handle"
           :class="{ 'is-grabbing': dragging }"
           aria-hidden="true"
@@ -357,7 +378,7 @@ onBeforeUnmount(() => {
           @pointerup="onHandleUp"
           @pointercancel="onHandleUp"
         ></div>
-        <header class="ui-sheet-head">
+        <header ref="headEl" class="ui-sheet-head">
           <h2>{{ title }}</h2>
           <button type="button" class="ui-sheet-close" aria-label="关闭面板" @click="close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
@@ -366,7 +387,7 @@ onBeforeUnmount(() => {
         <div ref="bodyEl" class="ui-sheet-body">
           <slot />
         </div>
-        <footer v-if="$slots.footer" class="ui-sheet-footer">
+        <footer v-if="$slots.footer" ref="footerEl" class="ui-sheet-footer">
           <slot name="footer" />
         </footer>
       </section>
