@@ -18,16 +18,14 @@ import {
   UiPagerDots, UiPopover, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter,
   UiTimeline, UiTour
 } from '../components/ui'
-import { confirmDialog } from '../lib'
+import { confirmDialog, AGENT_SHAPES } from '../lib'
 import supabaseSvg from '../assets/figma/supabase.svg?raw'
 
 /* Figma 5:454 里的品牌图标：留内部标记，viewBox 由 prop 传 0 0 20 20 */
 const supabaseGlyph = supabaseSvg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '')
 /* ZERO 头像（黑底两只白眼睛），作为「SVG 图标无遮罩」的示例 */
 const zeroFace = '<rect width="24" height="24" rx="12" fill="#111"/><rect x="8.4" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/><rect x="13" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/>'
-/* AgentAvatar 的底层形状：纯剪影（组件负责上色 / 描边 / 眼睛） */
-const agentCircle = '<circle cx="12" cy="12" r="10"/>'
-const agentTriangle = '<path d="M5.77 4.01C8.09 0 13.41 0 15.72 4.01L21.49 14C24 18.16 21.18 24 16.53 24H4.98C0.32 24-2.5 18.16 0 14Z"/>'
+const agentShapeList = AGENT_SHAPES
 /* 状态机展示：分段切换 8 个状态，看任意状态之间的弹簧过渡 */
 const agentState = ref('idle')
 const agentGazeOn = ref(true)
@@ -651,24 +649,24 @@ onMounted(() => {
           <span class="lib-cell__label">智能体头像 <small>AgentAvatar</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <div class="lib-demo-row">
-              <UiAgentAvatar :shape="agentCircle" color="#3f5f90" :state="agentState" :size="88" :gaze="agentGaze" />
+              <UiAgentAvatar shape="circle" color="#3f5f90" :state="agentState" :size="88" :gaze="agentGaze" />
               <UiSegmented v-model="agentState" :options="agentStates" label="状态机" layout="one-line" />
               <UiSwitch v-model="agentGazeOn" label="跟随鼠标看" />
             </div>
             <div class="lib-demo-row">
-              <UiAgentAvatar :shape="agentCircle" color="#3f5f90" state="idle" :size="44" />
-              <UiAgentAvatar :shape="agentTriangle" color="#7438ff" state="listening" :eyes-y="15" :size="44" />
-              <UiAgentAvatar :shape="agentCircle" color="#0f766e" state="thinking" :size="44" />
-              <UiAgentAvatar :shape="agentTriangle" color="#b45309" state="happy" :eyes-y="15" :size="44" />
-            </div>
-            <div class="lib-demo-row">
-              <UiAgentAvatar :shape="agentCircle" color="#ba1a1a" state="confused" :size="44" />
-              <UiAgentAvatar :shape="agentTriangle" color="#7b5294" state="surprised" :eyes-y="15" :size="44" />
-              <UiAgentAvatar :shape="agentCircle" color="#46464f" state="sleepy" :size="44" />
-              <UiAgentAvatar :shape="agentTriangle" color="#249361" state="speaking" :eyes-y="15" :size="44" />
+              <UiAgentAvatar shape="triangle" color="#7438ff" state="listening" :size="44" />
+              <UiAgentAvatar shape="diamond" color="#0f766e" state="thinking" :size="44" />
+              <UiAgentAvatar shape="triangle" color="#b45309" state="happy" :size="44" />
+              <UiAgentAvatar shape="hexagon" color="#ba1a1a" state="confused" :size="44" />
+              <UiAgentAvatar shape="tilt" color="#7b5294" state="surprised" :size="44" />
+              <UiAgentAvatar shape="flower" color="#46464f" state="sleepy" :size="44" />
+              <UiAgentAvatar shape="star" color="#249361" state="speaking" :size="44" />
             </div>
           </div>
-          <span class="lib-cell__note">传剪影 SVG + 颜色，自动描边 + 两只同尺寸圆角矩形眼（不旋转、不随机、成组位移）；上面这只用分段实时切状态，任意状态之间弹簧过渡；呼吸 / 随机眨眼 / 弹簧注视 / 微扫视常驻。</span>
+          <div class="lib-demo-row">
+            <UiAgentAvatar v-for="(item, key) in agentShapeList" :key="key" :shape="key" :size="36" :animated="false" state="idle" />
+          </div>
+          <span class="lib-cell__note">shape 传内置 key（{{ Object.keys(agentShapeList).join(' / ') }}）或纯剪影标记；自动描边 + 两只同尺寸圆角矩形眼（不旋转、不随机、成组位移，默认略偏右上）；eyesY 不传时按形状推荐值。上面这只用分段实时切状态，任意状态之间弹簧过渡。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">头像组 <small>AvatarGroup</small></span>

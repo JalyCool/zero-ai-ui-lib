@@ -1,25 +1,27 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { AGENT_SHAPES } from '../../core/agentShapes'
 
 /* ============================================================
    AgentAvatar —— 两只胶囊眼给出生命感的智能体头像
    ------------------------------------------------------------
-   · 底层形状：传一段「纯剪影」SVG 内部标记（不要带 fill / style），
-     组件自动上色 + 白 30% 描边（paint-order: stroke 画在外圈）。
-   · 眼睛是状态机驱动的：**任意状态 → 任意状态** 都走同一组参数
+   · 底层形状：shape 传内置 key（AGENT_SHAPES：circle / squircle /
+     triangle / diamond / hexagon / flower / tilt / star / sparkle /
+     scallop）或一段「纯剪影」标记；组件自动上色 + 白 30% 描边。
+   · 眼睛是状态机驱动的：任意状态 → 任意状态都是同一组参数
      （开合 / 眼距 / 高度）的弹簧过渡，没有硬切。
    · 三条硬规则：
        1. 眼睛不旋转 —— 没有 tilt / 视线角度，只有位移；
-       2. 尺寸零随机 —— 挂载即按状态落位，开合不含任何噪声项；
-       3. 两眼成组位移 —— 注视偏移对两只眼完全同值，永远等大。
-   · 生命层（呼吸、随机眨眼快闭慢开过冲 1.02）永远在；
-     注意力层（弹簧注视 / 微扫视）叠加其上，左右眼只在**眨眼时序**
-     上差 15ms，位置 / 大小完全同步。
+       2. 尺寸零随机 —— 挂载即按状态落位，开合无噪声；眨眼两眼
+          完全同步（同一闭合度），不会出现一睁一闭的大小差；
+       3. 两眼成组位移 —— 注视偏移对两只眼完全同值。
+   · 默认眼略偏右上（EYE_BASE），可移动范围 ±1.5 单位 × 1.6 倍。
+   · SVG 根 overflow visible：眼移到边上、描边外圈都不会被裁。
    ============================================================ */
 
 const props = defineProps({
-  /* 纯剪影 SVG 内部标记：viewBox 24x24 内的 path / circle / rect */
-  shape: { type: String, required: true },
+  /* 内置形状 key（AGENT_SHAPES）或纯剪影 SVG 内部标记（24x24 viewBox） */
+  shape: { type: String, default: 'circle' },
   /* 形状主色（同时是情绪色） */
   color: { type: String, default: '#7438ff' },
   eyeColor: { type: String, default: '#ffffff' },
@@ -33,8 +35,8 @@ const props = defineProps({
   animated: { type: Boolean, default: true },
   /* speaking 状态的外部音量包络 0~1；给了才调制开合，不给眼大小保持稳定 */
   level: { type: Number, default: -1 },
-  /* 眼睛基准高度（viewBox 24 内）：圆形脸 12，三角等下半脸往下调 */
-  eyesY: { type: Number, default: 12 }
+  /* 眼睛基准高度；不传时用内置形状的推荐值 faceY（三角这类下半脸会往下调） */
+  eyesY: { type: Number, default: null }
 })
 
 /* ---------- 情绪层：状态配方表（参数即状态，状态即参数向量） ---------- */
@@ -51,6 +53,18 @@ const STATES = {
   sleepy:    { open: 0.6,  spread: -0.6, eyeY: 0.9,  blink: 2.4, spring: { k: 40, c: 11 } },
   speaking:  { open: 1,    spread: 0.3,  eyeY: 0,    blink: 0.8, talk: true }
 }
+
+/* shape：内置 key 优先，否则当原始剪影标记用 */
+const shapeMarkup = computed(() => {
+  const builtin = AGENT_SHAPES[props.shape]
+  return builtin ? builtin.markup : props.shape
+})
+/* 眼睛基准高度：显式传了 eyesY 就用它，否则用内置形状的推荐 faceY */
+const eyesCenter = computed(() => {
+  if (props.eyesY !== null && props.eyesY !== undefined) return props.eyesY
+  const builtin = AGENT_SHAPES[props.shape]
+  return builtin ? builtin.faceY : 12
+})
 
 /* ---------- 弹簧：情绪参数向目标过渡（AnyState→AnyState 的实现本体） ---------- */
 function makeSpring(k, c) { return { pos: 0, vel: 0, target: 0, k, c } }
@@ -96,7 +110,8 @@ function smoothNoise(t, seed = 0) {
     + Math.sin(t * 0.00191 + seed * 3.7 + 3.1) * 0.12
 }
 
-/* 眨眼曲线：快闭 → 保持 → 慢开（过冲 1.02），返回「闭合度」0~1（可略负） */
+/* 眨眼曲线：快闭 → 保持 → 慢开（过冲 1.02），返回「闭合度」0~1（可略负）。
+   两只眼共用同一条曲线 —— 同步眨，尺寸永不出现随机差。 */
 function blinkClosedness(elapsed, close, hold, open) {
   if (elapsed < close) { const p = elapsed / close; return p * p }
   if (elapsed < close + hold) return 1
@@ -109,8 +124,7 @@ function blinkClosedness(elapsed, close, hold, open) {
   }
   return 0
 }
-let blinkL = { start: -1, close: 100, hold: 30, open: 200 }
-let blinkR = { start: -1, close: 100, hold: 30, open: 200 }
+let blink = { start: -1, close: 100, hold: 30, open: 200 }
 let nextBlinkAt = 0
 
 function scheduleBlink(now) {
@@ -120,14 +134,8 @@ function scheduleBlink(now) {
   const gap = rapid ? 340 + Math.random() * 140 : (3000 + Math.random() * 3000) / blinkFactor
   nextBlinkAt = now + gap
 }
-function startBlink(at, side) {
-  const blink = { start: at, close: 80 + Math.random() * 40, hold: 20 + Math.random() * 20, open: 150 + Math.random() * 100 }
-  if (side === 'L') blinkL = blink
-  else blinkR = blink
-}
 
-/* 注意力层：弹簧注视 + 微扫视。**两眼成组位移**：同一偏移量画两只眼，
-   永远同步；幅度加大到可感知（±1.2 个单位 ≈ 头像宽度的 5%）。 */
+/* 注意力层：弹簧注视 + 微扫视。两眼成组位移：同一偏移画两只眼。 */
 const lookX = makeSpring(60, 12)
 const lookY = makeSpring(60, 12)
 const saccSpring = makeSpring(30, 7)
@@ -153,9 +161,12 @@ const eyeR = ref(null)
 const BASE_W = 2
 const BASE_H = 4.8
 const BASE_GAP = 4.6
+/* 默认眼略偏右上一点 */
+const EYE_BASE_X = 0.55
+const EYE_BASE_Y = -0.55
 
 /* 圆角矩形：四角同半径（= 宽度一半，再被高度夹住）。
-   绝不用 scale 缩放 —— 宽 / 高 / 圆角直接写属性，不旋转（transform 只有平移）。 */
+   绝不用 scale 缩放 —— 宽 / 高 / 圆角直接写属性，transform 只有平移。 */
 function renderEye(rect, cx, cy, w, h) {
   const radius = Math.min(w / 2, h / 2)
   rect.setAttribute('transform', `translate(${cx.toFixed(3)} ${cy.toFixed(3)})`)
@@ -180,8 +191,8 @@ function frame(now) {
 
   /* 注意力层：微扫视每 2–5s 换一个虚拟兴趣点，弹簧追过去 */
   if (now >= nextSaccAt) {
-    saccTarget.x = (Math.random() * 2 - 1) * 0.5
-    saccTarget.y = (Math.random() * 2 - 1) * 0.3
+    saccTarget.x = (Math.random() * 2 - 1) * 0.6
+    saccTarget.y = (Math.random() * 2 - 1) * 0.4
     nextSaccAt = now + 2000 + Math.random() * 3000
   }
   saccSpring.target = saccTarget.x
@@ -189,21 +200,19 @@ function frame(now) {
 
   const mouseOn = props.gaze === 'mouse'
   const bias = gazeBias
-  const tx = (mouseOn ? mouseTarget.x : 0) * 0.8 + saccSpring.pos * (mouseOn ? 0.5 : 1.6) + bias.x * 0.6
-  const ty = (mouseOn ? mouseTarget.y : 0) * 0.6 + saccTarget.y * (mouseOn ? 0.2 : 0.8) + bias.y * 0.6
-  lookX.target = Math.max(-1.3, Math.min(1.3, tx))
-  lookY.target = Math.max(-1.3, Math.min(1.3, ty))
+  const tx = (mouseOn ? mouseTarget.x : 0) * 0.9 + saccSpring.pos * (mouseOn ? 0.5 : 1.6) + bias.x * 0.6
+  const ty = (mouseOn ? mouseTarget.y : 0) * 0.7 + saccTarget.y * (mouseOn ? 0.2 : 0.8) + bias.y * 0.6
+  lookX.target = Math.max(-1.5, Math.min(1.5, tx))
+  lookY.target = Math.max(-1.5, Math.min(1.5, ty))
   stepSpring(lookX, dt)
   stepSpring(lookY, dt)
 
-  /* 眨眼调度：左右差 15ms（仅时序）；连眨概率 10% */
+  /* 眨眼调度（两眼同步）；连眨概率 10% */
   if (now >= nextBlinkAt) {
-    startBlink(now, 'L')
-    startBlink(now + 15, 'R')
+    blink = { start: now, close: 80 + Math.random() * 40, hold: 20 + Math.random() * 20, open: 150 + Math.random() * 100 }
     scheduleBlink(now)
   }
-  const closedL = now >= blinkL.start ? Math.max(-0.02, Math.min(1, blinkClosedness(now - blinkL.start, blinkL.close, blinkL.hold, blinkL.open))) : 0
-  const closedR = now >= blinkR.start ? Math.max(-0.02, Math.min(1, blinkClosedness(now - blinkR.start, blinkR.close, blinkR.hold, blinkR.open))) : 0
+  const closed = now >= blink.start ? Math.max(-0.02, Math.min(1, blinkClosedness(now - blink.start, blink.close, blink.hold, blink.open))) : 0
 
   /* 情绪层：参数弹簧过渡 */
   for (const key of Object.keys(springs)) {
@@ -216,9 +225,8 @@ function frame(now) {
   let talk = 0
   if (talkMode && props.level >= 0) talk = (props.level - 0.5) * 0.3
 
-  const open = springs.open.pos
-  const openL = Math.max(0.08, open * (1 - closedL) + talk)
-  const openR = Math.max(0.08, open * (1 - closedR) + talk)
+  const openL = Math.max(0.08, springs.open.pos * (1 - closed) + talk)
+  const openR = openL
 
   const hL = Math.max(0.45, BASE_H * openL)
   const hR = Math.max(0.45, BASE_H * openR)
@@ -226,13 +234,13 @@ function frame(now) {
   const wL = BASE_W * (1 + 0.08 * Math.max(0, 1 - openL))
   const wR = BASE_W * (1 + 0.08 * Math.max(0, 1 - openR))
 
-  /* 两眼成组位移：同一个 look 偏移画两只眼，永远同步 */
+  /* 两眼成组位移：同一个 look 偏移画两只眼；默认略偏右上 */
   const half = BASE_GAP / 2 + springs.spread.pos / 2 + spreadBreath / 2
-  const gx = lookX.pos * 1.2
-  const gy = lookY.pos * 0.9
-  const cxL = 12 - half + gx
-  const cxR = 12 + half + gx
-  const cy = props.eyesY + springs.eyeY.pos + gy + breath * 0.5
+  const gx = lookX.pos * 1.6
+  const gy = lookY.pos * 1.2
+  const cxL = 12 - half + gx + EYE_BASE_X
+  const cxR = 12 + half + gx + EYE_BASE_X
+  const cy = eyesCenter.value + springs.eyeY.pos + gy + breath * 0.5 + EYE_BASE_Y
 
   if (eyeL.value && eyeR.value) {
     renderEye(eyeL.value, cxL, cy, wL, hL)
@@ -251,8 +259,10 @@ function renderStatic() {
   const half = BASE_GAP / 2 + springs.spread.target / 2
   const open = springs.open.target
   const h = Math.max(0.45, BASE_H * open)
-  renderEye(eyeL.value, 12 - half, props.eyesY + springs.eyeY.target, BASE_W, h)
-  renderEye(eyeR.value, 12 + half, props.eyesY + springs.eyeY.target, BASE_W, h)
+  const cx = 12 + EYE_BASE_X
+  const cy = eyesCenter.value + springs.eyeY.target + EYE_BASE_Y
+  renderEye(eyeL.value, cx - half, cy, BASE_W, h)
+  renderEye(eyeR.value, cx + half, cy, BASE_W, h)
   if (svgEl.value) svgEl.value.setAttribute('transform', 'translate(0 0)')
 }
 
@@ -270,7 +280,7 @@ function startLoop() {
 }
 
 watch(() => props.state, () => { applyState(props.state); if (!props.animated) renderStatic() })
-watch(() => [props.animated, props.gaze, props.eyesY], () => startLoop())
+watch(() => [props.animated, props.gaze, eyesCenter.value], () => startLoop())
 
 onMounted(() => {
   applyState(props.state)
@@ -299,15 +309,17 @@ const label = computed(() => `智能体头像（${props.state}）`)
     :style="{ '--agent-color': color }"
   >
     <g class="ui-agent-avatar__body">
-      <g class="ui-agent-avatar__shape" v-html="shape"></g>
-      <rect ref="eyeL" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="-1" :y="eyesY - 2.4" rx="1" ry="1" />
-      <rect ref="eyeR" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="3.6" :y="eyesY - 2.4" rx="1" ry="1" />
+      <g class="ui-agent-avatar__shape" v-html="shapeMarkup"></g>
+      <rect ref="eyeL" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="-0.45" :y="eyesCenter - 2.95" rx="1" ry="1" />
+      <rect ref="eyeR" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="4.15" :y="eyesCenter - 2.95" rx="1" ry="1" />
     </g>
   </svg>
 </template>
 
 <style scoped>
-.ui-agent-avatar { display: block; flex-shrink: 0; }
+/* overflow visible：眼移到边上、描边外圈都不会被 SVG 根裁掉，
+   容器裁不裁头像由使用方自己决定，组件绝不主动裁。 */
+.ui-agent-avatar { display: block; flex-shrink: 0; overflow: visible; }
 .ui-agent-avatar__body { will-change: transform; }
 /* 形状上色 + 外圈描边：CSS 覆盖标记里的 fill / stroke 表现属性，
    paint-order: stroke 让描边画在填充下面，只露出外半圈 —— 和设计稿的细环一致。 */

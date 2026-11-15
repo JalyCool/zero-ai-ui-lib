@@ -72,9 +72,10 @@ declare const UiAvatarGroup: DefineComponent<{
   /** 超出 max 折叠成 +N；0 = 全部显示 */
   max?: number
 }, AnyProps, unknown>
+declare const AGENT_SHAPES: Record<string, { key: string; label: string; faceY: number; markup: string }>
 declare const UiAgentAvatar: DefineComponent<{
-  /** 纯剪影 SVG 内部标记（24x24 viewBox）；组件自动上色 + 描边 + 圆角矩形眼 */
-  shape: string
+  /** 内置形状 key（AGENT_SHAPES：circle / squircle / triangle / diamond / hexagon / flower / tilt / star / sparkle / scallop）或纯剪影 SVG 标记 */
+  shape?: string
   /** 形状主色 */
   color?: string
   eyeColor?: string
@@ -88,8 +89,8 @@ declare const UiAgentAvatar: DefineComponent<{
   animated?: boolean
   /** speaking 状态的外部音量包络 0~1（给了才调制开合，不给眼大小稳定） */
   level?: number
-  /** 眼睛基准高度（viewBox 24 内） */
-  eyesY?: number
+  /** 眼睛基准高度（viewBox 24 内）；不传时用内置形状的推荐 faceY */
+  eyesY?: number | null
 }, AnyProps, unknown>
 declare const UiBadge: DefineComponent<{ tone?: 'primary' | 'success' | 'warning' | 'danger'; dot?: boolean; label?: string }, AnyProps, unknown>
 declare const UiBarChart: DefineComponent<{ data?: number[]; labels?: string[]; height?: number }, AnyProps, unknown>
@@ -460,7 +461,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 /* ---------- components ---------- */
 export {
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
-  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
+  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
