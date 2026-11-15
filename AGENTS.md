@@ -329,8 +329,8 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 8. `UiToolMenu` 展开时会在文档流里占位、把下方内容推开；不想位移就换 `UiFloatingMenu`。
 9. 调试用的无头 Chrome profile 目录（`.chrome-p*/`）会被写大量文件，`vite.config.js` 已用 `server.watch.ignored` 排除，否则 dev/preview 会被热更风暴拖垮。
 10. 给展开卡片做「滑出式关闭」时，动画必须**从当前跟手位置续接**（先 `void offsetWidth` 提交当前帧再写 transition），并在路由切换绘制后才清内联样式；否则完成动画会像从原位重新开始。
-11a. 媒体查看器的舞台必须是整个视口、不能有 max-width / max-height：一旦按「合适尺寸」限制舞台，放大后的图片会被舞台裁掉。缩略态与展开态之间靠 left/top/width/height 过渡保持几何连续。
-11. 手势组件里的 `setPointerCapture` 必须 try/catch：指针在回调前已失效时（系统取消、合成事件）会抛 `NotFoundError`，一旦抛在回调中间，后续的吸附 / 收尾逻辑会被整段跳过。
+11. 媒体查看器的舞台必须是整个视口、不能有 max-width / max-height：一旦按「合适尺寸」限制舞台，放大后的图片会被舞台裁掉。缩略态与展开态之间靠 left/top/width/height 过渡保持几何连续。
+12. 手势组件里的 `setPointerCapture` 必须 try/catch：指针在回调前已失效时（系统取消、合成事件）会抛 `NotFoundError`，一旦抛在回调中间，后续的吸附 / 收尾逻辑会被整段跳过。
 
 ## 9. 交付前自查
 
