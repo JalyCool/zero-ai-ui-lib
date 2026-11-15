@@ -14,6 +14,15 @@ export { usePress } from '../core/pressFeedback'
 export { useMorphWindow } from '../core/morphWindow'
 /* iOS 侧滑跟手接管（宿主 WebView 需关闭系统滑动返回并让出左边缘手势）。 */
 export { useEdgeSwipeBack } from '../core/edgeSwipeBack'
+/* 无障碍：焦点圈定与方向键漫游。 */
+export { useFocusTrap, useRovingTabindex, srOnly } from '../core/a11y'
+/* 指令集插件：ripple / intersect / resize / click-outside。 */
+export { zeroDirectives, vRipple, vIntersect, vResize, vClickOutside } from '../core/directives'
+/* 声明式快捷键。 */
+export { defineShortcuts, createShortcuts } from '../core/shortcuts'
+/* 图标注册表（UiIcon 按名字取图标）。 */
+export { ICONS, registerIcons, iconMarkup } from '../core/icons'
+
 /* 动效气质（calm / lively）：产品调性，代码里预置，不做用户设置。 */
 export {
   MOTION_TONES, setMotionTone, getMotionTone, toggleMotionTone, isLively,
