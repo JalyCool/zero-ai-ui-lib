@@ -157,9 +157,10 @@ const checkStyle = computed(() => ({ '--draw': props.drawDuration + 'ms' }))
 .ui-status-mark svg { width: 100%; height: 100%; display: block; overflow: visible; }
 
 /* 描边：颜色与线宽随状态过渡；自转用 dashoffset 循环（不是 transform，圆心不会动）。 */
+/* 注意：旋转由 SVG 属性 transform="rotate(-90 12 12)" 负责（自带原点）。
+   这里不要再写 CSS transform-origin，否则原点会被应用两次，圆环整体偏移。 */
 .ui-status-mark__ring {
   transition: stroke 200ms ease, stroke-width 200ms ease;
-  transform-origin: 12px 12px;
 }
 .ui-status-mark.is-running .ui-status-mark__ring {
   animation: uiStatusRotate v-bind(spinDuration) linear infinite;
@@ -168,6 +169,9 @@ const checkStyle = computed(() => ({ '--draw': props.drawDuration + 'ms' }))
   to { stroke-dashoffset: calc(var(--spin, 0) - 100); }
 }
 
+.ui-status-mark.is-running { color: var(--primary); }
+.ui-status-mark.is-pending { color: var(--on-surface-variant); }
+.ui-status-mark.is-pending .ui-status-mark__ring { opacity: .62; }
 .ui-status-mark.is-done { color: var(--ui-success, #15803d); }
 .ui-status-mark.is-failed { color: var(--error); }
 
@@ -177,6 +181,8 @@ const checkStyle = computed(() => ({ '--draw': props.drawDuration + 'ms' }))
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
   opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 .ui-status-mark.is-done .ui-status-mark__check {
   animation: uiStatusDraw var(--draw) cubic-bezier(.23,1,.32,1) forwards;
