@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import UiRollNumber from './UiRollNumber.vue'
-import { arcStroke } from '../../core/arcStroke'
+import { arcStroke, useStrokeScale } from '../../core/arcStroke'
 
 const props = defineProps({
   value: { type: Number, default: 72 },
@@ -17,7 +17,12 @@ const safeValue = computed(() => {
 })
 
 const offset = computed(() => 100 - safeValue.value)
-const strokeWidth = computed(() => arcStroke(props.stroke, 'bold'))
+/* 仪表盘族 viewBox 宽 200、渲染宽可达 258：dasharray 走 pathLength 归一，
+   不能用 non-scaling-stroke（会把虚线改按屏幕单位、进度弧断裂成段）。
+   改为把 CSS 像素档位折算成用户单位，渲染出的粗细仍等于档位像素。 */
+const dialEl = ref(null)
+const strokeScale = useStrokeScale(dialEl, 200)
+const strokeWidth = computed(() => arcStroke(props.stroke, 'bold') / strokeScale.value)
 
 /* ============================================================
    仪表盘
@@ -33,14 +38,13 @@ const ARC_PATH = 'M 26.7 126.68 A 78 78 0 1 1 173.3 126.68'
 <template>
   <div class="ui-gauge" role="img" :aria-label="`${label} ${safeValue}%`">
     <div class="ui-gauge__dial">
-      <svg viewBox="0 0 200 140" aria-hidden="true">
-        <path class="ui-gauge__track" :d="ARC_PATH" pathLength="100" fill="none" :stroke-width="strokeWidth" vector-effect="non-scaling-stroke" />
+      <svg ref="dialEl" viewBox="0 0 200 140" aria-hidden="true">
+        <path class="ui-gauge__track" :d="ARC_PATH" pathLength="100" fill="none" :stroke-width="strokeWidth" />
         <path
           class="ui-gauge__progress"
           :d="ARC_PATH"
           pathLength="100"
           fill="none"
-          vector-effect="non-scaling-stroke"
           :stroke-width="strokeWidth"
           :style="{ strokeDashoffset: offset }"
         />
@@ -98,7 +102,7 @@ const ARC_PATH = 'M 26.7 126.68 A 78 78 0 1 1 173.3 126.68'
 .ui-gauge__center strong {
   display: block;
   color: var(--on-surface);
-  font-size: 2.2rem;
+  font-size: 2.6rem;
   font-weight: var(--w-heading);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.012em;
@@ -112,7 +116,7 @@ const ARC_PATH = 'M 26.7 126.68 A 78 78 0 1 1 173.3 126.68'
 .ui-gauge__center small {
   margin-left: 2px;
   color: var(--on-surface-variant);
-  font-size: 1.02rem;
+  font-size: 1.18rem;
   font-weight: var(--w-strong);
   letter-spacing: 0;
 }

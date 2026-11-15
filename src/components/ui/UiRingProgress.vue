@@ -104,7 +104,7 @@ onMounted(() => {
 .ui-ring__num { line-height: 1; }
 .ui-ring__pct { margin-left: 1px; }
 .ui-ring__center strong {
-  font-size: 1.45rem;
+  font-size: 1.62rem;
   font-weight: var(--w-heading);
   line-height: 1;
   letter-spacing: -.02em;

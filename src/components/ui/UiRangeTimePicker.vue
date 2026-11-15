@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import UiTimePicker from './UiTimePicker.vue'
 import UiRollNumber from './UiRollNumber.vue'
-import { formatDurationBetween, parseClockTime } from '../../core/duration'
+import { formatDurationBetweenApprox, parseClockTime } from '../../core/duration'
 
 const props = defineProps({
   /* { start: 'HH:mm', end: 'HH:mm' } */
@@ -10,11 +10,19 @@ const props = defineProps({
     type: Object,
     default: () => ({ start: '09:00', end: '18:00' })
   },
-  /* 最小显示单位：'h' | 'm' | 's'，决定时长文本显示精度 */
+  /* 选择器精度：'h' | 'm' | 's'。
+     它同时决定两端时间选择器的字段数量，以及时长文本的最小显示单位。 */
   precision: {
     type: String,
-    default: 's',
+    default: 'm',
     validator: value => ['h', 'm', 's'].includes(value)
+  },
+  /* 显示精度：时长四舍五入到的精度，支持整 / 半单位
+     'h' | 'h/2' | 'm' | 'm/2' | 's'。取整改变了数值时文本前加 '~'。 */
+  displayPrecision: {
+    type: String,
+    default: 's',
+    validator: value => ['h', 'h/2', 'm', 'm/2', 's'].includes(value)
   }
 })
 
@@ -24,8 +32,13 @@ const emit = defineEmits(['update:modelValue'])
    范围时间选择器
    由两个真实的时间选择器横向拼接而成（不复制时间选择器
    内部代码），中间一个颜色较浅的箭头，时长文本就显示在
-   箭头的正上方；文本规则见 core/duration.js（60 分钟 ->
-   1h，63 分 3 秒 -> 1h03m03s），数字变化走统一滚动动效。
+   箭头的正上方。
+   · precision 决定两端选择器有几列（时 / 时分 / 时分秒），
+     也决定时长文本的最小显示单位；
+   · displayPrecision 决定时长四舍五入到的精度（可半单位），
+     一旦取整改变了真实数值，文本前加 '~' 表示近似。
+   文本规则见 core/duration.js（60 分钟 -> 1h，63 分 3 秒 -> 1h03m03s），
+   数字变化走统一滚动动效。
    ============================================================ */
 
 const startValue = ref(sanitize(props.modelValue?.start, '09:00'))
@@ -38,10 +51,16 @@ const durationSeconds = computed(() => {
   return Math.max(0, b - a)
 })
 
-const durationText = computed(() => formatDurationBetween(startValue.value, endValue.value, { precision: props.precision }))
+const duration = computed(() => formatDurationBetweenApprox(startValue.value, endValue.value, {
+  precision: props.precision,
+  displayPrecision: props.displayPrecision
+}))
+const durationText = computed(() => duration.value.text)
+/* 滚动数字只吃文本部分，'~' 单独静态渲染，避免每次近似切换都抖动宽度。 */
+const durationValue = computed(() => duration.value.text.replace(/^~/, ''))
 
 function sanitize(value, fallback) {
-  return typeof value === 'string' && /^\d{1,2}:\d{2}$/.test(value) ? value : fallback
+  return typeof value === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(value) ? value : fallback
 }
 
 function commit() {
@@ -71,6 +90,7 @@ watch(() => props.modelValue, value => {
       <UiTimePicker
         class="ui-range-time__picker"
         :model-value="startValue"
+        :precision="precision"
         label=""
         @update:model-value="onStart"
       />
@@ -78,9 +98,10 @@ watch(() => props.modelValue, value => {
       <!-- 中间列：时长文本在箭头正上方；箭头与两个输入框垂直居中对齐。 -->
       <div class="ui-range-time__mid" :aria-label="'时长 ' + durationText" role="status">
         <span class="ui-range-time__duration">
+          <span v-if="duration.approx" class="ui-range-time__approx" aria-hidden="true">~</span>
           <UiRollNumber
             class="ui-range-time__duration-value"
-            :value="durationText"
+            :value="durationValue"
             :direction-key="durationSeconds"
             :step="60"
           />
@@ -96,6 +117,7 @@ watch(() => props.modelValue, value => {
       <UiTimePicker
         class="ui-range-time__picker"
         :model-value="endValue"
+        :precision="precision"
         label=""
         @update:model-value="onEnd"
       />
@@ -133,6 +155,13 @@ watch(() => props.modelValue, value => {
   display: flex;
   align-items: center;
   white-space: nowrap;
+}
+.ui-range-time__approx {
+  color: var(--on-surface-variant);
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-micro);
+  font-weight: var(--w-strong);
+  margin-right: 1px;
 }
 .ui-range-time__duration-value {
   color: var(--on-surface-variant);

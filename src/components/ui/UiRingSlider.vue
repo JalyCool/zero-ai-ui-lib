@@ -320,7 +320,7 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
 }
 .ui-ring-slider__center strong {
   display: block;
-  font-size: 1.45rem;
+  font-size: 1.62rem;
   font-weight: var(--w-heading);
   line-height: 1;
   letter-spacing: -.02em;

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useSlots, watch } from 'vue'
 import UiSegmented from './UiSegmented.vue'
 import UiSelect from './UiSelect.vue'
 import UiEmptyState from './UiEmptyState.vue'
@@ -17,16 +17,16 @@ const props = defineProps({
 
 /* ============================================================
    CodeImage：把 children 的文本渲染成码。
-   校验 / 参数 / 图标-文字判断 / 降级候选全部在 core/codeFormats，
-   组件只负责：读一次内容、组织选项、切换控件、把码画进容器。
-   · 不合规选项可见但禁用；当前项不可用时自动切到可用项；
-   · 全部不可用走降级候选（真实出现在控件里）；仍无解则空状态。
+   · 校验 / 参数 / 图标-文字判断 / 降级候选全部在 core/codeFormats；
+   · 所有可用码制一次性预渲染成叠放的层，切换只切可见层，
+     不再每次重新生成 -> 无跳变、无重复开销；
+   · 切换动画是横向平移 + 模糊渐变，平移方向按目标在选项里的
+     相对位置决定（往右的选项向右进，反之向左）。
    ============================================================ */
 
 const slots = useSlots()
 const isDev = typeof import.meta !== 'undefined' && !!import.meta.env?.DEV
 
-/* children 文本只读一次：切换类型不重读，只换渲染的码和参数。 */
 const contentText = ref(readChildren())
 
 function readChildren() {
@@ -46,7 +46,6 @@ function readChildren() {
 const requested = computed(() => (Array.isArray(props.type) ? props.type : [props.type])
   .filter(format => CODE_FORMATS[format]))
 
-/* 请求项有任一可用 -> 只用请求项；全不可用 -> 追加真实降级候选。 */
 const optionsList = computed(() => {
   const base = requested.value
   if (!base.length) return []
@@ -63,7 +62,6 @@ const items = computed(() => optionsList.value.map(format => ({
 const active = ref('')
 const anyUsable = computed(() => items.value.some(item => item.usable))
 
-/* 当前项不可用时自动切到第一个可用项。 */
 function pickInitial() {
   const current = items.value.find(item => item.format === active.value)
   if (current && current.usable) return
@@ -72,31 +70,23 @@ function pickInitial() {
 }
 watch(items, pickInitial, { immediate: true })
 
-/* 切换控件：跨族用图标（差异大），同族用文字；文字里 <=3 Segmented、>3 下拉。 */
 const mode = computed(() => renderMode(optionsList.value))
 const switcherKind = computed(() => (items.value.length <= 3 ? 'segmented' : 'select'))
 const switcherOptions = computed(() => items.value.map(item => ({
   label: item.label, value: item.format, disabled: !item.usable
 })))
 
-/* ---------- 渲染 ---------- */
+/* ---------- 预渲染：每个可用码制一个叠放层 ---------- */
 const stageEl = ref(null)
+const layerEls = new Map()
 const renderError = ref('')
+/* 切换方向：-1 向左进，1 向右进 */
+const panDir = ref(1)
+const leavingFormat = ref('')
 
-/* qrcode 库只认 hex；getComputedStyle 给 rgb()，统一转成 #rrggbb。 */
-function toHex(color, fallback) {
-  const value = String(color || '')
-  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(value)
-  if (rgb) {
-    const alpha = rgb[4] === undefined ? 1 : Number(rgb[4])
-    if (alpha === 0) return fallback
-    const hex = n => Number(n).toString(16).padStart(2, '0')
-    return '#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3])
-  }
-  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) return value.length === 4
-    ? '#' + value[1] + value[1] + value[2] + value[2] + value[3] + value[3]
-    : value
-  return fallback
+function setLayerEl(el, format) {
+  if (el) layerEls.set(format, el)
+  else layerEls.delete(format)
 }
 
 async function themeColor() {
@@ -106,23 +96,28 @@ async function themeColor() {
   return toHex(getComputedStyle(el).color, '#1b1b1f')
 }
 
-/* 内容变化时重读一次（children 语义上只读一次，但热更 / 动态内容要跟上）。 */
-watch(() => slots.default && slots.default().length, () => {
-  const next = readChildren()
-  if (next !== contentText.value) contentText.value = next
-})
+function toHex(color, fallback) {
+  const value = String(color || '')
+  const rgb = /^rgba?\((\d+),(\d+),(\d+)(?:,[\d.]+)?\)$/.exec(value)
+  if (rgb) {
+    const alpha = Number(rgb[4] ?? 1)
+    if (alpha === 0) return fallback
+    const hex = n => Number(n).toString(16).padStart(2, '0')
+    return '#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3])
+  }
+  if (/^#[0-9a-f]{3,8}$/i.test(value)) return value
+  return fallback
+}
 
-async function render() {
-  const stage = stageEl.value
-  renderError.value = ''
-  if (!stage) return
-  stage.replaceChildren()
-  if (!active.value || !anyUsable.value || !contentText.value) return
-  const format = active.value
+async function renderLayer(format) {
+  const layer = layerEls.get(format)
+  if (!layer) return
+  layer.replaceChildren()
+  if (!supports(format, contentText.value) || !contentText.value) return
   const meta = CODE_FORMATS[format]
   const opts = resolveOptions(format, props.options, isDev)
   const color = await themeColor()
-  const size = props.width || 220
+  const size = props.width || 200
   try {
     if (meta.family === 'qr') {
       const QRCode = (await import('qrcode')).default
@@ -137,16 +132,12 @@ async function render() {
       const holder = document.createElement('div')
       holder.innerHTML = markup.replace(/<\?xml[^>]*\?>/g, '').trim()
       const svg = holder.querySelector('svg')
-      if (svg) {
-        svg.classList.add('ui-code-image__svg')
-        stage.appendChild(svg)
-      } else renderError.value = '二维码渲染异常'
-      /* 清掉临时 holder（它没进 DOM，无需处理） */
+      if (svg) { svg.classList.add('ui-code-image__svg'); layer.appendChild(svg) }
     } else {
       const JsBarcode = (await import('jsbarcode')).default
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
       svg.classList.add('ui-code-image__svg')
-      stage.appendChild(svg)
+      layer.appendChild(svg)
       JsBarcode(svg, contentText.value, {
         format: meta.render,
         flat: !!opts.flat,
@@ -163,28 +154,65 @@ async function render() {
   }
 }
 
-watch([active, () => props.options, contentText], () => nextTick(render))
-/* 首帧：active 在 setup 期已由 pickInitial 定好，watch 基线就是它，
-   不会自发触发，所以挂载后必须主动渲染一次。 */
-onMounted(() => nextTick(render))
-onBeforeUnmount(() => { renderError.value = '' })
+async function renderAll() {
+  renderError.value = ''
+  if (!stageEl.value) return
+  await nextTick()
+  for (const item of items.value) {
+    if (item.usable) await renderLayer(item.format)
+  }
+}
+
+/* 切换：先算方向，再触发旧层离开。 */
+watch(active, (next, prev) => {
+  const nextIndex = optionsList.value.indexOf(next)
+  const prevIndex = optionsList.value.indexOf(prev)
+  panDir.value = nextIndex >= prevIndex ? 1 : -1
+  leavingFormat.value = prev || ''
+  if (leavingTimer) clearTimeout(leavingTimer)
+  leavingTimer = setTimeout(() => { leavingFormat.value = '' }, 460)
+})
+let leavingTimer = 0
+
+/* 内容 / 选项 / 参数变化 -> 全量重渲染（预渲染保证切换时零开销）。 */
+watch([contentText, optionsList, () => props.options, () => props.width], () => {
+  nextTick(renderAll)
+}, { deep: true })
+
+onBeforeUnmount(() => { clearTimeout(leavingTimer); layerEls.clear() })
 </script>
 
 <template>
   <div class="ui-code-image">
-    <div class="ui-code-image__stage" :data-empty="!anyUsable || !contentText ? '' : undefined">
-      <div v-show="anyUsable && contentText" ref="stageEl" class="ui-code-image__canvas"></div>
+    <div
+      ref="stageEl"
+      class="ui-code-image__stage"
+      :data-empty="!anyUsable || !contentText ? '' : undefined"
+      :style="{ '--pan-dir': panDir }"
+    >
+      <template v-if="anyUsable && contentText">
+        <!-- 所有可用码制叠放预渲染，同格堆叠保证尺寸取最大值、切换不跳变。 -->
+        <div
+          v-for="item in items.filter(i => i.usable)"
+          :key="item.format"
+          :ref="el => setLayerEl(el, item.format)"
+          class="ui-code-image__layer"
+          :class="{
+            'is-active': active === item.format,
+            'is-leaving': leavingFormat === item.format
+          }"
+          aria-hidden="true"
+        ></div>
+      </template>
       <UiEmptyState
-        v-if="!anyUsable || !contentText"
+        v-else
         :title="contentText ? '无法生成' : '暂无内容'"
         :description="contentText ? '当前内容不符合任何可选码制，请调整内容或码制' : '请在 children 里传入要编码的文本'"
       />
       <p v-if="renderError" class="ui-code-image__error">渲染失败：{{ renderError }}</p>
     </div>
 
-    <!-- 多于一个选项才出现切换控件 -->
     <div v-if="items.length > 1" class="ui-code-image__switcher">
-      <!-- 跨族差异大：图标 + 文字 -->
       <div v-if="mode === 'icon'" class="ui-code-image__icon-row" role="tablist">
         <button
           v-for="item in items"
@@ -207,7 +235,6 @@ onBeforeUnmount(() => { renderError.value = '' })
           <span>{{ item.label }}</span>
         </button>
       </div>
-      <!-- 同族差异小：文字标签；<=3 Segmented，>3 下拉 -->
       <UiSegmented
         v-else-if="switcherKind === 'segmented'"
         :model-value="active"
@@ -233,6 +260,7 @@ onBeforeUnmount(() => { renderError.value = '' })
   min-width: 0;
 }
 .ui-code-image__stage {
+  /* 所有层同格堆叠：stage 尺寸 = 最大层，切换不改变占位。 */
   display: grid;
   place-items: center;
   min-height: 120px;
@@ -243,22 +271,34 @@ onBeforeUnmount(() => { renderError.value = '' })
   background: var(--surface-container-low);
   color: var(--on-surface);
 }
-.ui-code-image__stage[data-empty] :deep(.ui-empty) { padding: 8px 0; }
-.ui-code-image__canvas {
+.ui-code-image__stage > * { grid-area: 1 / 1; }
+.ui-code-image__layer {
   display: grid;
   place-items: center;
-  min-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* 进入层从目标相对位置那一侧平移进来，并带模糊渐变。 */
+  transform: translateX(calc(var(--pan-dir, 1) * 24%));
+  filter: blur(10px);
 }
-.ui-code-image__svg {
-  max-width: 100%;
-  height: auto;
-  display: block;
+.ui-code-image__layer.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  filter: blur(0);
+  transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
 }
-.ui-code-image__error {
-  margin: 6px 0 0;
-  color: var(--error);
-  font-size: var(--fs-micro);
+/* 离开层：向进入方向的反侧平移 + 模糊渐出。 */
+.ui-code-image__layer.is-leaving {
+  visibility: visible;
+  opacity: 0;
+  transform: translateX(calc(var(--pan-dir, 1) * -24%));
+  filter: blur(8px);
+  transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
 }
+.ui-code-image__svg { max-width: 100%; height: auto; display: block; }
+.ui-code-image__error { margin: 6px 0 0; color: var(--error); font-size: var(--fs-micro); }
 .ui-code-image__switcher { width: 100%; display: flex; justify-content: center; }
 .ui-code-image__icon-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .ui-code-image__icon-btn {
@@ -285,4 +325,10 @@ onBeforeUnmount(() => { renderError.value = '' })
   color: var(--on-primary-container);
 }
 .ui-code-image__icon-btn.is-disabled { opacity: .42; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-code-image__layer,
+  .ui-code-image__layer.is-active,
+  .ui-code-image__layer.is-leaving { transition-duration: .01ms; filter: none; transform: none; }
+}
 </style>

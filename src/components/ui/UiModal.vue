@@ -14,7 +14,9 @@ import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   title: { type: String, default: '' },
-  maxWidth: { type: String, default: '420px' }
+  maxWidth: { type: String, default: '420px' },
+  /* Esc 关闭：普通对话框默认开启；confirmDialog 显式关掉 */
+  closeOnEsc: { type: Boolean, default: true }
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
@@ -61,7 +63,7 @@ function close() {
 }
 
 function onKeydown(event) {
-  if (event.key === 'Escape' && props.modelValue) {
+  if (event.key === 'Escape' && props.modelValue && props.closeOnEsc) {
     event.stopPropagation()
     close()
   }

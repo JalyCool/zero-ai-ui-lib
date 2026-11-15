@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import UiRollNumber from './UiRollNumber.vue'
-import { arcStroke } from '../../core/arcStroke'
+import { arcStroke, useStrokeScale } from '../../core/arcStroke'
 
 const props = defineProps({
   modelValue: { type: Number, default: 72 },
@@ -39,7 +39,9 @@ const dragging = ref(false)
 const shown = ref(sanitize(props.modelValue))
 
 const range = computed(() => props.max - props.min || 1)
-const strokeWidth = computed(() => arcStroke(props.stroke, 'bold'))
+/* 同 UiGauge：dasharray 走 pathLength 归一，描边折算用户单位而非 non-scaling。 */
+const strokeScale = useStrokeScale(dialEl, 200)
+const strokeWidth = computed(() => arcStroke(props.stroke, 'bold') / strokeScale.value)
 const fraction = computed(() => (shown.value - props.min) / range.value)
 /* UiGauge 同款：pathLength=100 + strokeDasharray 100 + dashoffset。 */
 const dashOffset = computed(() => 100 - Math.min(1, Math.max(0, fraction.value)) * 100)
@@ -206,21 +208,21 @@ watch(() => props.modelValue, value => {
           class="ui-gauge-slider__hit"
           :d="ARC_PATH"
           fill="none"
-          :stroke-width="strokeWidth + 26"
-          vector-effect="non-scaling-stroke"
+          :stroke-width="(arcStroke(props.stroke, 'bold') + 26) / strokeScale"
+         
           @pointerdown="onPointerDown"
           @pointermove="onPointerMove"
           @pointerup="onPointerUp"
           @pointercancel="onPointerUp"
         />
-        <path class="ui-gauge-slider__track" :d="ARC_PATH" pathLength="100" fill="none" :stroke-width="strokeWidth" vector-effect="non-scaling-stroke" />
+        <path class="ui-gauge-slider__track" :d="ARC_PATH" pathLength="100" fill="none" :stroke-width="strokeWidth" />
         <path
           class="ui-gauge-slider__progress"
           :d="ARC_PATH"
           pathLength="100"
           fill="none"
           :stroke-width="strokeWidth"
-          vector-effect="non-scaling-stroke"
+         
           :style="{ strokeDashoffset: dashOffset }"
         />
       </svg>
@@ -318,7 +320,7 @@ watch(() => props.modelValue, value => {
 .ui-gauge-slider__center strong {
   display: block;
   color: var(--on-surface);
-  font-size: 2.2rem;
+  font-size: 2.6rem;
   font-weight: var(--w-heading);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.012em;
@@ -328,7 +330,7 @@ watch(() => props.modelValue, value => {
 .ui-gauge-slider__center small {
   margin-left: 2px;
   color: var(--on-surface-variant);
-  font-size: 1.02rem;
+  font-size: 1.18rem;
   font-weight: var(--w-strong);
   letter-spacing: 0;
 }

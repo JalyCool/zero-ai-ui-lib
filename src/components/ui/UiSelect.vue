@@ -7,7 +7,9 @@ const props = defineProps({
   label: { type: String, default: '' },
   options: { type: Array, default: () => [] },
   hint: { type: String, default: '' },
-  placeholder: { type: String, default: '请选择' }
+  placeholder: { type: String, default: '请选择' },
+  /* 整体禁用：直接无法展开；单个选项禁用：options 里带 disabled: true */
+  disabled: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -261,6 +263,7 @@ async function close() {
 
 /* 文字、右侧图标、右侧空白都命中同一个按钮：点哪儿都能展开 / 收起。 */
 function onTriggerClick(event) {
+  if (props.disabled) return
   if (open.value) {
     close()
     return
@@ -273,6 +276,8 @@ function onTriggerClick(event) {
 }
 
 function choose(option) {
+  /* 单个选项禁用：可见但不可选。 */
+  if (option.disabled) return
   if (option.value === props.modelValue) {
     close()
     return
@@ -335,7 +340,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="ui-field ui-select" :class="{ 'is-open': open, 'is-closing': closing }">
+  <div class="ui-field ui-select" :class="{ 'is-open': open, 'is-closing': closing, 'is-disabled': disabled }">
     <span v-if="label" class="ui-field__label">{{ label }}</span>
 
     <div
@@ -355,6 +360,8 @@ onBeforeUnmount(() => {
           class="ui-select__field"
           aria-haspopup="listbox"
           :aria-expanded="open"
+          :aria-disabled="disabled ? 'true' : undefined"
+          :disabled="disabled"
           @pointerdown="press.onPointerDown"
           @click="onTriggerClick"
           @contextmenu.prevent
@@ -384,9 +391,10 @@ onBeforeUnmount(() => {
             type="button"
             role="option"
             :aria-selected="option.value === modelValue"
-            :tabindex="open ? 0 : -1"
+            :aria-disabled="option.disabled ? 'true' : undefined"
+            :tabindex="open && !option.disabled ? 0 : -1"
             class="ui-select__option"
-            :class="{ 'is-selected': option.value === modelValue }"
+            :class="{ 'is-selected': option.value === modelValue, 'is-disabled': !!option.disabled }"
             @click="choose(option)"
           >
             <span class="ui-select__option-label">{{ option.label }}</span>
@@ -584,4 +592,12 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 .ui-select__check { width: 15px; height: 15px; flex-shrink: 0; }
+.ui-select.is-disabled .ui-select__surface { opacity: .42; cursor: not-allowed; }
+.ui-select__field:disabled { cursor: not-allowed; }
+/* 单个禁用选项：可见但不可选，弱化而不是隐藏。 */
+.ui-select__option.is-disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+.ui-select__option.is-disabled:hover { background: transparent; }
 </style>

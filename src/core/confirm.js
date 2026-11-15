@@ -3,7 +3,7 @@
    对话框用 createApp 挂在 body 下的独立宿主里，
    多次调用复用同一个宿主，前一次未决时排队等待。
    ============================================================ */
-import { createApp, h, ref } from 'vue'
+import { createApp, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import UiModal from '../components/ui/UiModal.vue'
 import UiButton from '../components/ui/UiButton.vue'
 
@@ -22,11 +22,24 @@ function ensureHost() {
         if (state.resolve) { state.resolve(value); state.resolve = null }
       }
       /* 确认对话框有意不接 Esc / Enter：确认动作必须显式点击按钮，
-         防止键盘事件误触发危险操作。普通对话框不受此限制。 */
+         防止键盘事件误触发危险操作。普通对话框不受此限制。
+         · Esc：UiModal 传 closeOnEsc=false；
+         · Enter：捕获阶段拦截，连「焦点落在按钮上被 Enter 激活」也挡掉。 */
+      function onKeyCapture(event) {
+        if (!state.open.value) return
+        if (event.key === 'Enter' || event.code === 'NumpadEnter') {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }
+      onMounted(() => document.addEventListener('keydown', onKeyCapture, true))
+      onBeforeUnmount(() => document.removeEventListener('keydown', onKeyCapture, true))
+
       return () => h(UiModal, {
         modelValue: state.open.value,
         'onUpdate:modelValue': value => { if (!value) settle(false) },
-        title: state.options.value.title || '确认操作'
+        title: state.options.value.title || '确认操作',
+        closeOnEsc: false
       }, {
         default: () => [
           h('p', { class: 'ui-confirm__message' }, state.options.value.message || ''),

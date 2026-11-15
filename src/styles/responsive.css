@@ -36,22 +36,25 @@
   }
 
   /* 竖排 tabbar：位置换成左侧竖条，外观参数全部沿用手机款。
-     定位属性在本块内给全，不依赖基础规则。 */
+     定位属性在本块内给全，不依赖基础规则。
+     从顶部开始按固定间距往下排（不再垂直居中），
+     移动端底部横排的规则完全不进这个查询，互不影响。 */
   .tabbar {
     top: 0;
-    bottom: 0;
+    bottom: auto;
     left: 0;
     right: auto;
     transform: none;
     width: 74px;
     max-width: none;
-    height: 100dvh;
+    height: auto;
     flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-    padding: 10px 8px;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 16px 8px;
     border-top: 0;
     border-right: var(--border-w) solid var(--outline-variant);
+    border-radius: 0 calc(18px * var(--radius-scale)) calc(18px * var(--radius-scale)) 0;
   }
   .tab { flex: none; width: 100%; }
 

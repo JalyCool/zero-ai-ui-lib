@@ -4,3 +4,24 @@
    ============================================================ */
 .lib-muted { color: var(--on-surface-variant); font-size: var(--fs-tiny); }
 .lib-note { color: var(--on-surface-variant); font-size: var(--fs-micro); line-height: 1.55; }
+
+/* ============================================================
+   桌面端：示例页按容器宽度自适应列数与间距，
+   宽屏不再是一根 300px 窄列 + 大片留白。
+   container query 按实际可用宽度断点，与视口解耦。
+   ============================================================ */
+.lib {
+  container-type: inline-size;
+  container-name: libmain;
+}
+@container libmain (min-width: 700px) {
+  .lib-cells { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+  .lib-cell--span { grid-column: span 2; }
+}
+@container libmain (min-width: 1100px) {
+  .lib-cells { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: calc(12px + 0.6cqi); }
+  .lib-cell--span { grid-column: span 2; }
+  .lib-sec__title { font-size: calc(var(--fs-big) + 0.35cqi); }
+}
+/* 流式字号：标题随容器连续放大，不用断点跳档。 */
+.lib-hero__title { font-size: clamp(1.35rem, 1.1rem + 1.2cqi, 2rem); }

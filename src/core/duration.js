@@ -69,4 +69,50 @@ export function formatDurationBetween(start, end, options) {
   const b = parseClockTime(end)
   if (a === null || b === null) return formatDuration(0, options)
   return formatDuration(Math.max(0, b - a), options)
- }
+}
+
+/* ============================================================
+   显示精度（四舍五入到的精度）
+   支持整单位与半单位：
+     'h'   -> 整小时（3600s）      'h/2' -> 半小时（1800s）
+     'm'   -> 整分钟（60s）        'm/2' -> 半分钟（30s）
+     's'   -> 整秒（不额外取整）
+   ============================================================ */
+
+export const DISPLAY_STEPS = {
+  'h': 3600,
+  'h/2': 1800,
+  'm': 60,
+  'm/2': 30,
+  's': 1
+}
+
+/** 把秒数按显示精度四舍五入，返回 { seconds, approx }。
+ *  approx = 取整后的值与原值不同（需要在文本前加 ~）。 */
+export function roundToDisplay(totalSeconds, displayPrecision) {
+  const raw = Math.max(0, Number(totalSeconds) || 0)
+  const step = DISPLAY_STEPS[displayPrecision]
+  if (!step || step <= 1) return { seconds: Math.round(raw), approx: Math.round(raw) !== raw }
+  const rounded = Math.round(raw / step) * step
+  return { seconds: rounded, approx: rounded !== raw }
+}
+
+/**
+ * 时长文本 + 显示精度：先按 displayPrecision 四舍五入，
+ * 再按 precision（最小显示单位）拼文本；
+ * 取整改变了数值时，在文本前加 '~'。
+ */
+export function formatDurationApprox(totalSeconds, options = {}) {
+  const { precision, displayPrecision } = options
+  const { seconds, approx } = roundToDisplay(totalSeconds, displayPrecision || 's')
+  const text = formatDuration(seconds, { precision })
+  return { text: approx ? '~' + text : text, approx, seconds }
+}
+
+/** 两个 'HH:mm[:ss]' 之间的近似时长文本。 */
+export function formatDurationBetweenApprox(start, end, options = {}) {
+  const a = parseClockTime(start)
+  const b = parseClockTime(end)
+  const seconds = a === null || b === null ? 0 : Math.max(0, b - a)
+  return formatDurationApprox(seconds, options)
+}

@@ -25,7 +25,7 @@ const props = defineProps({
   /* 是否压暗 + 模糊背景；false = 透明拦截层的无背景模态 */
   scrim: { type: Boolean, default: true },
   /* 固定锚点（视口比例），全内容锚点自动追加 */
-  anchors: { type: Array, default: () => [0.2, 0.6] }
+  anchors: { type: Array, default: null }
 })
 
 const emit = defineEmits(['update:modelValue', 'anchor-change'])

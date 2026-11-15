@@ -1,0 +1,20 @@
+{
+  "runId": "ds-build-zero-ai-ui-lib",
+  "fileKey": "D2kRVXBNBAhknbTIQoTquB",
+  "sessionId": "8bd857eb-b685-4734-9701-bdae7649a2db",
+  "scope": "full-library",
+  "font": { "ui": "Noto Sans SC", "mono": "Roboto Mono", "note": "近似 -apple-system/BlinkMacSystemFont/Segoe UI/Roboto/PingFang SC 系统栈" },
+  "collections": {
+    "Color": "VariableCollectionId:7:2",
+    "Spacing": "VariableCollectionId:7:24",
+    "Radius": "VariableCollectionId:7:40",
+    "Size": "VariableCollectionId:7:50"
+  },
+  "counts": { "colors": 21, "spacing": 15, "radius": 9, "size": 16, "textStyles": 9 },
+  "textStyles": ["Heading/H1", "Heading/Section", "Numeric/Value", "Body/Default", "Body/Small", "Label/Strong", "Label/Tiny", "Label/Micro", "Code/Mono"],
+  "documents": {
+    "pages": ["00 · Cover", "01 · Foundations", "02 · Actions", "03 · Forms", "04 · Feedback", "05 · Data", "06 · Overlays", "07 · Charts", "08 · Advanced"]
+  },
+  "completedSteps": ["foundations/variables", "foundations/text-styles", "page-structure", "cover"],
+  "pending": ["foundations/page-specimens", "components/Actions", "components/Forms", "components/Feedback", "components/Data", "components/Overlays", "components/Charts", "components/Advanced"]
+}

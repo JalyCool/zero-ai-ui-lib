@@ -99,13 +99,13 @@ function iconFor(record) {
     </UiAlert>
 
     <div v-if="initialLoading" class="list activity-skeleton" aria-label="正在加载运动记录">
-      <div v-for="index in 3" :key="index" class="list-item skeleton-item">
+      <div v-for="index in 6" :key="index" class="list-item skeleton-item">
         <UiSkeleton width="40px" height="40px" radius="12px" />
         <div class="skeleton-copy">
-          <UiSkeleton width="42%" height="11px" />
-          <UiSkeleton width="68%" height="9px" />
+          <UiSkeleton width="42%" />
+          <UiSkeleton width="68%" />
         </div>
-        <UiSkeleton width="42px" height="10px" />
+        <UiSkeleton class="skeleton-badge" width="52px" />
       </div>
     </div>
 
@@ -119,7 +119,7 @@ function iconFor(record) {
       </template>
     </UiEmptyState>
 
-    <div v-else class="list">
+    <div v-else class="list list-enter">
       <RouteExpandCard
         v-for="record in records"
         :key="record.id"

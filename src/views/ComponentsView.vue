@@ -44,6 +44,11 @@ const rating = ref(4)
 const chipOptions = ['全部', '步行', '跑步', '睡眠']
 const activeChip = ref('步行')
 const plan = ref('pro')
+const planOptionsWithDisabled = [
+  { label: '免费版（暂不可选）', value: 'free', disabled: true },
+  { label: '专业版', value: 'pro' },
+  { label: '团队版', value: 'team' }
+]
 const planOptions = [
   { label: '免费版', value: 'free' },
   { label: '专业版', value: 'pro' },
@@ -100,7 +105,15 @@ const visitRangeTime = ref({ start: '09:00', end: '18:00' })
 const precision = ref('s')
 const precisionOptions = [
   { label: '时', value: 'h' },
-  { label: '分', value: 'm' },
+  { label: '时分', value: 'm' },
+  { label: '时分秒', value: 's' }
+]
+const displayPrecision = ref('s')
+const displayPrecisionOptions = [
+  { label: '整小时', value: 'h' },
+  { label: '半小时', value: 'h/2' },
+  { label: '整分钟', value: 'm' },
+  { label: '半分钟', value: 'm/2' },
   { label: '秒', value: 's' }
 ]
 /* ---------- 工程 ---------- */
@@ -323,6 +336,8 @@ onMounted(() => showToast('info'))
           <span class="lib-cell__label">选择 / 单选</span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiSelect v-model="sport" label="运动类型" :options="sportOptions" />
+            <UiSelect v-model="plan" label="含禁用项的方案" :options="planOptionsWithDisabled" />
+            <UiSelect label="整体禁用" :options="sportOptions" model-value="walk" disabled />
             <span class="lib-cell__note">订阅方案</span>
             <UiRadioGroup v-model="plan" :options="planOptions" />
           </div>
@@ -392,8 +407,9 @@ onMounted(() => showToast('info'))
         <div class="lib-cell">
           <span class="lib-cell__label">范围时间 <small>时长在箭头上方</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiSegmented v-model="precision" layout="one-line" label="时长精度" :options="precisionOptions" />
-            <UiRangeTimePicker v-model="visitRangeTime" :precision="precision" />
+            <UiSegmented v-model="precision" layout="one-line" label="选择器精度" :options="precisionOptions" />
+            <UiSelect v-model="displayPrecision" label="时长显示精度（取整后加 ~）" :options="displayPrecisionOptions" />
+            <UiRangeTimePicker v-model="visitRangeTime" :precision="precision" :display-precision="displayPrecision" />
           </div>
           <span class="lib-cell__note">60 分钟 → 1h；63 分 3 秒 → 1h03m03s；整串首位 0 隐去。</span>
         </div>
@@ -428,16 +444,16 @@ onMounted(() => showToast('info'))
         <div class="lib-cell">
           <span class="lib-cell__label">文件树</span>
           <UiTreeView :nodes="tree" v-model="treePick" :default-open="['src']" />
-          <span class="lib-muted">选中：{{ treePick }}</span>
+          <span class="lib-muted">选中：{{ treePick }}；分组展开 / 折叠是 0 ↔ 自然高度的连续过渡。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">虚拟列表 <small>滑动多选</small></span>
-          <UiVirtualList :items="virtualItems" :item-height="40" :height="180" v-model="virtualSelected" swipe-select>
-            <template #default="{ item, selected }">
-              <span :class="{ 'lib-cell__on': selected }">{{ item.label }}{{ selected ? ' ✓' : '' }}</span>
+          <UiVirtualList :items="virtualItems" :item-height="40" :height="180" v-model="virtualSelected" selection="multiple" drag-select>
+            <template #default="{ item }">
+              <span>{{ item.label }}</span>
             </template>
           </UiVirtualList>
-          <span class="lib-muted">600 行只渲染窗口内十几行；横向拖过 44px 切换选中。</span>
+          <span class="lib-muted">600 行只渲染窗口内十几行；单击切换选中，长按某行后竖向拖动可连续勾选，拖到边缘自动滚动。</span>
         </div>
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">Schema 表单生成器 <small>UiSchemaForm</small></span>

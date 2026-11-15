@@ -135,15 +135,17 @@
 .ui-switch.is-on { background: var(--primary); border-color: var(--primary); }
 .ui-switch__thumb {
   position: absolute;
-  top: 2px;
+  /* 纵向严格居中：不依赖 border / 圆角的手算偏移。 */
+  top: 50%;
   left: 2px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
   background: var(--surface);
+  transform: translateY(-50%);
   transition: transform var(--t-feedback), background var(--t-fade);
 }
-.ui-switch.is-on .ui-switch__thumb { transform: translateX(18px); background: var(--on-primary); }
+.ui-switch.is-on .ui-switch__thumb { transform: translate(18px, -50%); background: var(--on-primary); }
 .ui-switch:focus-visible { outline: var(--focus-w) solid var(--primary); outline-offset: 2px; }
 
 /* ---------- Field ---------- */
@@ -488,6 +490,8 @@
 .ui-tooltip--bottom.is-open .ui-tooltip__bubble { transform: translate(-50%, 0); }
 
 /* ---------- Accordion ---------- */
+/* 高度 0 <-> auto 的原生插值开关（animate-to-intrinsic-sizes）。 */
+.ui-accordion { interpolate-size: allow-keywords; }
 .ui-accordion {
   overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
@@ -516,6 +520,17 @@
   color: var(--on-surface-variant);
   font-size: var(--fs-tiny);
   line-height: 1.65;
+  /* 收起态：高度归 0 并去掉内边距，避免末尾残留一截高度。 */
+  block-size: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding-block-end: 0;
+  transition: block-size var(--t-view), opacity var(--t-fade), padding-block-end var(--t-view);
+}
+.ui-accordion.is-open > .ui-accordion__body {
+  block-size: auto;
+  opacity: 1;
+  padding-block-end: 14px;
 }
 
 /* ---------- Empty state ---------- */
