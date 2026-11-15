@@ -32,15 +32,17 @@
 1. **UiDataTable 增强**：行分组、服务端分页（`@page-change`）、列显隐（`v-model:columns`）、多选。
 2. **UiTreeView 增强**：过滤（`filter` 关键字）、拖拽换父、多选级联（父子联动）。
 3. **CardGroup 一批重做**（逐条来自用户反馈）：
-   - gallery：选中卡应居中（现在是按偏移吸附，选中项不在视口正中）；
-   - depth：触控交互很差，要按原库改成跟手 + 惯性 + 吸附；
-   - wall：所有卡片堆在一起（布局/透视平面需要重写）；
-   - scroll-stack：不用滚到头就开始缩小；压暗过深 → 改为透明度 + 轻微压暗；
-   - stack / swap：甩出后回队尾是**闪现**，要补 tween（原库 `tuck` 弹簧）；
-   - bounce：扇形布局被做乱，需要重做；
-   - 所有形态：方向键切换时也必须有动画（现在直接跳）。
-   - **Stack 与 CardSwap 必须拆成两套机制**：Stack = 物理牌堆（lean / face / tuck），
-     CardSwap = 3D 轮换台（rest → exit → enter 阶段机）。
+   - ✅ gallery：改成「居中索引」单一状态，轨道位移由它算（卡片宽度 < 视口时
+     也不再贴左）；方向键 / 自动推进走弹簧；resize 后重新居中。实测选中卡中心 = 视口中心（误差 0）。
+   - ✅ scroll-stack：提前 1.2 张开始缩；压暗改为「变淡 + 最多 12% 亮度」。
+   - ✅ stack：甩出后由 `tuck` 弹簧从飞出姿态收到堆底（不再闪现）；
+     同时把牌堆卡上的入场动画关掉 —— 重排让 `--i` 变化会重跑 cgCardIn，那才是闪现根因。
+   - ✅ 方向键：gallery 已确认有动画（轨道位移逐帧变化）。
+   - ❌ depth：触控交互很差，要按原库改成跟手 + 惯性 + 吸附；
+   - ❌ wall：透视墙只在舞台上半部分铺开，下半部留白（布局需要重写）；
+   - ❌ bounce：扇形角度过密，需要按原库重做；
+   - ❌ **Stack 与 CardSwap 拆成两套机制**：Stack = 物理牌堆（lean / face / tuck），
+     CardSwap = 3D 轮换台（rest → exit → enter 阶段机）。现在 swap 只是复用 stack 的阶段机。
 4. **Button hold 完整动画**：按压波（wave）、发光（glow）、完成态、松手回弹曲线。
 5. **BottomSheet 锚点规则**（用户两次提出）：
    - 内容全高 < 60% 时；不要出现 60% 档；
@@ -49,6 +51,8 @@
 6. **Playground**：本轮已改成 UiBottomSheet + StyleLab；后续可加组件级预览选择器。
 
 ## C. 进度记录（最近提交）
+
+- 本轮：CardGroup gallery 选中卡居中（实测误差 0）、方向键有动画、scroll-stack 提前缩小 + 减淡、stack 甩出改用 tuck 弹簧回堆底（关掉牌堆卡入场动画）、提示浮签移到舞台内
 
 - 本轮：新增 `--spring-pop` / `--spring-pop-dur` / `--t-pop`（克制模式纯减速不回弹，活泼模式过冲 2.6）并接到开关把手、勾选框、分段指示器、Chip、滑块把手、单选圆点、评分星、Tab 图标、波轮行；补齐 31 个组件的 d.ts 声明
 

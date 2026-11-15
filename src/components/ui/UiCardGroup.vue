@@ -151,16 +151,20 @@ function animateTo(getter, setter, target, done, options = {}) {
 }
 
 /* ---------------- gallery：横向轨道 ---------------- */
-const offset = ref(0)
+/* 唯一状态是「当前居中的是第几张卡（可为小数）」，轨道位移由它算出来。
+   卡片宽度通常小于视口，若把位移当状态、按整格吸附，选中卡只会贴着左边 ——
+   这正是之前「选中卡不居中」的根因。 */
+const galleryIndex = ref(0)
 const span = computed(() => props.cardWidth + props.gap)
 const totalWidth = computed(() => span.value * Math.max(1, count.value))
 const galleryList = computed(() => (count.value ? [...props.items, ...props.items, ...props.items] : []))
-let offsetStart = 0
+let galleryIndexStart = 0
 
+/* 轨道零点 = 第 0 张卡居中时的位移；再按一圈宽度取模，循环才接得上。 */
 const wrapped = computed(() => {
-  if (!totalWidth.value) return 0
-  let value = offset.value % totalWidth.value
-  if (value > 0) value -= totalWidth.value
+  const loop = totalWidth.value || 1
+  let value = (galleryBase() - galleryIndex.value * span.value) % loop
+  if (value > 0) value -= loop
   return value
 })
 
@@ -180,9 +184,24 @@ function galleryCardStyle(index, item) {
   }
 }
 
-function galleryNearest() {
-  const step = span.value
-  return Math.round(offset.value / step) * step
+function galleryBase() {
+  const el = rootEl.value
+  const half = el && el.clientWidth ? el.clientWidth / 2 : 0
+  return half - props.cardWidth / 2
+}
+
+/* 目标索引取与当前进度「同一圈」的副本，换卡才走最短路径、不绕圈。 */
+function galleryLoop(value) {
+  const n = count.value || 1
+  return value + n * Math.round((galleryIndex.value - value) / n)
+}
+
+/* 以居中索引为目标的弹簧：distance 是一格，手感可预期。 */
+function goGallery(next) {
+  const n = count.value || 1
+  const target = galleryLoop(next)
+  if (Math.abs(target - galleryIndex.value) < 0.001) return
+  animateTo(() => galleryIndex.value, value => { galleryIndex.value = value }, target)
 }
 
 /* ---------------- circular：圆环 ---------------- */
@@ -270,11 +289,14 @@ function onScroll(event) {
 function stackScrollStyle(index, item) {
   const total = Math.max(1, count.value - 1)
   const pin = index / total
-  const distance = Math.max(0, scrollProgress.value - pin) * total
+  /* 提前 1.2 张就开始缩：不等滚到自己那一格，卡片已经开始「被压」。 */
+  const lead = Math.max(0, (scrollProgress.value - pin) * total + 1.2)
   return {
     '--card-tone': item.tone || 'primary',
-    transform: 'translate3d(0,' + Math.round(index * 9) + 'px,0) scale(' + (1 - Math.min(0.14, distance * 0.05)) + ')',
-    filter: 'brightness(' + (1 - Math.min(0.46, distance * 0.16)) + ')' + (distance > 1.6 ? ' blur(' + ((distance - 1.6) * 0.9).toFixed(2) + 'px)' : ''),
+    transform: 'translate3d(0,' + Math.round(index * 9) + 'px,0) scale(' + (1 - Math.min(0.13, lead * 0.026)) + ')',
+    /* 压栈靠「变淡」表达层次，不再把整张卡压暗到看不清。 */
+    opacity: String(1 - Math.min(0.42, lead * 0.11)),
+    filter: 'brightness(' + (1 - Math.min(0.12, lead * 0.045)) + ')' + (lead > 2.2 ? ' blur(' + Math.min(2, (lead - 2.2) * 0.8).toFixed(2) + 'px)' : ''),
     zIndex: String(10 + index)
   }
 }
@@ -303,7 +325,49 @@ const frontMotion = ref({ x: 0, y: 0, rot: 0, scale: 1, flying: false, dim: 0 })
 let pileStartX = 0
 let pileStartY = 0
 
-function pileStyle(position, item) {
+/* 甩出去那张的「回堆底」姿态：用 tuck 弹簧把飞出姿态收进堆底，
+   而不是让 CSS 从重置后的原位重新过渡（那看起来就是「闪现」）。 */
+const tuck = ref(null)
+let tuckCancel = null
+function stopTuck() {
+  if (tuckCancel) { tuckCancel(); tuckCancel = null }
+  tuck.value = null
+}
+function startTuck(id, from) {
+  const p = Math.max(1, pile.value.length - 1)
+  const to = { x: p * 9, y: p * -7, rot: (p % 2 ? 1.4 : -1.4) * p, scale: 1 - p * 0.055 }
+  stopTuck()
+  tuck.value = { id, ...from }
+  const preset = SPRINGS.tuck || SPRINGS.settle
+  const keys = Object.keys(to)
+  const cancelers = []
+  let left = keys.length
+  const settle = () => { if (--left <= 0) { tuck.value = null; tuckCancel = null } }
+  keys.forEach(key => {
+    cancelers.push(animateSpring({
+      from: from[key],
+      to: to[key],
+      stiffness: preset.stiffness,
+      damping: preset.damping,
+      onUpdate: value => { if (tuck.value && tuck.value.id === id) tuck.value = { ...tuck.value, [key]: value } },
+      onDone: () => { settle() }
+    }))
+  })
+  tuckCancel = () => cancelers.forEach(cancel => cancel && cancel())
+}
+
+function pileStyle(position, item, index) {
+  if (tuck.value && index === tuck.value.id && position === pile.value.length - 1) {
+    const t = tuck.value
+    return {
+      '--card-tone': item.tone || 'primary',
+      transform: 'translate3d(' + t.x + 'px,' + t.y + 'px,0) rotate(' + t.rot + 'deg) scale(' + t.scale + ')',
+      opacity: '1',
+      filter: '',
+      zIndex: String(50 - position),
+      transition: 'none'
+    }
+  }
   if (position === 0) {
     const m = frontMotion.value
     /* 拖动时按速度与位移算「倾斜」（lean）：左右甩 → 绕 Y 转，上下拉 → 绕 X 转。
@@ -336,13 +400,16 @@ function pileStyle(position, item) {
 }
 
 /* 牌堆：直接重排（前卡靠 transform 过渡飞过去/钻到底）。 */
-function advancePile() {
+function advancePile(tuckFrom = null) {
   if (pile.value.length < 2) return
+  const moved = pile.value[0]
   const next = pile.value.slice(1)
-  next.push(pile.value[0])
+  next.push(moved)
   pile.value = next
   frontMotion.value = { x: 0, y: 0, rot: 0, scale: 1, tiltX: 0, tiltY: 0, flying: false, dim: 0 }
   pick(pile.value[0])
+  /* 同一帧就把飞出姿态接到堆底，避免先跳回原位再过渡。 */
+  if (tuckFrom) startTuck(moved, tuckFrom)
 }
 
 /* 轮换：前卡先向下「退出」，再从后层重新进场（rest → exit → enter）。 */
@@ -369,10 +436,12 @@ function advanceSwap() {
 function flingFront(direction) {
   if (pile.value.length < 2) return
   if (props.variant === 'swap') { advanceSwap(); return }
-  frontMotion.value = { x: direction * 240, y: -46, rot: direction * 20, tiltX: -10, tiltY: direction * 12, scale: 0.94, flying: true, dim: 1 }
-  setTimeout(() => {
-    advancePile()
-  }, 250)
+  const from = { x: direction * 240, y: -46, rot: direction * 20, scale: 0.94 }
+  frontMotion.value = { ...from, tiltX: -10, tiltY: direction * 12, flying: true, dim: 1 }
+  /* 让飞出这一帧先落地，再换牌 —— 换牌时由 tuck 弹簧从这个姿态续接。 */
+  requestAnimationFrame(() => {
+    setTimeout(() => advancePile(from), 200)
+  })
 }
 
 /* ---------------- bounce：扇形 ---------------- */
@@ -396,7 +465,7 @@ function bounceStyle(index, item) {
 /* ---------------- 形态分派：拖拽 / 松手 / 点击 ---------------- */
 function applyDrag(dx, dy) {
   const v = props.variant
-  if (v === 'gallery') offset.value = offsetStart + dx
+  if (v === 'gallery') galleryIndex.value = galleryIndexStart - dx / Math.max(1, span.value)
   else if (v === 'circular') rotation.value = rotationStart + dx * 0.3
   else if (v === 'depth') depthDrag.value = depthStart - dx / 110
   else if (v === 'wall') driftY.value += dy * 0.6
@@ -421,11 +490,14 @@ function applyDrag(dx, dy) {
 function endDrag(dx, dy) {
   const v = props.variant
   if (v === 'gallery') {
-    /* 甩动：速度作为弹簧初速度注入（px/s），由弹簧自己决定冲多远再吸回格位。 */
+    /* 甩动：把像素速度换算成「每秒几张」，作为弹簧初速度注入，
+       冲多远由弹簧自己决定，落点永远是整格（正中）。 */
+    const step = Math.max(1, span.value)
     const velocity = Math.max(-1600, Math.min(1600, vx * 1000))
-    animateTo(() => offset.value, value => { offset.value = value }, galleryNearestOf(offset.value + velocity * 0.18), null, { kind: 'settle', velocity })
-    const nearestIndex = Math.round(-wrapped.value / span.value) % Math.max(1, count.value)
-    pick(((nearestIndex % count.value) + count.value) % count.value)
+    const projected = galleryIndex.value - (velocity * 0.18) / step
+    const target = galleryLoop(Math.round(projected))
+    animateTo(() => galleryIndex.value, value => { galleryIndex.value = value }, target, null, { kind: 'settle', velocity: -velocity / step })
+    pick(((Math.round(target) % count.value) + count.value) % count.value)
   } else if (v === 'circular') {
     const step = stepAngle.value || 1
     const velocity = Math.max(-420, Math.min(420, vx * 300))
@@ -456,21 +528,13 @@ function endDrag(dx, dy) {
   }
 }
 
-function galleryNearestOf(projected) {
-  const step = span.value
-  return Math.round(projected / step) * step
-}
-
 function hitCard(index) {
   const v = props.variant
   if (!Number.isFinite(index)) return
   if (v === 'gallery') {
+    /* 目标是把这张推到视口正中（不是把轨道推到 0）。 */
     pick(index)
-    const current = wrapped.value
-    const want = -index * span.value
-    /* 选到最近的一圈副本，避免绕一大圈。 */
-    const delta = want - current
-    animateTo(() => offset.value, value => { offset.value = value }, offset.value + delta)
+    goGallery(index)
   } else if (v === 'circular') {
     const step = stepAngle.value || 1
     pick(index)
@@ -521,8 +585,9 @@ function onKeydown(event) {
 let autoTimer = 0
 function resetVariant() {
   stopAllMotion()
-  offsetStart = offset.value
-  offset.value = 0
+  stopTuck()
+  galleryIndexStart = galleryIndex.value
+  galleryIndex.value = active.value
   rotation.value = 0
   depthDrag.value = 0
   spread.value = 0
@@ -547,14 +612,24 @@ function startAuto() {
 
 watch(() => [props.variant, props.auto, props.interval], () => { startAuto(); resetVariant() }, { deep: true })
 
+function recenterGallery() {
+  if (props.variant !== 'gallery') return
+  stopAllMotion()
+  galleryIndex.value = active.value
+}
+
 onMounted(() => {
   startAuto()
+  nextTick(recenterGallery)
+  window.addEventListener('resize', recenterGallery)
   wallFrame = requestAnimationFrame(wallTick)
   nextTick(() => { if (props.variant === 'scroll-stack' && scrollerEl.value) scrollerEl.value.scrollTop = 0 })
 })
 onBeforeUnmount(() => {
   stopAllMotion()
+  stopTuck()
   clearInterval(autoTimer)
+  window.removeEventListener('resize', recenterGallery)
   if (wallFrame) cancelAnimationFrame(wallFrame)
 })
 
@@ -680,7 +755,7 @@ watch(() => props.modelValue, value => {
             'is-entering': variant === 'swap' && enteringIndex === index && swapPhase !== 'rest'
           }"
           :data-card-index="index"
-          :style="[pileStyle(position, items[index] || {}), { '--i': position }]"
+          :style="[pileStyle(position, items[index] || {}, index), { '--i': position }]"
         >
           <img v-if="items[index] && items[index].image" :src="items[index].image" :alt="items[index].title" loading="lazy" draggable="false" />
           <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
@@ -908,7 +983,10 @@ watch(() => props.modelValue, value => {
   aspect-ratio: 4 / 3;
   transform-style: preserve-3d;
 }
-.ui-card-group__pile-card.is-front { cursor: grab; animation: none; }
+/* 牌堆卡不参与「入场动画」：重新排序时 --i 变化会让 cgCardIn 重跑，
+   把飞出的牌瞬间拉回原位 —— 这正是「回队尾闪现」的根因。 */
+.ui-card-group__pile-card { animation: none; }
+.ui-card-group__pile-card.is-front { cursor: grab; }
 .ui-card-group__pile-card.is-front.is-flying { pointer-events: none; }
 /* 轮换：退出的那张已经淡出，重新进场的那张从后层抬起来。 */
 .ui-card-group__pile-card.is-entering {
@@ -979,15 +1057,21 @@ watch(() => props.modelValue, value => {
   100% { opacity: 1; }
 }
 .ui-card-group__hint {
+  /* 提示放在舞台右上角内侧：放到组件外面（bottom: -18px）会压住下方说明文字。 */
   position: absolute;
-  right: 2px;
-  bottom: -18px;
+  right: 8px;
+  top: 6px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
   color: var(--on-surface-variant);
   font-size: var(--fs-micro);
-  opacity: .72;
+  opacity: .8;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
 }
 .ui-card-group__hint svg { width: 13px; height: 13px; }
 
