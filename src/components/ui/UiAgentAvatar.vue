@@ -7,13 +7,14 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
    · 底层形状：传一段「纯剪影」SVG 内部标记（不要带 fill / style），
      组件自动上色 + 白 30% 描边（paint-order: stroke 画在外圈）。
    · 眼睛是状态机驱动的：**任意状态 → 任意状态** 都走同一组参数
-     （开合 / 眼距 / 倾斜 / 高度）的弹簧过渡，没有硬切。
-   · 三层驱动叠加：
-       生命层（永远在）：呼吸微动、随机眨眼、平滑噪声微动
-       注意力层：弹簧注视（可选跟随鼠标）、微扫视、左右眼 15ms 延迟
-       情绪层：各状态的参数预设 + 进入瞬间的速度冲击
-   · 眨眼：快闭（80–120ms）→ 保持（20–40ms）→ 慢开（150–250ms，
-     过冲 1.02）；闭眼是一条宽度略增的细线，不会消失。
+     （开合 / 眼距 / 高度）的弹簧过渡，没有硬切。
+   · 三条硬规则：
+       1. 眼睛不旋转 —— 没有 tilt / 视线角度，只有位移；
+       2. 尺寸零随机 —— 挂载即按状态落位，开合不含任何噪声项；
+       3. 两眼成组位移 —— 注视偏移对两只眼完全同值，永远等大。
+   · 生命层（呼吸、随机眨眼快闭慢开过冲 1.02）永远在；
+     注意力层（弹簧注视 / 微扫视）叠加其上，左右眼只在**眨眼时序**
+     上差 15ms，位置 / 大小完全同步。
    ============================================================ */
 
 const props = defineProps({
@@ -30,26 +31,25 @@ const props = defineProps({
   gaze: { type: String, default: 'mouse' },
   /* false 时摆出当前状态的静止姿势，不跑动画循环 */
   animated: { type: Boolean, default: true },
-  /* speaking 状态的外部音量包络 0~1（可选；不给就用平滑噪声模拟） */
+  /* speaking 状态的外部音量包络 0~1；给了才调制开合，不给眼大小保持稳定 */
   level: { type: Number, default: -1 },
   /* 眼睛基准高度（viewBox 24 内）：圆形脸 12，三角等下半脸往下调 */
   eyesY: { type: Number, default: 12 }
 })
 
 /* ---------- 情绪层：状态配方表（参数即状态，状态即参数向量） ---------- */
-/* open 开合（两眼同值）/ spread 眼距变化 / tilt 外挑角度 /
-   eyeY 整体高度偏移 / blink 眨眼频率倍率（0 = 不眨）/
-   kickY 进入状态时的速度冲击 / bias 注视偏置 / spring 该状态的过渡弹簧 */
-/* 两只眼睛永远同宽同高：情绪只靠开合 / 眼距 / 倾斜 / 高度表达，不做大小眼。 */
+/* open 开合（两眼同值）/ spread 眼距变化 / eyeY 整体高度偏移 /
+   blink 眨眼频率倍率（0 = 不眨）/ kickY 进入状态时的速度冲击 /
+   bias 注视偏置 / spring 该状态的过渡弹簧 */
 const STATES = {
-  idle:      { open: 1,    spread: 0,    tilt: 0, eyeY: 0,    blink: 1 },
-  listening: { open: 1.06, spread: -0.5, tilt: 0, eyeY: 0,    blink: 0.5 },
-  thinking:  { open: 0.88, spread: 0,    tilt: 0, eyeY: -0.7, blink: 0.35, bias: { x: 0.5, y: -1.1 } },
-  happy:     { open: 0.6,  spread: 1.2,  tilt: 4, eyeY: -0.9, blink: 0.4, kickY: -9 },
-  confused:  { open: 0.92, spread: 0.2,  tilt: 5, eyeY: 0.5,  blink: 0.7 },
-  surprised: { open: 1.3,  spread: 2.2,  tilt: 0, eyeY: -1.2, blink: 0, kickY: -14, spring: { k: 420, c: 30 } },
-  sleepy:    { open: 0.6,  spread: -0.6, tilt: 0, eyeY: 0.9,  blink: 2.4, spring: { k: 40, c: 11 } },
-  speaking:  { open: 1,    spread: 0.3,  tilt: 0, eyeY: 0,    blink: 0.8, talk: true }
+  idle:      { open: 1,    spread: 0,    eyeY: 0,    blink: 1 },
+  listening: { open: 1.06, spread: -0.5, eyeY: 0,    blink: 0.5 },
+  thinking:  { open: 0.88, spread: 0,    eyeY: -0.7, blink: 0.35, bias: { x: 0.5, y: -1.1 } },
+  happy:     { open: 0.6,  spread: 1.2,  eyeY: -0.9, blink: 0.4, kickY: -9 },
+  confused:  { open: 0.92, spread: 0.2,  eyeY: 0.5,  blink: 0.7 },
+  surprised: { open: 1.3,  spread: 2.2,  eyeY: -1.2, blink: 0, kickY: -14, spring: { k: 420, c: 30 } },
+  sleepy:    { open: 0.6,  spread: -0.6, eyeY: 0.9,  blink: 2.4, spring: { k: 40, c: 11 } },
+  speaking:  { open: 1,    spread: 0.3,  eyeY: 0,    blink: 0.8, talk: true }
 }
 
 /* ---------- 弹簧：情绪参数向目标过渡（AnyState→AnyState 的实现本体） ---------- */
@@ -62,12 +62,14 @@ function stepSpring(s, dt) {
 const DEFAULT_SPRING = { k: 140, c: 17 }
 const springs = {
   open: makeSpring(140, 17),
-  spread: makeSpring(120, 16), tilt: makeSpring(90, 14), eyeY: makeSpring(140, 17)
+  spread: makeSpring(120, 16),
+  eyeY: makeSpring(140, 17)
 }
 let curSpring = DEFAULT_SPRING
 let blinkFactor = 1
 let talkMode = false
 let gazeBias = { x: 0, y: 0 }
+let initialized = false
 
 function applyState(name) {
   const preset = STATES[name] || STATES.idle
@@ -76,14 +78,17 @@ function applyState(name) {
     springs[key].k = curSpring.k
     springs[key].c = curSpring.c
     springs[key].target = preset[key] !== undefined ? preset[key] : preset.open
+    /* 眼生成时大小不随机：第一次落状态直接摆到位，不从 0 弹出来 */
+    if (!initialized) { springs[key].pos = springs[key].target; springs[key].vel = 0 }
   }
+  initialized = true
   if (preset.kickY) springs.eyeY.vel += preset.kickY
   blinkFactor = preset.blink
   talkMode = !!preset.talk
   gazeBias = preset.bias || { x: 0, y: 0 }
 }
 
-/* 平滑噪声：几个不可通约周期的正弦叠加，永远不会出现逐帧 random() 的毛刺 */
+/* 平滑噪声：几个不可通约周期的正弦叠加（只用于呼吸 / 扫视的相位，不碰尺寸） */
 function smoothNoise(t, seed = 0) {
   return 0.5
     + Math.sin(t * 0.0007 + seed) * 0.34
@@ -121,15 +126,14 @@ function startBlink(at, side) {
   else blinkR = blink
 }
 
-/* 注意力层：注视 + 微扫视。视线永远有目标，不逐帧乱飘 */
-const lookXL = makeSpring(60, 12)
-const lookYL = makeSpring(60, 12)
-const lookXR = makeSpring(60, 12)
+/* 注意力层：弹簧注视 + 微扫视。**两眼成组位移**：同一偏移量画两只眼，
+   永远同步；幅度加大到可感知（±1.2 个单位 ≈ 头像宽度的 5%）。 */
+const lookX = makeSpring(60, 12)
+const lookY = makeSpring(60, 12)
 const saccSpring = makeSpring(30, 7)
 let mouseTarget = { x: 0, y: 0 }
 let saccTarget = { x: 0, y: 0 }
 let nextSaccAt = 0
-const lookHistory = []
 
 function onPointerMove(event) {
   const svg = svgEl.value
@@ -151,11 +155,10 @@ const BASE_H = 4.8
 const BASE_GAP = 4.6
 
 /* 圆角矩形：四角同半径（= 宽度一半，再被高度夹住）。
-   绝不用 scale 缩放 —— 宽 / 高 / 圆角都是直接写属性，
-   高度变化时角半径同步变化，永远不会被拉成椭圆。 */
-function renderEye(rect, cx, cy, w, h, angle) {
+   绝不用 scale 缩放 —— 宽 / 高 / 圆角直接写属性，不旋转（transform 只有平移）。 */
+function renderEye(rect, cx, cy, w, h) {
   const radius = Math.min(w / 2, h / 2)
-  rect.setAttribute('transform', `translate(${cx} ${cy}) rotate(${angle.toFixed(2)})`)
+  rect.setAttribute('transform', `translate(${cx.toFixed(3)} ${cy.toFixed(3)})`)
   rect.setAttribute('width', w.toFixed(3))
   rect.setAttribute('height', h.toFixed(3))
   rect.setAttribute('x', (-w / 2).toFixed(3))
@@ -188,18 +191,12 @@ function frame(now) {
   const bias = gazeBias
   const tx = (mouseOn ? mouseTarget.x : 0) * 0.8 + saccSpring.pos * (mouseOn ? 0.5 : 1.6) + bias.x * 0.6
   const ty = (mouseOn ? mouseTarget.y : 0) * 0.6 + saccTarget.y * (mouseOn ? 0.2 : 0.8) + bias.y * 0.6
-  lookXL.target = Math.max(-1.1, Math.min(1.1, tx))
-  lookYL.target = Math.max(-1.1, Math.min(1.1, ty))
-  stepSpring(lookXL, dt)
-  stepSpring(lookYL, dt)
+  lookX.target = Math.max(-1.3, Math.min(1.3, tx))
+  lookY.target = Math.max(-1.3, Math.min(1.3, ty))
+  stepSpring(lookX, dt)
+  stepSpring(lookY, dt)
 
-  /* 右眼视线取 15ms 前的采样 —— 不同步才活 */
-  lookHistory.push({ t: now, x: lookXL.pos, y: lookYL.pos })
-  while (lookHistory.length && now - lookHistory[0].t > 200) lookHistory.shift()
-  let delayed = lookHistory[0]
-  for (const item of lookHistory) { if (item.t <= now - 15) delayed = item }
-
-  /* 眨眼调度：左右差 15ms；连眨概率 10% */
+  /* 眨眼调度：左右差 15ms（仅时序）；连眨概率 10% */
   if (now >= nextBlinkAt) {
     startBlink(now, 'L')
     startBlink(now + 15, 'R')
@@ -215,16 +212,13 @@ function frame(now) {
     stepSpring(springs[key], dt)
   }
 
-  /* 说话：小幅音量微缩放（外部 level 优先，否则平滑噪声模拟）；两只眼同参数 */
+  /* 说话：只在给了外部 level 时调制开合（确定值，不随机） */
   let talk = 0
-  if (talkMode) {
-    const level = props.level >= 0 ? props.level : smoothNoise(now, 2.3)
-    talk = (level - 0.5) * 0.24
-  }
+  if (talkMode && props.level >= 0) talk = (props.level - 0.5) * 0.3
 
-  /* 两眼同尺寸：差异只在眨眼时序（左眼先 15ms），稳态永远一样大 */
-  const openL = Math.max(0.08, springs.open.pos * (1 - closedL) + talk + (smoothNoise(now, 0.9) - 0.5) * 0.02)
-  const openR = Math.max(0.08, springs.open.pos * (1 - closedR) + talk + (smoothNoise(now, 0.9) - 0.5) * 0.02)
+  const open = springs.open.pos
+  const openL = Math.max(0.08, open * (1 - closedL) + talk)
+  const openR = Math.max(0.08, open * (1 - closedR) + talk)
 
   const hL = Math.max(0.45, BASE_H * openL)
   const hR = Math.max(0.45, BASE_H * openR)
@@ -232,18 +226,17 @@ function frame(now) {
   const wL = BASE_W * (1 + 0.08 * Math.max(0, 1 - openL))
   const wR = BASE_W * (1 + 0.08 * Math.max(0, 1 - openR))
 
+  /* 两眼成组位移：同一个 look 偏移画两只眼，永远同步 */
   const half = BASE_GAP / 2 + springs.spread.pos / 2 + spreadBreath / 2
-  const cxL = 12 - half + lookXL.pos * 0.55
-  const cxR = 12 + half + (delayed ? delayed.x : lookXL.pos) * 0.55
-  const cy = props.eyesY + springs.eyeY.pos + (delayed ? delayed.y : lookYL.pos) * 0.5 + breath * 0.5
-
-  /* 外挑 = 外眼角上挑：左眼负角度、右眼正角度；视线水平分量各加 4° */
-  const rotL = -springs.tilt.pos + lookXL.pos * 4
-  const rotR = springs.tilt.pos + (delayed ? delayed.x : lookXL.pos) * 4
+  const gx = lookX.pos * 1.2
+  const gy = lookY.pos * 0.9
+  const cxL = 12 - half + gx
+  const cxR = 12 + half + gx
+  const cy = props.eyesY + springs.eyeY.pos + gy + breath * 0.5
 
   if (eyeL.value && eyeR.value) {
-    renderEye(eyeL.value, cxL, cy, wL, hL, rotL)
-    renderEye(eyeR.value, cxR, cy, wR, hR, rotR)
+    renderEye(eyeL.value, cxL, cy, wL, hL)
+    renderEye(eyeR.value, cxR, cy, wR, hR)
   }
   if (svgEl.value) {
     svgEl.value.setAttribute('transform', `translate(0 ${breath.toFixed(3)})`)
@@ -257,8 +250,9 @@ function renderStatic() {
   if (!eyeL.value || !eyeR.value) return
   const half = BASE_GAP / 2 + springs.spread.target / 2
   const open = springs.open.target
-  renderEye(eyeL.value, 12 - half, props.eyesY + springs.eyeY.target, BASE_W, Math.max(0.45, BASE_H * open), -springs.tilt.target)
-  renderEye(eyeR.value, 12 + half, props.eyesY + springs.eyeY.target, BASE_W, Math.max(0.45, BASE_H * open), springs.tilt.target)
+  const h = Math.max(0.45, BASE_H * open)
+  renderEye(eyeL.value, 12 - half, props.eyesY + springs.eyeY.target, BASE_W, h)
+  renderEye(eyeR.value, 12 + half, props.eyesY + springs.eyeY.target, BASE_W, h)
   if (svgEl.value) svgEl.value.setAttribute('transform', 'translate(0 0)')
 }
 

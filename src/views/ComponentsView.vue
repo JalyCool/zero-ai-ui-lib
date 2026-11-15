@@ -28,6 +28,20 @@ const zeroFace = '<rect width="24" height="24" rx="12" fill="#111"/><rect x="8.4
 /* AgentAvatar 的底层形状：纯剪影（组件负责上色 / 描边 / 眼睛） */
 const agentCircle = '<circle cx="12" cy="12" r="10"/>'
 const agentTriangle = '<path d="M5.77 4.01C8.09 0 13.41 0 15.72 4.01L21.49 14C24 18.16 21.18 24 16.53 24H4.98C0.32 24-2.5 18.16 0 14Z"/>'
+/* 状态机展示：分段切换 8 个状态，看任意状态之间的弹簧过渡 */
+const agentState = ref('idle')
+const agentGazeOn = ref(true)
+const agentGaze = computed(() => (agentGazeOn.value ? 'mouse' : 'none'))
+const agentStates = [
+  { label: '待机', value: 'idle' },
+  { label: '倾听', value: 'listening' },
+  { label: '思考', value: 'thinking' },
+  { label: '开心', value: 'happy' },
+  { label: '困惑', value: 'confused' },
+  { label: '惊讶', value: 'surprised' },
+  { label: '困', value: 'sleepy' },
+  { label: '说话', value: 'speaking' }
+]
 /* Frame 11 的 Guide 头像：圆角三角形 + 两只眼睛（无遮罩） */
 const guideFace = '<path d="M5.77 4.01C8.09 0 13.41 0 15.72 4.01L21.49 14C24 18.16 21.18 24 16.53 24H4.98C0.32 24-2.5 18.16 0 14Z" fill="#7438FF" stroke="white" stroke-opacity=".3"/><rect x="8.4" y="8.4" width="2.4" height="5.2" rx="1.2" fill="white"/><rect x="14.3" y="8.4" width="2.4" height="5.2" rx="1.2" fill="white"/>'
 /* 任意形状的 SVG：五角星，不套遮罩，露出的就是星形本身 */
@@ -637,6 +651,11 @@ onMounted(() => {
           <span class="lib-cell__label">智能体头像 <small>AgentAvatar</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <div class="lib-demo-row">
+              <UiAgentAvatar :shape="agentCircle" color="#3f5f90" :state="agentState" :size="88" :gaze="agentGaze" />
+              <UiSegmented v-model="agentState" :options="agentStates" label="状态机" layout="one-line" />
+              <UiSwitch v-model="agentGazeOn" label="跟随鼠标看" />
+            </div>
+            <div class="lib-demo-row">
               <UiAgentAvatar :shape="agentCircle" color="#3f5f90" state="idle" :size="44" />
               <UiAgentAvatar :shape="agentTriangle" color="#7438ff" state="listening" :eyes-y="15" :size="44" />
               <UiAgentAvatar :shape="agentCircle" color="#0f766e" state="thinking" :size="44" />
@@ -649,7 +668,7 @@ onMounted(() => {
               <UiAgentAvatar :shape="agentTriangle" color="#249361" state="speaking" :eyes-y="15" :size="44" />
             </div>
           </div>
-          <span class="lib-cell__note">传剪影 SVG + 颜色，自动描边 + 胶囊眼；状态机驱动（呼吸 / 随机眨眼 / 弹簧注视 / 微扫视 / 左右眼 15ms 延迟），任意状态之间弹簧过渡。眼睛会跟着鼠标看。</span>
+          <span class="lib-cell__note">传剪影 SVG + 颜色，自动描边 + 两只同尺寸圆角矩形眼（不旋转、不随机、成组位移）；上面这只用分段实时切状态，任意状态之间弹簧过渡；呼吸 / 随机眨眼 / 弹簧注视 / 微扫视常驻。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">头像组 <small>AvatarGroup</small></span>

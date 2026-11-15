@@ -73,7 +73,7 @@ declare const UiAvatarGroup: DefineComponent<{
   max?: number
 }, AnyProps, unknown>
 declare const UiAgentAvatar: DefineComponent<{
-  /** 纯剪影 SVG 内部标记（24x24 viewBox）；组件自动上色 + 描边 + 胶囊眼 */
+  /** 纯剪影 SVG 内部标记（24x24 viewBox）；组件自动上色 + 描边 + 圆角矩形眼 */
   shape: string
   /** 形状主色 */
   color?: string
@@ -86,7 +86,7 @@ declare const UiAgentAvatar: DefineComponent<{
   gaze?: 'mouse' | 'none'
   /** false 时摆出当前状态的静止姿势，不跑动画循环 */
   animated?: boolean
-  /** speaking 状态的外部音量包络 0~1（可选） */
+  /** speaking 状态的外部音量包络 0~1（给了才调制开合，不给眼大小稳定） */
   level?: number
   /** 眼睛基准高度（viewBox 24 内） */
   eyesY?: number
