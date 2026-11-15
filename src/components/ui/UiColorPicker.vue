@@ -79,9 +79,11 @@ function hsvToHex(hsv) {
 }
 
 const hex = computed(() => normalizeHex(props.modelValue).toUpperCase())
-const hue = ref(hexToHsv(props.modelValue).h)
-const sat = ref(hexToHsv(props.modelValue).s)
-const bright = ref(hexToHsv(props.modelValue).v)
+/* 先算一次初值，再分给三个 ref；也保证 hexToHsv 的调用位置在其定义之后。 */
+const startHsv = hexToHsv(props.modelValue)
+const hue = ref(startHsv.h)
+const sat = ref(startHsv.s)
+const bright = ref(startHsv.v)
 
 function syncFromProp() {
   const next = hexToHsv(props.modelValue)

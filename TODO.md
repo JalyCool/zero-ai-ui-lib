@@ -60,6 +60,8 @@
 
 ## D. 进度记录（最近提交）
 
+- 2026-11-15 发布 npm **0.2.0**：新增 UiAvatarTag / UiPagerDots / 卡片 product 变体，取色盘 / 自动完成 / 动效与布局修复；包内已无 UiMediaViewer。
+
 - 本轮（第十一段）：清理重复组件 —— 删除 UiNumberInput（UiStepper）、UiDateInput/UiTimeInput
   （日期 / 时间选择器自带字段）、UiFileUpload（UiFileDropzone）、UiToastQueue（UiToastHost）、
   UiVirtualScroll（UiVirtualList）、UiBanner（UiAlert），保留原有实现；其余第二批组件从
