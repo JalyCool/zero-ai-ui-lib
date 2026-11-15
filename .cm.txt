@@ -1,0 +1,29 @@
+打字机逐字符 blur 进场 + 验证码按 react-bits CodeSlots 重做
+
+读了本地 react-bits 源码：TextAnimations/TextType（EFFECTS: fade/blur/rise 三档
+WAAPI keyframes、光标四档、glide）与 Micro/CodeSlots（motion value 逐位落位、
+cascade、caretX 滑行、success 洗色 clip-path + 数字 sink + 勾 CHECK_RISE、
+error 反向抽走）。按这些手法重写为 Vue：
+
+UiText（type 变体）：
+· 改成**逐字符节点**：每个新字符单独播放进场动画 —— 默认 blur 就是
+  opacity 0→1 + blur(.3em→0)（用户要的透明度 + 模糊渐变），另有 fade / rise 两档；
+· 光标四档 bar / block / underscore / character，闪烁半周期可调；
+· loop 改为先逐字删除（deleteCps）再重打，不再瞬间清空；
+· 保留 shiny / gradient 两套裁字渐变不变。
+
+UiCodeSlots（整体重写）：
+· 每个数字独立落位（opacity + blur 6px + translateY .5em + scale .72，spring 曲线）；
+· 粘贴按 cascade（20ms）逐位错开 —— 实测延迟 0/20/40/60/80/100ms；
+· 位光标是真实元素，在格子间滑行（实测 0 → 162px 走 3 格），只在当前位为空
+  / 错误态显示，带闪烁；
+· success：洗色从中间向两侧 clip-path 展开 + 数字按序号错峰下沉（独立
+  uiSlotSink keyframes，否则 fill-mode 会把 opacity 顶回 1）+ 勾从下方升起；
+· error：从后往前逐位抽走再清空；
+· 键盘全接管（数字 / 退格删前一位 / Delete / 方向键 / Home / End），原生 input
+  只负责焦点与 autocomplete="one-time-code"；删除用 ghost 层先播抽出动画。
+
+示例页同步：三种打字进场 + 三种光标、验证码加了校验成功 / 失败 / 重置。
+实测：三档 type-effect 动画名分别为 uiTextBlur/uiTextFade/uiTextRise，
+光标 class 分别为 is-bar/is-block/is-underscore；验证码落位动画 uiSlotLand、
+成功态 digitOpacity 0 + checkOpacity 1 + wash clip inset(0) round 14px；console 零错误。

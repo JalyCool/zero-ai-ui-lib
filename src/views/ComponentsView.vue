@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
@@ -249,6 +249,11 @@ function toggleStatusAuto() {
 }
 
 const codeSlot = ref('')
+const codeStatus = ref('idle')
+watch(codeStatus, value => {
+  if (value === 'idle') return
+  setTimeout(() => { codeStatus.value = 'idle' }, value === 'success' ? 1600 : 900)
+})
 const scrubValue = ref(42)
 const stepIndex = ref(0)
 const stepFlowSteps = [
@@ -751,13 +756,15 @@ onMounted(() => {
         <div class="lib-cell">
           <span class="lib-cell__label">文字变体 <small>Text</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiText variant="type" :text="'正在生成报告…'" :cps="18" :loop="true" />
+            <UiText variant="type" type-effect="blur" :text="'正在生成报告…'" :cps="16" :loop="true" />
+            <UiText variant="type" type-effect="fade" cursor-style="block" :text="'淡入进场 · 方块光标'" :cps="20" :loop="true" />
+            <UiText variant="type" type-effect="rise" cursor-style="underscore" :text="'升起进场 · 下划线光标'" :cps="18" :loop="true" />
             <UiText variant="shiny" text="掠光文字" sheen="chrome" />
             <UiText variant="gradient" text="流动渐变 · 扫过" gradient="sweep" />
             <UiText variant="gradient" text="流动渐变 · 网格" gradient="mesh" />
             <UiText variant="gradient" text="流动渐变 · 锥形" gradient="conic" />
           </div>
-          <span class="lib-cell__note">打字节奏可调；掠光有柔和与金属两档；渐变有扫过 / 漂移 / 锥形三种。</span>
+          <span class="lib-cell__note">打字机逐字符进场（透明度 + 模糊，另有淡入 / 升起两档），光标四档；掠光有柔和与金属两档；渐变有扫过 / 漂移 / 锥形三种。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">工具调用胶囊 <small>ToolCallChip</small></span>
@@ -799,10 +806,15 @@ onMounted(() => {
         <div class="lib-cell">
           <span class="lib-cell__label">一次性验证码 <small>CodeSlots</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiCodeSlots v-model="codeSlot" :length="6" label="验证码（粘贴或短信自动填充）" />
-            <span class="lib-muted">已输入：{{ codeSlot || '空' }}</span>
+            <UiCodeSlots v-model="codeSlot" :length="6" :status="codeStatus" label="验证码（粘贴或短信自动填充）" />
+            <div class="lib-cell__stage">
+              <UiButton size="sm" variant="tonal" @click="codeStatus = 'success'">校验成功</UiButton>
+              <UiButton size="sm" variant="outline" @click="codeStatus = 'error'">校验失败</UiButton>
+              <UiButton size="sm" variant="text" @click="codeStatus = 'idle'; codeSlot = ''">重置</UiButton>
+            </div>
+            <span class="lib-muted">已输入：{{ codeSlot || '空' }} · 状态：{{ codeStatus }}</span>
           </div>
-          <span class="lib-cell__note">原生 input 承担输入与 autocomplete，数字逐格弹入。</span>
+          <span class="lib-cell__note">逐位落位（透明度 + 模糊 + 位移 + 缩放），粘贴按 20ms 错峰；成功洗色下沉出勾，失败从后往前抽走。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">可拖数值 <small>ScrubField</small></span>

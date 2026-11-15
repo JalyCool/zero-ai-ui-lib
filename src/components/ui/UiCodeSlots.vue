@@ -2,74 +2,144 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
-  /* 位数 */
   length: { type: Number, default: 6 },
-  /* 已输入的字符（只保留数字） */
   modelValue: { type: String, default: '' },
-  /* 挂载后自动聚焦（会唤起键盘，按需开启） */
+  /* idle | success | error —— success 会洗成完成态（下沉 + 勾），error 会逐位抽走 */
+  status: { type: String, default: 'idle' },
+  mask: { type: Boolean, default: false },
   autofocus: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
-  /* 是否遮住已输入的位（OTP 一般明文，默认不遮） */
-  mask: { type: Boolean, default: false },
-  label: { type: String, default: '' }
+  label: { type: String, default: '' },
+  /* 每个新数字的落位时长（ms） */
+  settle: { type: Number, default: 300 },
+  /* 粘贴时逐位错开的间隔（ms） */
+  cascade: { type: Number, default: 20 }
 })
 
-const emit = defineEmits(['update:modelValue', 'complete', 'focus', 'blur'])
+const emit = defineEmits(['update:modelValue', 'complete', 'focus', 'blur', 'change'])
 
 /* ============================================================
-   一次性验证码输入
-   · 真正的输入是一个透明的原生 input（autocomplete="one-time-code"），
-     这样 iOS / Android 的短信验证码自动填充、以及系统粘贴都能直接进来；
-   · 界面上每个格子只是显示层：新数字落格时从下方弹入并去模糊，
-     「spring into its slots」就是这个落格动画；
-   · 粘贴时一次性铺满所有格子，多的截掉、非数字丢弃。
+   一次性验证码（按 react-bits CodeSlots 的手法移植）
+   ------------------------------------------------------------
+   · 每个数字独立「落位」：透明度 0→1、模糊 6px→0、位移 .5em→0、
+     缩放 .72→1，用 spring 曲线；粘贴时按 cascade 逐位错开，形成
+     一串接连落下的节奏，而不是整排一起出现。
+   · 位光标是**一个**元素，在格子之间滑过去（transform 过渡），
+     只在当前位为空（或错误态）时显示。
+   · success：先铺一层洗色（clip-path 从中间向两侧展开），数字逐位
+     下沉淡出，勾号从下方升起；error：数字从后往前逐位抽走再清空。
+   · 键盘可完全操作：数字写入、退格删前一位、方向键/Home/End 移位、
+     粘贴按位错开；原生 input 负责焦点与短信 autocomplete。
    ============================================================ */
 
 const inputEl = ref(null)
 const focused = ref(false)
-/* 当前位（不是「已填长度」）：左右键可以在已填的位之间走动，
-   最远只到「最后一个数字的紧接一位」。 */
-const caret = ref(0)
-/* 逐个落格的延迟（ms）：一次性粘贴 / 短信填充时每格错开一点，
-   单字符输入不加延迟（对象为空）。 */
-const delays = ref({})
-let delayTimer = 0
+const active = ref(0)
+const version = ref(Array.from({ length: props.length }, () => 0))
+const delays = ref(Array.from({ length: props.length }, () => 0))
+const ghosts = ref(Array.from({ length: props.length }, () => null))
+const veiled = ref(false)
+const draining = ref(false)
+let ghostTimers = []
+let drainTimer = 0
 
 const digits = computed(() => {
   const raw = String(props.modelValue || '').replace(/\D/g, '').slice(0, props.length)
   return Array.from({ length: props.length }, (_, i) => raw[i] || '')
 })
 const filled = computed(() => digits.value.filter(Boolean).length)
-/* 合法落点：该位已有数字，或正好是最后一个数字的下一位。 */
-const isAllowedCaret = index => index >= 0 && index <= Math.min(filled.value, props.length - 1)
+const pitch = computed(() => 46 + 8)
+const caretVisible = computed(() =>
+  focused.value && !props.disabled && !veiled.value && props.status !== 'success' && (props.status === 'error' || !digits.value[active.value]))
+
+/* 光标位置：当前位；若当前位已填满则停在末尾下一位。 */
+const caretIndex = computed(() => Math.min(Math.max(0, active.value), props.length - 1))
+const caretStyle = computed(() => ({ transform: 'translate3d(' + (caretIndex.value * pitch.value) + 'px,0,0)' }))
 
 function sanitize(value) {
   return String(value || '').replace(/\D/g, '').slice(0, props.length)
 }
 
-watch(() => props.modelValue, (next, prev) => {
-  /* 外部改值（含我们自己的删除）时让原生 input 跟上。 */
-  if (inputEl.value && inputEl.value.value !== String(next || '')) inputEl.value.value = String(next || '')
-  const nextLen = String(next || '').replace(/\D/g, '').length
-  const prevLen = String(prev || '').replace(/\D/g, '').length
-  /* 一次进来两位以上（粘贴 / 自动填充）：按位错峰插入，间隔很短。 */
-  if (nextLen > prevLen + 1) {
-    const map = {}
-    for (let i = prevLen; i < nextLen; i++) map[i] = (i - prevLen) * 55
-    delays.value = map
-    clearTimeout(delayTimer)
-    delayTimer = setTimeout(() => { delays.value = {} }, (nextLen - prevLen) * 55 + 700)
-  } else if (nextLen <= prevLen) {
-    delays.value = {}
+/* 写入一串数字：从 from 开始逐位落位，按 cascade 错峰。 */
+function insert(raw, from = active.value) {
+  if (props.disabled || draining.value) return
+  const text = sanitize(raw)
+  if (!text) return
+  const list = digits.value.slice()
+  const landing = []
+  let cursor = from
+  for (const char of text) {
+    if (cursor >= props.length) break
+    if (list[cursor] !== char) { version.value[cursor] += 1; delays.value[cursor] = landing.length * props.cascade }
+    list[cursor] = char
+    landing.push(cursor)
+    cursor += 1
   }
-  caret.value = Math.min(nextLen, props.length)
-});
+  if (!landing.length) return
+  commit(list.join(''))
+  active.value = Math.min(cursor, props.length - 1)
+}
+
+function clearSlot(index, stepBack = false) {
+  const list = digits.value.slice()
+  if (!list[index]) {
+    if (stepBack) active.value = Math.max(0, index - 1)
+    return
+  }
+  ghosts.value[index] = { char: list[index], tick: ++version.value[index] }
+  clearTimeout(ghostTimers[index])
+  ghostTimers[index] = setTimeout(() => { ghosts.value[index] = null }, 220)
+  list[index] = ''
+  commit(list.join(''))
+  if (stepBack) active.value = Math.max(0, index)
+}
+
+function commit(value) {
+  const before = sanitize(props.modelValue)
+  emit('update:modelValue', value)
+  emit('change', value)
+  if (before.length !== props.length && value.length === props.length) emit('complete', value)
+}
+
+function moveActive(delta) {
+  active.value = Math.max(0, Math.min(props.length - 1, active.value + delta))
+}
+
+/* ---------- 键盘：完全自己接管，才能控制逐位动画 ---------- */
+function onKeydown(event) {
+  if (props.disabled || draining.value) return
+  if (event.metaKey || event.ctrlKey || event.altKey) return
+  const key = event.key
+  if (/^[0-9]$/.test(key)) {
+    event.preventDefault()
+    insert(key)
+  } else if (key === 'Backspace') {
+    event.preventDefault()
+    /* 与产品约定一致：退格删「当前位前面那一位」；停在第一位时删第一位。 */
+    if (active.value > 0 && !digits.value[active.value]) clearSlot(active.value - 1, true)
+    else if (digits.value[active.value]) clearSlot(active.value) && (active.value = Math.max(0, active.value - 1))
+    else if (active.value > 0) clearSlot(active.value - 1, true)
+  } else if (key === 'Delete') {
+    event.preventDefault()
+    clearSlot(active.value)
+  } else if (key === 'ArrowLeft') { event.preventDefault(); moveActive(-1) }
+  else if (key === 'ArrowRight') { event.preventDefault(); moveActive(1) }
+  else if (key === 'Home') { event.preventDefault(); active.value = 0 }
+  else if (key === 'End') { event.preventDefault(); active.value = props.length - 1 }
+}
 
 function onInput(event) {
-  const next = sanitize(event.target.value)
-  event.target.value = next
-  emit('update:modelValue', next)
-  if (next.length === props.length) emit('complete', next)
+  if (props.disabled) return
+  const text = sanitize(event.target.value)
+  event.target.value = ''
+  if (!text) return
+  insert(text, active.value)
+}
+
+function onPaste(event) {
+  if (props.disabled) return
+  event.preventDefault()
+  insert((event.clipboardData || window.clipboardData).getData('text'), 0)
 }
 
 function focusInput() {
@@ -77,92 +147,73 @@ function focusInput() {
   inputEl.value && inputEl.value.focus()
 }
 
-/* 点任意格子都把焦点还给真实 input，光标落到末尾。 */
-function onSlotClick() {
-  focusInput()
-  caret.value = Math.min(filled.value, props.length - 1)
-  const el = inputEl.value
-  if (el) el.setSelectionRange(el.value.length, el.value.length)
-}
-
-function onPaste(event) {
+/* 点某格：把当前位放过去（不超过末尾下一位）。 */
+function onRowDown(event) {
   if (props.disabled) return
-  const text = sanitize((event.clipboardData || window.clipboardData).getData('text'))
-  if (!text) return
-  event.preventDefault()
-  emit('update:modelValue', text)
-  if (inputEl.value) inputEl.value.value = text
-  caret.value = Math.min(text.length, props.length - 1)
-  if (text.length === props.length) emit('complete', text)
-}
-
-/* 按当前位删除：
-   · 退格删「当前位前面那一位」的数字（位光标停在 0 时删第一位）；
-   · Delete 删当前位本身的数字；
-   删完后面的数字整体前移，位光标落到被删的位置上。 */
-function removeDigitAt(index) {
-  const raw = String(props.modelValue || '').replace(/\D/g, '')
-  if (!raw.length) return
-  const at = Math.max(0, Math.min(raw.length - 1, index))
-  const next = raw.slice(0, at) + raw.slice(at + 1)
-  emit('update:modelValue', next)
-  if (inputEl.value) inputEl.value.value = next
-  caret.value = next.length ? Math.min(at, next.length - 1) : 0
-  if (next.length === 0) delays.value = {}
-}
-
-function onBackspace() {
-  const len = String(props.modelValue || '').replace(/\D/g, '').length
-  if (!len) return
-  /* 当前位 > 0：删它前面那位；停在第一位：删第一位。 */
-  removeDigitAt(caret.value > 0 ? caret.value - 1 : 0)
-}
-
-function onDelete() {
-  const len = String(props.modelValue || '').replace(/\D/g, '').length
-  if (!len) return
-  removeDigitAt(Math.min(caret.value, len - 1))
-}
-
-/* 左右键在「已填的位」与「末尾下一位」之间走动，不允许走到空洞上。 */
-function moveCaret(delta) {
-  const max = Math.min(filled.value, props.length - 1)
-  let next = caret.value + delta
-  next = Math.max(0, Math.min(max, next))
-  caret.value = next
-}
-
-/* 点某一格：落到那一格（超出范围的落到末尾下一位）。 */
-function placeCaret(index) {
-  caret.value = Math.min(index, Math.min(filled.value, props.length - 1))
+  const row = event.currentTarget.getBoundingClientRect()
+  const index = Math.floor((event.clientX - row.left) / pitch.value)
+  active.value = Math.max(0, Math.min(index, filled.value))
   focusInput()
 }
 
-function onKeydown(event) {
-  if (props.disabled) return
-  if (event.key === 'ArrowLeft') { event.preventDefault(); moveCaret(-1) }
-  else if (event.key === 'ArrowRight') { event.preventDefault(); moveCaret(1) }
-  else if (event.key === 'Home') { event.preventDefault(); caret.value = 0 }
-  else if (event.key === 'End') { event.preventDefault(); caret.value = Math.min(filled.value, props.length - 1) }
-  else if (event.key === 'Backspace') { event.preventDefault(); onBackspace() }
-  else if (event.key === 'Delete') { event.preventDefault(); onDelete() }
-}
+/* ---------- 状态：成功洗色 + 下沉 + 勾；失败抽走 ---------- */
+watch(() => props.status, (next, prev) => {
+  if (next === 'success') {
+    veiled.value = true
+    return
+  }
+  if (prev === 'success') {
+    veiled.value = false
+    return
+  }
+  if (next !== 'error') return
+  const list = digits.value
+  const targets = list.map((char, i) => (char ? i : -1)).filter(i => i >= 0).reverse()
+  if (!targets.length) return
+  draining.value = true
+  targets.forEach((index, order) => {
+    ghosts.value[index] = { char: list[index], tick: ++version.value[index], delay: order * props.cascade }
+    list[index] = ''
+  })
+  clearTimeout(drainTimer)
+  drainTimer = setTimeout(() => {
+    draining.value = false
+    emit('update:modelValue', '')
+    emit('change', '')
+  }, targets.length * props.cascade + 220)
+}, { immediate: false })
 
-onMounted(() => {
-  if (props.autofocus) nextTick(focusInput)
+watch(() => props.modelValue, value => {
+  /* 外部改值（含清空）：字符合法范围内，重置当前位到末尾下一位。 */
+  if (inputEl.value && focused.value) inputEl.value.value = ''
+  const filledCount = sanitize(value).length
+  if (filledCount < props.length) active.value = Math.min(filledCount, props.length - 1)
 })
 
-onBeforeUnmount(() => { /* 无定时器需要清理 */ })
+watch(() => props.length, length => {
+  version.value = Array.from({ length }, (_, i) => version.value[i] || 0)
+  delays.value = Array.from({ length }, (_, i) => delays.value[i] || 0)
+  ghosts.value = Array.from({ length }, (_, i) => ghosts.value[i] || null)
+  active.value = Math.min(active.value, length - 1)
+})
+
+onMounted(() => { if (props.autofocus) nextTick(focusInput) })
+onBeforeUnmount(() => {
+  ghostTimers.forEach(timer => clearTimeout(timer))
+  clearTimeout(drainTimer)
+})
 
 defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.value.blur() })
 </script>
 
 <template>
-  <div class="ui-code-slots" :class="{ 'is-disabled': disabled, 'is-focused': focused }">
+  <div class="ui-code-slots" :class="{ 'is-disabled': disabled, 'is-focused': focused, 'is-success': status === 'success', 'is-error': status === 'error' }">
     <span v-if="label" class="ui-code-slots__label">{{ label }}</span>
 
-    <div class="ui-code-slots__row" @click="onSlotClick">
-      <!-- 透明原生输入：短信自动填充 / 系统粘贴 / 数字键盘都靠它。 -->
+    <div
+      class="ui-code-slots__row"
+      @pointerdown="onRowDown"
+    >
       <input
         ref="inputEl"
         class="ui-code-slots__input"
@@ -171,30 +222,51 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
         autocomplete="one-time-code"
         autocapitalize="off"
         spellcheck="false"
-        :maxlength="length"
         :disabled="disabled"
-        :value="modelValue"
         :aria-label="label || '验证码'"
+        @keydown="onKeydown"
         @input="onInput"
         @paste="onPaste"
-        @keydown="onKeydown"
-        @focus="focused = true; emit('focus')"
+        @focus="focused = true; active = Math.min(filled, length - 1); emit('focus')"
         @blur="focused = false; emit('blur')"
       />
+
+      <!-- 位光标：一个元素在格子间滑过去 -->
+      <span
+        class="ui-code-slots__caret"
+        :class="{ 'is-on': caretVisible }"
+        :style="caretStyle"
+        aria-hidden="true"
+      ></span>
+      <!-- 洗色层：success 时从中间向两侧展开 -->
+      <span class="ui-code-slots__wash" aria-hidden="true"></span>
+      <!-- 勾：success 时从下方升起 -->
+      <span class="ui-code-slots__check" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.6 4.6L19 7.2" /></svg>
+      </span>
+
       <span
         v-for="(digit, index) in digits"
-        :key="index"
+        :key="'slot-' + index"
         class="ui-code-slots__slot"
-        :class="{ 'is-filled': !!digit, 'is-active': index === caret }"
+        :class="{ 'is-filled': !!digit, 'is-active': index === caretIndex && focused, 'is-ghost': !!ghosts[index] }"
+        :style="{ '--i': index }"
         aria-hidden="true"
-        @click.stop="placeCaret(index)"
       >
+        <!-- 新数字：key 变化触发落位动画（透明度 + 模糊 + 位移 + 缩放） -->
         <span
           v-if="digit"
-          :key="digit + '-pop'"
+          :key="'d-' + index + '-' + version[index]"
           class="ui-code-slots__digit"
-          :style="{ animationDelay: (delays[index] || 0) + 'ms' }"
+          :style="{ animationDelay: (delays[index] || 0) + 'ms', animationDuration: settle + 'ms' }"
         >{{ mask ? '•' : digit }}</span>
+        <!-- 被删掉的数字：先播放抽笔（上移 + 淡出 + 模糊）再消失 -->
+        <span
+          v-if="ghosts[index]"
+          :key="'g-' + index + '-' + ghosts[index].tick"
+          class="ui-code-slots__digit is-leaving"
+          :style="{ animationDelay: (ghosts[index].delay || 0) + 'ms' }"
+        >{{ mask ? '•' : ghosts[index].char }}</span>
       </span>
     </div>
 
@@ -207,11 +279,11 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
 .ui-code-slots__label { font-size: var(--fs-tiny); font-weight: var(--w-label); color: var(--on-surface-variant); }
 .ui-code-slots__row { position: relative; display: flex; gap: 8px; }
 
-/* 输入本体：完全透明但盖满整行，点任意位置都相当于聚焦它。 */
+/* 输入本体透明地盖住整行，只负责焦点、键盘与短信自动填充。 */
 .ui-code-slots__input {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
   width: 100%;
   height: 100%;
   padding: 0;
@@ -219,7 +291,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   background: transparent;
   color: transparent;
   caret-color: transparent;
-  font-size: 16px;      /* 小于 16px 会在 iOS 上触发自动放大 */
+  font-size: 16px;
   opacity: 0;
   cursor: text;
 }
@@ -233,6 +305,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   flex: 1 1 0;
   min-width: 0;
   max-width: 56px;
+  overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(13px * var(--radius-scale));
   background: var(--surface-container-low);
@@ -242,27 +315,99 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   font-variant-numeric: tabular-nums;
   transition: border-color var(--t-fade), background var(--t-fade), transform var(--t-feedback);
 }
-/* 当前待输入位：主色描边 + 呼吸提示。 */
-.ui-code-slots__slot.is-active { border-color: var(--primary); background: var(--surface-container); }
-.ui-code-slots:not(.is-focused) .ui-code-slots__slot.is-active { border-color: var(--outline-variant); background: var(--surface-container-low); }
 .ui-code-slots__slot.is-filled { border-color: color-mix(in oklab, var(--primary) 34%, var(--outline-variant)); }
-.ui-code-slots:not(.is-focused) .ui-code-slots__slot.is-active { border-color: var(--outline-variant); }
+.ui-code-slots__slot.is-active { border-color: var(--primary); background: var(--surface-container); }
 .ui-code-slots.is-disabled .ui-code-slots__slot { opacity: .42; }
-.ui-code-slots.is-disabled .ui-code-slots__input { cursor: not-allowed; }
+.ui-code-slots.is-error .ui-code-slots__slot { border-color: color-mix(in oklab, var(--error) 40%, var(--outline-variant)); }
 
-/* 落格：从下方弹入 + 去模糊，这就是「spring into its slots」。 */
-.ui-code-slots__digit {
-  animation: uiCodeSlotDrop var(--spring-feedback-dur, 320ms) var(--spring-feedback, cubic-bezier(.22,1.2,.36,1)) both;
-  will-change: transform, filter, opacity;
+/* 位光标：一个元素在格子间滑过去（transform 走 spring 曲线）。 */
+.ui-code-slots__caret {
+  position: absolute;
+  left: 23px;
+  bottom: 9px;
+  z-index: 2;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--primary);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 260ms cubic-bezier(.22, 1.2, .36, 1), opacity 160ms ease;
 }
-@keyframes uiCodeSlotDrop {
-  from { opacity: 0; transform: translateY(52%) scale(.82); filter: blur(7px); }
-  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+.ui-code-slots__caret.is-on { opacity: 1; animation: uiSlotCaretBlink 1.05s steps(1, end) infinite; }
+@keyframes uiSlotCaretBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+/* 单个数字：落位（透明度 + 模糊 + 位移 + 缩放）。 */
+.ui-code-slots__digit {
+  display: block;
+  will-change: opacity, filter, transform;
+  animation-name: uiSlotLand;
+  animation-timing-function: cubic-bezier(.22, 1.2, .36, 1);
+  animation-fill-mode: both;
+}
+@keyframes uiSlotLand {
+  from { opacity: 0; filter: blur(6px); transform: translateY(.5em) scale(.72); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+}
+/* 删除：上移 + 淡出 + 模糊 */
+.ui-code-slots__digit.is-leaving { position: absolute; animation-name: uiSlotLeave; animation-duration: 200ms; }
+@keyframes uiSlotLeave {
+  from { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+  to { opacity: 0; filter: blur(4px); transform: translateY(-.45em) scale(.8); }
+}
+
+/* 成功：洗色从中间展开，数字下沉，勾升起。 */
+.ui-code-slots__wash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: calc(14px * var(--radius-scale));
+  background: color-mix(in oklab, var(--ui-success, #15803d) 16%, var(--surface-container-low));
+  clip-path: inset(0 50% 0 50% round 14px);
+  opacity: 0;
+  transition: clip-path 320ms cubic-bezier(.23, 1, .32, 1), opacity 120ms ease;
+  pointer-events: none;
+}
+.ui-code-slots.is-success .ui-code-slots__wash { clip-path: inset(0 0 0 0 round 14px); opacity: 1; }
+
+.ui-code-slots__check {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  color: var(--ui-success, #15803d);
+  opacity: 0;
+  transform: translateY(8px) scale(.85);
+  transition: opacity 200ms ease, transform 320ms cubic-bezier(.22, 1.4, .36, 1);
+  pointer-events: none;
+}
+.ui-code-slots__check svg { width: 26px; height: 26px; }
+.ui-code-slots.is-success .ui-code-slots__check { opacity: 1; transform: none; transition-delay: 280ms; }
+/* 成功时数字逐位下沉：用独立 keyframes 覆盖落位动画（同一个 ranimation 的
+   fill-mode 会把 opacity 顶回 1，所以不能只写 opacity:0）。 */
+.ui-code-slots.is-success .ui-code-slots__digit {
+  animation-name: uiSlotSink;
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(.23, 1, .32, 1);
+  animation-delay: calc(var(--i, 0) * 28ms);
+  animation-fill-mode: both;
+}
+@keyframes uiSlotSink {
+  from { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+  to { opacity: 0; filter: blur(4px); transform: translateY(.45em) scale(.9); }
 }
 
 .ui-code-slots__progress { align-self: flex-end; font-size: var(--fs-micro); color: var(--on-surface-variant); font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-code-slots__digit { animation: none; }
+  .ui-code-slots__digit { animation-duration: .01ms !important; }
+  .ui-code-slots__digit.is-leaving { animation-duration: .01ms !important; }
+  .ui-code-slots__wash,
+  .ui-code-slots__check { transition-duration: .01ms; }
 }
 </style>

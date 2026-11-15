@@ -4,125 +4,161 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 const props = defineProps({
   /* type = 打字机；shiny = 掠光；gradient = 流动渐变 */
   variant: { type: String, default: 'type' },
-  /* 文本；也可以直接用默认插槽 */
   text: { type: String, default: '' },
-  /* ---- type：打字节奏 ---- */
-  /* 每秒打出的字符数；越小越慢 */
+  /* ---- type：节奏与光标 ---- */
   cps: { type: Number, default: 22 },
-  /* 光标 */
   cursor: { type: Boolean, default: true },
-  /* 打完从头再来 */
+  /* bar | block | underscore | character */
+  cursorStyle: { type: String, default: 'bar' },
+  /* 光标一次闪烁的半周期（ms） */
+  cursorBlink: { type: Number, default: 520 },
+  /* 每个新字符的进入方式：blur（透明度 + 模糊）/ fade / rise */
+  typeEffect: { type: String, default: 'blur' },
+  /* 打完循环：先删再打 */
   loop: { type: Boolean, default: false },
-  /* 开始前的等待（ms） */
+  /* 删除速度（字符/秒） */
+  deleteCps: { type: Number, default: 40 },
+  /* 打完后停顿（ms） */
+  pause: { type: Number, default: 900 },
   startDelay: { type: Number, default: 0 },
-  /* ---- shiny：掠光 ---- */
-  /* soft = 柔和光带；chrome = 带冷色高光的金属反射 */
+  /* ---- shiny ---- */
   sheen: { type: String, default: 'soft' },
-  /* 光带扫过一次的时长（ms） */
   sweep: { type: Number, default: 2200 },
-  /* ---- gradient：流动渐变 ---- */
-  /* sweep = 横向扫过；mesh = 多点缓慢漂移；conic = 摆动的锥形扇面 */
+  /* ---- gradient ---- */
   gradient: { type: String, default: 'sweep' },
-  /* 渐变色列表 */
   colors: { type: Array, default: () => ['#5b8def', '#8b5cf6', '#22d3ee', '#5b8def'] }
 })
 
 const emit = defineEmits(['done', 'tick'])
 
 /* ============================================================
-   文本动效包装器
-   · type：逐字符推进，节奏由 cps 换算成毫秒；光标独立闪烁，
-     打完（或 loop 时从头）再继续；
-   · shiny：整块文字裁成渐变，光带靠 background-position 扫过；
-   · gradient：三种流动方式共用同一套 background-clip 手法，
-     只是动画的维度不同（横向 / 多点 / 锥形角度）。
-   三者都只是「视觉层」，不改变排版尺寸。
+   文本动效
+   · type：逐字符推进；**每个新字符单独入场**（透明度 + 模糊，
+     可选 fade / rise），不是整段文字一起淡入 —— 这是 react-bits
+     TextType 的做法：一个字符一个动画，视觉上才有「一个字一个字
+     落下来」的感觉。光标四档：bar / block / underscore / character。
+     loop 时先逐字删除再重打，而不是瞬间清空。
+   · shiny / gradient：同一套 background-clip 裁字，只是流动维度不同。
    ============================================================ */
 
 const source = computed(() => props.text)
 
-/* ---------- type ---------- */
-const typed = ref('')
+/* ---------- type：逐字符 ---------- */
+const count = ref(0)
+const deleting = ref(false)
 let timer = 0
-let caretTimer = 0
-const caretOn = ref(true)
+let pauseTimer = 0
 
-function resetCaretBlink() {
-  clearInterval(caretTimer)
-  if (!props.cursor) return
-  caretOn.value = true
-  caretTimer = setInterval(() => { caretOn.value = !caretOn.value }, 520)
-}
-
-function type(restart = false) {
+function schedule(delay) {
   clearTimeout(timer)
-  if (restart) typed.value = ''
-  if (props.variant !== 'type') { typed.value = source.value; return }
-  const delay = typed.value ? Math.max(16, 1000 / Math.max(1, props.cps)) : Math.max(0, props.startDelay)
-  timer = setTimeout(() => {
-    if (typed.value.length < source.value.length) {
-      typed.value = source.value.slice(0, typed.value.length + 1)
-      emit('tick', typed.value)
-      type()
-    } else if (props.loop && source.value) {
-      timer = setTimeout(() => type(true), 1200)
-    } else {
-      emit('done')
-    }
-  }, delay)
+  timer = setTimeout(step, Math.max(8, delay))
 }
 
-watch(() => [source.value, props.cps, props.startDelay, props.variant, props.loop], () => type(true), { immediate: true })
-watch(() => props.cursor, resetCaretBlink, { immediate: true })
-onBeforeUnmount(() => { clearTimeout(timer); clearInterval(caretTimer) })
+function step() {
+  const length = source.value.length
+  const typing = !deleting.value
+  const speed = typing ? 1000 / Math.max(1, props.cps) : 1000 / Math.max(1, props.deleteCps)
+
+  if (typing) {
+    if (count.value < length) {
+      count.value += 1
+      emit('tick', source.value.slice(0, count.value))
+      schedule(speed)
+      return
+    }
+    /* 打完了 */
+    emit('done')
+    if (!props.loop) return
+    pauseTimer = setTimeout(() => {
+      deleting.value = true
+      schedule(speed)
+    }, Math.max(200, props.pause))
+    return
+  }
+
+  /* 删除阶段 */
+  if (count.value > 0) {
+    count.value -= 1
+    emit('tick', source.value.slice(0, count.value))
+    schedule(speed)
+    return
+  }
+  deleting.value = false
+  pauseTimer = setTimeout(() => schedule(speed), 260)
+}
+
+function restart() {
+  clearTimeout(timer)
+  clearTimeout(pauseTimer)
+  count.value = 0
+  deleting.value = false
+  if (props.variant !== 'type') { count.value = source.value.length; return }
+  schedule(Math.max(0, props.startDelay))
+}
+
+watch(() => [source.value, props.cps, props.deleteCps, props.loop, props.pause, props.startDelay, props.variant], restart, { immediate: true })
+
+const chars = computed(() => {
+  if (props.variant !== 'type') return []
+  return Array.from(source.value.slice(0, count.value))
+})
+const showCursor = computed(() => props.variant === 'type' && props.cursor)
+
+onBeforeUnmount(() => {
+  clearTimeout(timer)
+  clearTimeout(pauseTimer)
+})
 
 /* ---------- shiny / gradient ---------- */
 const gradientCss = computed(() => {
   if (props.variant === 'shiny') {
     const base = 'var(--on-surface)'
-    const colors = props.sheen === 'chrome'
-      ? ['#9fb3d1', '#f2f7ff', '#7dd3fc', '#f2f7ff', '#9fb3d1']
-      : ['rgba(255,255,255,0)', 'rgba(255,255,255,.85)', 'rgba(255,255,255,0)']
-    if (props.sheen === 'chrome') {
-      return `linear-gradient(105deg, ${colors.join(', ')})`
-    }
-    /* 柔和光带：本体用当前文字色，光带叠加一层高光。 */
-    return `linear-gradient(105deg, ${base} 0%,
-      ${base} 38%, ${colors[1]} 50%, ${base} 62%, ${base} 100%)`
+    if (props.sheen === 'chrome') return 'linear-gradient(105deg, #9fb3d1, #f2f7ff, #7dd3fc, #f2f7ff, #9fb3d1)'
+    return 'linear-gradient(105deg, ' + base + ' 0%, ' + base + ' 38%, rgba(255,255,255,.85) 50%, ' + base + ' 62%, ' + base + ' 100%)'
   }
   const list = props.colors.length >= 2 ? props.colors : ['#5b8def', '#8b5cf6']
-  if (props.gradient === 'conic') {
-    return `conic-gradient(from var(--ui-text-angle, 0deg), ${list.join(', ')})`
-  }
+  if (props.gradient === 'conic') return 'conic-gradient(from var(--ui-text-angle, 0deg), ' + list.join(', ') + ')'
   if (props.gradient === 'mesh') {
-    /* 多点径向叠加：位置各自漂移，视觉上像油膜在流动。 */
-    const stops = list.map((color, i) => `radial-gradient(60% 160% at ${20 + i * 25}% 50%, ${color} 0%, transparent 62%)`)
-    return stops.join(', ')
+    return list.map((color, i) => 'radial-gradient(60% 160% at ' + (20 + i * 25) + '% 50%, ' + color + ' 0%, transparent 62%)').join(', ')
   }
-  return `linear-gradient(100deg, ${list.join(', ')})`
+  return 'linear-gradient(100deg, ' + list.join(', ') + ')'
 })
 
 const styleVars = computed(() => ({
   backgroundImage: gradientCss.value,
-  backgroundSize: props.variant === 'shiny' ? '260% 100%'
-    : props.gradient === 'mesh' ? '220% 220%'
-    : props.gradient === 'conic' ? '100% 100%'
-    : '220% 100%',
-  '--ui-text-sweep': props.sweep + 'ms'
+  backgroundSize: props.variant === 'shiny' ? '260% 100%' : props.gradient === 'mesh' ? '220% 220%' : '220% 100%',
+  '--ui-text-sweep': props.sweep + 'ms',
+  '--caret-blink': props.cursorBlink + 'ms'
 }))
 
-const display = computed(() => (props.variant === 'type' ? typed.value : (source.value || '')))
+const display = computed(() => (props.variant === 'type' ? '' : (source.value || '')))
 </script>
 
 <template>
   <span
     class="ui-text"
-    :class="[`is-${variant}`, variant === 'gradient' ? `is-gradient-${gradient}` : '', variant === 'shiny' ? `is-sheen-${sheen}` : '']"
-    :style="variant === 'type' ? undefined : styleVars"
+    :class="[
+      `is-${variant}`,
+      variant === 'type' ? `is-effect-${typeEffect}` : '',
+      variant === 'gradient' ? `is-gradient-${gradient}` : '',
+      variant === 'shiny' ? `is-sheen-${sheen}` : ''
+    ]"
+    :style="variant === 'type' ? { '--caret-blink': cursorBlink + 'ms' } : styleVars"
   >
     <template v-if="variant === 'type'">
-      <span class="ui-text__typed">{{ display }}</span>
-      <span v-if="cursor" class="ui-text__caret" :class="{ 'is-on': caretOn }" aria-hidden="true"></span>
+      <!-- 每个字符是独立节点：新字符出现时 CSS 动画自动播放入场（透明度 + 模糊）。 -->
+      <span
+        v-for="(char, index) in chars"
+        :key="index"
+        class="ui-text__ch"
+      >{{ char === ' ' ? '\u00a0' : char }}</span>
+      <span
+        v-if="showCursor"
+        class="ui-text__caret"
+        :class="`is-${cursorStyle}`"
+        :style="{ animationDuration: cursorBlink * 2 + 'ms' }"
+        aria-hidden="true"
+      >{{ cursorStyle === 'character' ? '|' : '' }}</span>
       <span class="ui-text__sr">{{ source }}</span>
     </template>
     <template v-else>
@@ -136,20 +172,42 @@ const display = computed(() => (props.variant === 'type' ? typed.value : (source
 
 /* ---------- type ---------- */
 .ui-text.is-type { white-space: pre-wrap; }
-.ui-text__typed { white-space: pre-wrap; }
+.ui-text__ch { display: inline-block; white-space: pre-wrap; will-change: opacity, filter, transform; }
+
+/* 每个新字符进场：透明度 + 模糊渐变（默认）；另有 fade / rise 两档。 */
+.ui-text.is-effect-blur .ui-text__ch { animation: uiTextBlur 520ms cubic-bezier(.22, 1, .36, 1) both; }
+.ui-text.is-effect-fade .ui-text__ch { animation: uiTextFade 360ms cubic-bezier(.25, 1, .5, 1) both; }
+.ui-text.is-effect-rise .ui-text__ch { animation: uiTextRise 480ms cubic-bezier(.34, 1.4, .64, 1) both; }
+
+@keyframes uiTextBlur {
+  from { opacity: 0; filter: blur(.3em); }
+  to { opacity: 1; filter: blur(0); }
+}
+@keyframes uiTextFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes uiTextRise {
+  from { opacity: 0; transform: translateY(.55em); filter: blur(.16em); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+/* 光标四档：bar / block / underscore / character。 */
 .ui-text__caret {
   display: inline-block;
-  width: .08em;
-  height: 1.05em;
   margin-left: .06em;
-  vertical-align: -.16em;
-  background: currentColor;
-  border-radius: 1px;
-  opacity: 0;
-  transition: opacity var(--t-fade);
+  vertical-align: -.14em;
+  animation-name: uiTextCaretBlink;
+  animation-timing-function: steps(1, end);
+  animation-iteration-count: infinite;
 }
-.ui-text__caret.is-on { opacity: 1; }
-/* 屏幕阅读器读到完整句子，避免逐字播报。 */
+.ui-text__caret.is-bar { width: .1em; height: 1.05em; background: currentColor; border-radius: 1px; }
+.ui-text__caret.is-block { width: .52em; height: 1.05em; background: currentColor; border-radius: 2px; opacity: .62; }
+.ui-text__caret.is-underscore { width: .55em; height: .1em; vertical-align: -.06em; background: currentColor; border-radius: 1px; }
+.ui-text__caret.is-character { width: auto; height: auto; font-weight: var(--w-body); color: currentColor; }
+@keyframes uiTextCaretBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+/* 屏幕阅读器读完整句子，避免逐字播报。 */
 .ui-text__sr {
   position: absolute;
   width: 1px;
@@ -159,7 +217,7 @@ const display = computed(() => (props.variant === 'type' ? typed.value : (source
   white-space: nowrap;
 }
 
-/* ---------- shiny / gradient：共用的裁字渐变 ---------- */
+/* ---------- shiny / gradient ---------- */
 .ui-text.is-shiny,
 .ui-text.is-gradient {
   background-repeat: repeat;
@@ -167,44 +225,25 @@ const display = computed(() => (props.variant === 'type' ? typed.value : (source
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  /* 兜底：不支持 background-clip:text 时退回普通文字色。 */
-  background-blend-mode: normal;
 }
 @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
   .ui-text.is-shiny,
   .ui-text.is-gradient { color: var(--on-surface); -webkit-text-fill-color: currentColor; }
 }
-
 .ui-text.is-shiny { animation: uiTextSweep var(--ui-text-sweep, 2200ms) linear infinite; }
 .ui-text.is-shiny.is-sheen-chrome { filter: saturate(1.15) contrast(1.05); }
-
 .ui-text.is-gradient-sweep { animation: uiTextSweep var(--ui-text-sweep, 2200ms) linear infinite; }
 .ui-text.is-gradient-mesh { animation: uiTextMesh calc(var(--ui-text-sweep, 2200ms) * 2.4) ease-in-out infinite alternate; }
-.ui-text.is-gradient-conic {
-  /* conic 渐变的角度需要注册成可插值变量；不支持时退回 sweep。 */
-  animation: uiTextConic calc(var(--ui-text-sweep, 2200ms) * 1.6) ease-in-out infinite alternate;
-}
+.ui-text.is-gradient-conic { animation: uiTextConic calc(var(--ui-text-sweep, 2200ms) * 1.6) ease-in-out infinite alternate; }
 
-@keyframes uiTextSweep {
-  from { background-position: 120% 50%; }
-  to { background-position: -20% 50%; }
-}
-@keyframes uiTextMesh {
-  from { background-position: 0% 40%; }
-  to { background-position: 100% 60%; }
-}
-@keyframes uiTextConic {
-  from { --ui-text-angle: 0deg; }
-  to { --ui-text-angle: 360deg; }
-}
-/* 让 conic 角度真的能插值（Chrome 支持 @property；不支持则停在静态渐变）。 */
-@property --ui-text-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
+@keyframes uiTextSweep { from { background-position: 120% 50%; } to { background-position: -20% 50%; } }
+@keyframes uiTextMesh { from { background-position: 0% 40%; } to { background-position: 100% 60%; } }
+@keyframes uiTextConic { from { --ui-text-angle: 0deg; } to { --ui-text-angle: 360deg; } }
+@property --ui-text-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 
 @media (prefers-reduced-motion: reduce) {
+  .ui-text__ch { animation: none !important; }
+  .ui-text__caret { animation: none; opacity: 1; }
   .ui-text.is-shiny,
   .ui-text.is-gradient-sweep,
   .ui-text.is-gradient-mesh,
