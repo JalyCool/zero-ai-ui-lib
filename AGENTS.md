@@ -144,7 +144,7 @@ import {
 | `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；时间 / 日期波轮都基于它 |
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起 |
 | `UiModal` | `v-model`；插槽 `#header` / `#title` / 默认 / `#footer`，作用域都带 `close`；遮罩压暗 + 5px 模糊 |
-| `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽；**把手可拖拽**：拖把手实时改高度（跟手、禁 transition），松手按位移 + 速度吸附锚点；`anchors` 默认随 `scrim`：无背景版 `[0.2, 0.6]`、有背景版 `[0.6]`（压暗背景不放 20% 档）+ 自动追加「全内容」档，全内容不足 60% 时 60% 档不出现；拖到最低锚点之下直接关闭；`scrim=false` 为无背景版（不压暗不模糊，但透明拦截层 + Esc + 锁滚动 + aria-modal 的模态性质保持） |
+| `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽；**把手可拖拽**：拖把手实时改高度（跟手、禁 transition），松手按位移 + 速度吸附锚点；`anchors` 默认随 `scrim`：无背景版 `[0.2, 0.6]`、有背景版 `[0.6]`（压暗背景不放 20% 档）+ 自动追加「全内容」档，全内容不足 60% 时 60% 档不出现；拖到最低锚点之下直接关闭；面板外还有一段约 **50dvh 的「弹簧裙边」**（`.ui-sheet-skirt`，正常被 root 裁掉），活泼模式上冲、面板下沿离开视口底时用它补住缺口，不会露出页面背景；`scrim=false` 为无背景版（不压暗不模糊，但透明拦截层 + Esc + 锁滚动 + aria-modal 的模态性质保持） |
 | `UiFloatingMenu` | `v-model`(当前值) + `:items` + `@select`；按钮原地长成浮动面板 |
 | `UiToolMenu` | 只有 `@select`，**回传整个 item 对象**（不是 value），无 v-model，选中值自己同步到 `label` |
 | `UiGauge` | `:value` 0–100 + `label` + `stroke` 档位；220° 圆弧，大数字居中偏上（数字变化走统一滚动动效）。弧线宽度全库只有两档：`'thin'`(10px) / `'bold'`(12px)，也可传具体数值；一律 `vector-effect="non-scaling-stroke"`，宽度是 CSS 像素，不随组件尺寸缩放 |

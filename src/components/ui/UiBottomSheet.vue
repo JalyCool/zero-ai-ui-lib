@@ -391,10 +391,14 @@ onBeforeUnmount(() => {
         @click="closeOnBackdrop && close()"
       ></div>
 
+      <div
+        class="ui-sheet-frame"
+        :class="{ 'is-open': open, 'is-closing': closing, 'is-dragging': dragging }"
+      >
       <section
         ref="panel"
         class="ui-sheet-panel"
-        :class="{ 'is-open': open, 'is-closing': closing, 'is-dragging': dragging, 'no-scrim': !scrim }"
+        :class="{ 'is-dragging': dragging, 'no-scrim': !scrim }"
         :style="{ height: heightPx + 'px' }"
         role="dialog"
         aria-modal="true"
@@ -422,6 +426,11 @@ onBeforeUnmount(() => {
           <slot name="footer" />
         </footer>
       </section>
+      <!-- 弹簧裙边：在视口下方多出一段（半屏高）同色面板。正常状态完全被
+           .ui-sheet-root 的 overflow: hidden 裁掉；活泼模式弹簧上冲、面板下沿
+           离开视口底时，这段裙边把缺口补上，不会露出页面背景。 -->
+      <span class="ui-sheet-skirt" aria-hidden="true"></span>
+      </div>
     </div>
   </Teleport>
 </template>
@@ -446,6 +455,24 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 .ui-sheet-veil.is-static { pointer-events: none; }
+/* 外层 frame 只做纵向位移（含弹簧回弹），面板与裙边一起移动。 */
+.ui-sheet-frame {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  transform: translateY(105%);
+  will-change: transform;
+  transition: transform var(--t-sheet);
+}
+.ui-sheet-frame.is-open { transform: none; }
+.ui-sheet-frame.is-closing {
+  will-change: transform;
+  transition: transform var(--t-exit);
+}
+/* 拖拽中彻底禁用过渡，位移完全跟手。 */
+.ui-sheet-frame.is-dragging { transition: none; }
+
 .ui-sheet-panel {
   position: relative;
   z-index: 1;
@@ -459,20 +486,25 @@ onBeforeUnmount(() => {
   border-radius: calc(28px * var(--radius-scale)) calc(28px * var(--radius-scale)) 0 0;
   overflow: hidden;
   outline: none;
-  transform: translateY(105%);
-  will-change: transform;
-  /* 打开位移走 sheet，高度吸附走 view：两段同时可过渡互不干扰。 */
-  transition: transform var(--t-sheet), height var(--t-view), box-shadow var(--t-fade);
+  /* 高度吸附走 view：位移由外层 frame 负责。 */
+  transition: height var(--t-view), box-shadow var(--t-fade);
 }
-.ui-sheet-panel.is-open { transform: none; }
-.ui-sheet-panel.is-closing {
-  will-change: transform;
-  transition: transform var(--t-exit), height var(--t-exit);
-}
-/* 拖拽中彻底禁用过渡，位移完全跟手。 */
-.ui-sheet-panel.is-dragging {
-  transition: none;
-  will-change: transform, height;
+.ui-sheet-panel.is-closing { transition: height var(--t-exit); }
+.ui-sheet-panel.is-dragging { transition: none; }
+
+/* 视口下方的「弹簧裙边」：约半屏高，正常状态被 root 裁掉，
+   活泼模式上冲时补住面板下沿与视口底之间的缝。 */
+.ui-sheet-skirt {
+  position: absolute;
+  z-index: 0;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 50dvh;
+  background: var(--surface-container-high);
+  border-left: var(--border-w) solid var(--outline-variant);
+  border-right: var(--border-w) solid var(--outline-variant);
+  pointer-events: none;
 }
 /* 无背景版给一点离地阴影，保证与内容的分层仍然可读。 */
 .ui-sheet-panel.no-scrim {
@@ -540,7 +572,8 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-sheet-panel {
+  .ui-sheet-panel,
+  .ui-sheet-frame {
     transition-duration: .01ms !important;
     transition-delay: 0ms !important;
   }
