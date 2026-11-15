@@ -184,19 +184,63 @@ function runTool(demo) {
 
 const statusStep = ref('idle')
 const statusProgress = ref(0)
+const statusAuto = ref(true)
 let statusTimer = 0
-function runStatus() {
-  clearInterval(statusTimer)
-  statusStep.value = 'progress'
+let statusTick = 0
+let statusRunId = 0
+
+/* 演示用的状态机：idle -> progress -> done -> idle -> progress -> error -> 回到 idle。
+   任意两个状态之间都能直接跳（手动按钮），组件内部靠同一套图层过渡，
+   所以 done -> progress、error -> done 这类反向切换也不会闪。 */
+const statusSequence = [
+  { status: 'idle', wait: 700 },
+  { status: 'progress', wait: 1700, ramp: true },
+  { status: 'done', wait: 1100 },
+  { status: 'idle', wait: 500 },
+  { status: 'progress', wait: 900, ramp: true },
+  { status: 'error', wait: 1100 }
+]
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+function rampProgress(duration, runId) {
+  clearInterval(statusTick)
   statusProgress.value = 0
-  statusTimer = setInterval(() => {
-    statusProgress.value = Math.min(1, statusProgress.value + 0.16)
-    if (statusProgress.value >= 1) {
-      clearInterval(statusTimer)
-      statusStep.value = Math.random() > 0.25 ? 'done' : 'error'
-      setTimeout(() => { statusStep.value = 'idle'; statusProgress.value = 0 }, 1800)
+  const started = Date.now()
+  statusTick = setInterval(() => {
+    if (runId !== statusRunId) { clearInterval(statusTick); return }
+    statusProgress.value = Math.min(1, (Date.now() - started) / duration)
+    if (statusProgress.value >= 1) clearInterval(statusTick)
+  }, 60)
+}
+
+async function playStatus() {
+  const runId = ++statusRunId
+  while (statusAuto.value && runId === statusRunId) {
+    for (const step of statusSequence) {
+      if (!statusAuto.value || runId !== statusRunId) return
+      statusStep.value = step.status
+      if (step.ramp) rampProgress(step.wait, runId)
+      else statusProgress.value = step.status === 'done' ? 1 : 0
+      await sleep(step.wait)
     }
-  }, 160)
+  }
+}
+
+function setStatus(status) {
+  statusAuto.value = false
+  statusRunId++
+  clearInterval(statusTick)
+  statusStep.value = status
+  statusProgress.value = status === 'progress' ? 0.64 : status === 'done' ? 1 : 0
+}
+
+function toggleStatusAuto() {
+  statusAuto.value = !statusAuto.value
+  if (statusAuto.value) {
+    statusProgress.value = 0
+    playStatus()
+  }
 }
 
 const codeSlot = ref('')
@@ -231,6 +275,7 @@ const cardItems = [
   { title: '冥想', meta: '10 分钟', tone: 'tertiary' }
 ]
 const cardVariant = ref('gallery')
+const cardActive = ref(0)
 const cardVariants = [
   { label: '平铺', value: 'gallery' },
   { label: '圆环', value: 'circular' },
@@ -347,7 +392,10 @@ async function askDemo() {
   toast.value?.show(ok ? '已确认删除（演示）' : '已取消', ok ? 'danger' : 'info')
 }
 
-onMounted(() => showToast('info'))
+onMounted(() => {
+  showToast('info')
+  playStatus()
+})
 </script>
 
 <template>
@@ -717,16 +765,27 @@ onMounted(() => showToast('info'))
           <span class="lib-cell__note">填充随计时擦过；成功补满转绿，失败转红并抖动。</span>
         </div>
         <div class="lib-cell">
-          <span class="lib-cell__label">状态标记 <small>StatusMark</small></span>
-          <div class="lib-cell__stage">
-            <UiStatusMark status="idle" :size="26" />
-            <UiStatusMark status="progress" :progress="0.62" :size="26" />
-            <UiStatusMark status="done" :size="26" />
-            <UiStatusMark status="error" :size="26" />
-            <UiButton size="sm" variant="tonal" @click="runStatus">跑一次</UiButton>
-            <UiStatusMark :status="statusStep" :progress="statusProgress" :size="22" />
+          <span class="lib-cell__label">状态标记（状态机） <small>StatusMark</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div class="lib-cell__stage">
+              <UiStatusMark :status="statusStep" :progress="statusProgress" :size="34" />
+              <span class="lib-muted">{{ statusStep }} · {{ Math.round(statusProgress * 100) }}%</span>
+            </div>
+            <div class="lib-cell__stage">
+              <UiButton size="sm" variant="tonal" @click="setStatus('idle')">idle</UiButton>
+              <UiButton size="sm" variant="tonal" @click="setStatus('progress')">progress</UiButton>
+              <UiButton size="sm" variant="tonal" @click="setStatus('done')">done</UiButton>
+              <UiButton size="sm" variant="tonal" @click="setStatus('error')">error</UiButton>
+              <UiButton size="sm" :variant="statusAuto ? 'primary' : 'outline'" @click="toggleStatusAuto">{{ statusAuto ? '自动中' : '自动播放' }}</UiButton>
+            </div>
+            <div class="lib-cell__stage">
+              <UiStatusMark status="idle" :size="22" />
+              <UiStatusMark status="progress" :progress="0.68" :size="22" />
+              <UiStatusMark status="done" :size="22" />
+              <UiStatusMark status="error" :size="22" />
+            </div>
           </div>
-          <span class="lib-cell__note">静止环 → 进度弧 → 勾 / 叉，全部是同一条描边的形变。</span>
+          <span class="lib-cell__note">同一套图层在任意两态之间过渡：弧收满再画勾、勾反向抽笔再入场、叉与勾互转都不跳帧。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">一次性验证码 <small>CodeSlots</small></span>
@@ -787,9 +846,9 @@ onMounted(() => showToast('info'))
           <span class="lib-cell__label">卡片组 <small>CardGroup · 8 种形态</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiSegmented v-model="cardVariant" :options="cardVariants" layout="one-line" label="形态" :auto-multiline="true" />
-            <UiCardGroup :variant="cardVariant" :items="cardItems" :height="240" :card-width="170" :auto="false" />
+            <UiCardGroup :variant="cardVariant" :items="cardItems" :height="240" :card-width="170" :auto="true" :interval="3200" v-model="cardActive" />
           </div>
-          <span class="lib-cell__note">common 卡池 / 选中 / 键盘共用一套；形态只决定每张卡落在三维空间的哪儿。</span>
+          <span class="lib-cell__note">拖拽 / 点击 / 方向键都可交互，松手有惯性或吸附；形态只决定每张卡落在三维空间的哪儿。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">动作按钮 <small>Button · fuse / hold / slide</small></span>
@@ -802,12 +861,12 @@ onMounted(() => showToast('info'))
           <span class="lib-cell__note">fuse 烧引线可撤销；hold 松手即缩回；slide 跑完展开成药丸。</span>
         </div>
         <div class="lib-cell">
-          <span class="lib-cell__label">果冻单选 / 删除线复选</span>
+          <span class="lib-cell__label">单选 / 删除线复选</span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiRadioGroup v-model="jellyPick" :options="[{ label: '轻松', value: 'a' }, { label: '适中', value: 'b' }, { label: '高强度', value: 'c' }]" />
             <UiCheckbox v-model="strikeDone" strike label="完成今日目标" description="勾选后划线" />
           </div>
-          <span class="lib-cell__note">选中项鼓起并把邻居往外推；复选的线从左往右划过文字。</span>
+          <span class="lib-cell__note">单选回到原生胶囊样式；删除线复选的线从左往右划过文字。</span>
         </div>
       </div>
     </section>

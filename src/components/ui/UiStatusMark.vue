@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = defineProps({
   /* 仅受控：idle 静止环 / progress 进度弧 / done 勾 / error 叉 */
@@ -11,58 +11,82 @@ const props = defineProps({
 })
 
 /* ============================================================
-   任务状态标记
-   三个阶段共用同一个圆形容器，靠「图形切换 + 描边绘制」完成形变：
-   · idle：一圈浅色虚环，安静待命；
-   · progress：同一位置换成进度弧（pathLength 归一，避免圆周率换算）
-     并缓慢自转，表示还在跑；
-   · done：进度弧收到满，勾号从描边绘制出来；
-   · error：叉号绘制 + 一次横向抖动。
-   全部只是描边属性与透明度的过渡，不销毁重建节点。
+   任务状态标记（小型状态机）
+   四个状态共用同一套图层，切换不销毁任何节点，只改描边 / 透明度：
+   · idle：虚环；
+   · progress：进度弧（pathLength 归一）+ 缓慢自转；
+   · done：弧收满后勾号描边画出，同时整体轻轻「立」一下；
+   · error：弧退场、叉号描边画出 + 一次横向抖动。
+   任意两个状态之间都能互转：勾 / 叉退出时是反向抽笔（dashoffset 回到 100），
+   弧退出时收回到当前进度，所以 done -> progress、error -> done 也不会跳。
    ============================================================ */
 
 const R = 9
 const circumference = 2 * Math.PI * R
 const clamped = computed(() => Math.max(0, Math.min(1, props.progress)))
-const offset = computed(() => circumference * (1 - clamped.value))
+
+/* 弧的目标值：各状态各自的「弧应该到哪儿」。
+   done 收满、error 收回一半再淡出、idle 归零、progress 跟进度走。 */
+const arcTarget = computed(() => {
+  if (props.status === 'done') return 1
+  if (props.status === 'progress') return clamped.value
+  if (props.status === 'error') return clamped.value * 0.5
+  return 0
+})
+const offset = computed(() => circumference * (1 - arcTarget.value))
+
 const spinning = computed(() => props.status === 'progress')
 const finished = computed(() => props.status === 'done')
 const failed = computed(() => props.status === 'error')
+
+/* 状态切换时给一次很轻的形变脉冲：整体先微放大再落回，
+   让「换图形」这件事有连续的身体感，而不是两个图标互相淡入淡出。 */
+const morphing = ref(false)
+let morphTimer = 0
+watch(() => props.status, () => {
+  morphing.value = true
+  clearTimeout(morphTimer)
+  morphTimer = setTimeout(() => { morphing.value = false }, 360)
+})
+
+onBeforeUnmount(() => clearTimeout(morphTimer))
+
 const sizeStyle = computed(() => ({ width: props.size + 'px', height: props.size + 'px' }))
 </script>
 
 <template>
   <span
     class="ui-status-mark"
-    :class="[`is-${status}`, { 'is-spinning': spinning }]"
+    :class="[`is-${status}`, { 'is-spinning': spinning, 'is-morphing': morphing }]"
     :style="sizeStyle"
     role="status"
     :aria-label="status === 'done' ? '已完成' : status === 'error' ? '失败' : status === 'progress' ? '进行中' : '待处理'"
   >
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <!-- 轨道：idle 可见，progress 时留作底环 -->
+      <!-- 轨道：idle 的虚环，其它状态退成淡底环。 -->
       <circle
         class="ui-status-mark__track"
         cx="12" cy="12" :r="R"
         pathLength="100"
         stroke="currentColor"
         :stroke-width="finished || failed ? 0 : 2"
-        :stroke-dasharray="failed || finished ? '100 100' : '7 9'"
+        stroke-dasharray="7 9"
+        stroke-dashoffset="0"
         stroke-linecap="round"
       />
-      <!-- 进度弧 -->
+      <!-- 进度弧：所有状态共用，靠 dashoffset 连续过渡。 -->
       <circle
         class="ui-status-mark__arc"
         cx="12" cy="12" :r="R"
         pathLength="100"
-        stroke="var(--primary)"
-        :stroke-width="finished || failed ? 0 : 2.2"
+        :stroke="failed ? 'var(--error)' : finished ? 'var(--ui-success, #1f9d63)' : 'var(--primary)'"
+        stroke-width="2.2"
         stroke-linecap="round"
         :stroke-dasharray="circumference"
-        :stroke-dashoffset="finished ? 0 : offset"
+        :stroke-dashoffset="offset"
         transform="rotate(-90 12 12)"
       />
-      <!-- 勾 -->
+      <!-- 勾：进入 done 时描边画出，离开时反向抽笔。 -->
       <path
         class="ui-status-mark__check"
         d="M7 12.6l3.2 3.2L17.2 8.6"
@@ -72,7 +96,7 @@ const sizeStyle = computed(() => ({ width: props.size + 'px', height: props.size
         stroke-linecap="round"
         stroke-linejoin="round"
       />
-      <!-- 叉 -->
+      <!-- 叉：进入 error 时描边画出，离开时反向抽笔。 -->
       <path
         class="ui-status-mark__cross"
         d="M8.4 8.6l7.2 6.8M15.6 8.6l-7.2 6.8"
@@ -92,60 +116,77 @@ const sizeStyle = computed(() => ({ width: props.size + 'px', height: props.size
   place-items: center;
   flex-shrink: 0;
   color: var(--on-surface-variant);
-  transition: color var(--t-fade);
+  /* 状态切换时的形变脉冲与颜色过渡。 */
+  transition: color var(--t-fade), transform var(--t-panel) var(--spring-view);
 }
+.ui-status-mark.is-morphing { transform: scale(1.06); }
 .ui-status-mark svg { width: 100%; height: 100%; overflow: visible; display: block; }
 
-/* 轨道：idle 的虚环随进度态淡出。 */
+/* 轨道：虚环只在 idle 明显，其它状态淡到底环。 */
 .ui-status-mark__track {
   opacity: 1;
-  transition: opacity var(--t-fade), stroke-dasharray var(--t-panel), stroke-width var(--t-fade);
+  transition: opacity var(--t-fade), stroke-width var(--t-fade);
 }
 .ui-status-mark.is-progress .ui-status-mark__track,
 .ui-status-mark.is-done .ui-status-mark__track,
-.ui-status-mark.is-error .ui-status-mark__track { opacity: .28; }
+.ui-status-mark.is-error .ui-status-mark__track { opacity: .26; }
 
-/* 进度弧：从 0 到满靠 dashoffset 过渡；跑动时整体缓慢自转。 */
+/* 弧：dashoffset 是连续量，从任何状态进 / 出都顺势过渡。 */
 .ui-status-mark__arc {
-  opacity: 0;
-  transition: stroke-dashoffset var(--t-panel), opacity var(--t-fade), stroke-width var(--t-fade);
   transform-origin: 12px 12px;
+  transition: stroke-dashoffset var(--t-panel) var(--spring-view),
+              stroke var(--t-fade), opacity var(--t-fade);
 }
+.ui-status-mark.is-idle .ui-status-mark__arc { opacity: 0; }
 .ui-status-mark.is-progress .ui-status-mark__arc,
-.ui-status-mark.is-done .ui-status-mark__arc { opacity: 1; }
-.ui-status-mark.is-done .ui-status-mark__arc { transition: stroke-dashoffset var(--t-sheet), opacity var(--t-fade); }
+.ui-status-mark.is-done .ui-status-mark__arc,
+.ui-status-mark.is-error .ui-status-mark__arc { opacity: 1; }
+/* 自转表示还在跑；停在某个进度时不转，避免误读成还没到。 */
+.ui-status-mark.is-spinning .ui-status-mark__arc { animation: uiStatusSpin 1.5s linear infinite; }
 
-/* 勾 / 叉：描边绘制（pathLength 归一，dashoffset 100 -> 0）。 */
+/* 勾 / 叉：pathLength 归一的描边抽笔，进出都是同一段过渡（可逆）。 */
 .ui-status-mark__check,
 .ui-status-mark__cross {
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
   opacity: 0;
-  transition: stroke-dashoffset var(--t-fade), opacity var(--t-fade);
+  transform-origin: 12px 12px;
+  transition: stroke-dashoffset var(--t-panel) var(--spring-view),
+              opacity var(--t-fade),
+              transform var(--t-panel) var(--spring-view);
 }
 .ui-status-mark.is-done { color: var(--ui-success, #1f9d63); }
 .ui-status-mark.is-done .ui-status-mark__check {
   stroke-dashoffset: 0;
   opacity: 1;
-  transition: stroke-dashoffset var(--t-panel) 60ms, opacity 120ms linear;
+  animation: uiStatusPop var(--spring-feedback-dur, 320ms) var(--spring-feedback, cubic-bezier(.22,1.2,.36,1));
 }
+.ui-status-mark.is-done .ui-status-mark__arc { opacity: .55; }
 .ui-status-mark.is-error { color: var(--error); }
 .ui-status-mark.is-error .ui-status-mark__cross {
   stroke-dashoffset: 0;
   opacity: 1;
-  transition: stroke-dashoffset var(--t-panel) 40ms, opacity 100ms linear;
+  animation: uiStatusPop var(--spring-feedback-dur, 320ms) var(--spring-feedback, cubic-bezier(.22,1.2,.36,1));
 }
+.ui-status-mark.is-error .ui-status-mark__arc { opacity: .5; }
+/* 失败时整颗抖一下（与形变脉冲叠加，位移很小）。 */
 .ui-status-mark.is-error { animation: uiStatusShake 420ms cubic-bezier(.36, .07, .19, .97); }
 
+@keyframes uiStatusSpin { to { transform: rotate(360deg); } }
+@keyframes uiStatusPop {
+  from { transform: scale(.82); }
+  to { transform: scale(1); }
+}
 @keyframes uiStatusShake {
-  0%, 100% { transform: translateX(0); }
-  22% { transform: translateX(-2px); }
-  46% { transform: translateX(2px); }
-  70% { transform: translateX(-1px); }
+  0%, 100% { translate: 0 0; }
+  22% { translate: -2px 0; }
+  46% { translate: 2px 0; }
+  70% { translate: -1px 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-status-mark,
   .ui-status-mark * { transition-duration: .01ms !important; animation: none !important; }
+  .ui-status-mark.is-morphing { transform: none; }
 }
 </style>

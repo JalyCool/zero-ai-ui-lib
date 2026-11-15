@@ -164,6 +164,22 @@ async function renderLayer(format) {
         width: 2,
         height: size - 40
       })
+      /* 一维码的宽度由内容长度决定，长内容会直接把 svg 撑出画布：
+         把它的固有尺寸转成 viewBox，宽高交给 CSS 自适应。 */
+      /* JsBarcode 写的是 "310px" 这类带单位的值，必须 parseFloat。 */
+      const intrinsicW = parseFloat(svg.getAttribute('width')) || 0
+      const intrinsicH = parseFloat(svg.getAttribute('height')) || 0
+      if (intrinsicW > 0 && intrinsicH > 0) {
+        svg.setAttribute('viewBox', '0 0 ' + intrinsicW + ' ' + intrinsicH)
+        svg.removeAttribute('width')
+        svg.removeAttribute('height')
+        svg.removeAttribute('style')
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+        svg.style.width = '100%'
+        svg.style.maxWidth = '100%'
+        svg.style.height = 'auto'
+        svg.style.display = 'block'
+      }
     }
   } catch (error) {
     renderError.value = String(error?.message || error).slice(0, 80)

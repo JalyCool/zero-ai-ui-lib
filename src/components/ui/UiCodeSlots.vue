@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   /* 位数 */
@@ -27,24 +27,46 @@ const emit = defineEmits(['update:modelValue', 'complete', 'focus', 'blur'])
 
 const inputEl = ref(null)
 const focused = ref(false)
-const caretIndex = ref(0)
+/* 当前位（不是「已填长度」）：左右键可以在已填的位之间走动，
+   最远只到「最后一个数字的紧接一位」。 */
+const caret = ref(0)
+/* 逐个落格的延迟（ms）：一次性粘贴 / 短信填充时每格错开一点，
+   单字符输入不加延迟（对象为空）。 */
+const delays = ref({})
+let delayTimer = 0
 
 const digits = computed(() => {
   const raw = String(props.modelValue || '').replace(/\D/g, '').slice(0, props.length)
   return Array.from({ length: props.length }, (_, i) => raw[i] || '')
 })
 const filled = computed(() => digits.value.filter(Boolean).length)
-const activeIndex = computed(() => (focused.value ? Math.min(filled.value, props.length - 1) : -1))
+/* 合法落点：该位已有数字，或正好是最后一个数字的下一位。 */
+const isAllowedCaret = index => index >= 0 && index <= Math.min(filled.value, props.length - 1)
 
 function sanitize(value) {
   return String(value || '').replace(/\D/g, '').slice(0, props.length)
 }
 
+watch(() => props.modelValue, (next, prev) => {
+  const nextLen = String(next || '').replace(/\D/g, '').length
+  const prevLen = String(prev || '').replace(/\D/g, '').length
+  /* 一次进来两位以上（粘贴 / 自动填充）：按位错峰插入，间隔很短。 */
+  if (nextLen > prevLen + 1) {
+    const map = {}
+    for (let i = prevLen; i < nextLen; i++) map[i] = (i - prevLen) * 55
+    delays.value = map
+    clearTimeout(delayTimer)
+    delayTimer = setTimeout(() => { delays.value = {} }, (nextLen - prevLen) * 55 + 700)
+  } else if (nextLen <= prevLen) {
+    delays.value = {}
+  }
+  caret.value = Math.min(nextLen, props.length)
+});
+
 function onInput(event) {
   const next = sanitize(event.target.value)
   event.target.value = next
   emit('update:modelValue', next)
-  caretIndex.value = next.length
   if (next.length === props.length) emit('complete', next)
 }
 
@@ -56,11 +78,9 @@ function focusInput() {
 /* 点任意格子都把焦点还给真实 input，光标落到末尾。 */
 function onSlotClick() {
   focusInput()
+  caret.value = Math.min(filled.value, props.length - 1)
   const el = inputEl.value
-  if (el) {
-    const end = el.value.length
-    el.setSelectionRange(end, end)
-  }
+  if (el) el.setSelectionRange(el.value.length, el.value.length)
 }
 
 function onPaste(event) {
@@ -70,15 +90,30 @@ function onPaste(event) {
   event.preventDefault()
   emit('update:modelValue', text)
   if (inputEl.value) inputEl.value.value = text
+  caret.value = Math.min(text.length, props.length - 1)
   if (text.length === props.length) emit('complete', text)
 }
 
-/* 键盘退格 / 方向键：input 自身即可处理，这里只同步光标位置。 */
+/* 左右键在「已填的位」与「末尾下一位」之间走动，不允许走到空洞上。 */
+function moveCaret(delta) {
+  const max = Math.min(filled.value, props.length - 1)
+  let next = caret.value + delta
+  next = Math.max(0, Math.min(max, next))
+  caret.value = next
+}
+
+/* 点某一格：落到那一格（超出范围的落到末尾下一位）。 */
+function placeCaret(index) {
+  caret.value = Math.min(index, Math.min(filled.value, props.length - 1))
+  focusInput()
+}
+
 function onKeydown(event) {
   if (props.disabled) return
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Backspace') {
-    requestAnimationFrame(() => { caretIndex.value = inputEl.value ? inputEl.value.value.length : 0 })
-  }
+  if (event.key === 'ArrowLeft') { event.preventDefault(); moveCaret(-1) }
+  else if (event.key === 'ArrowRight') { event.preventDefault(); moveCaret(1) }
+  else if (event.key === 'Home') { event.preventDefault(); caret.value = 0 }
+  else if (event.key === 'End') { event.preventDefault(); caret.value = Math.min(filled.value, props.length - 1) }
 }
 
 onMounted(() => {
@@ -118,15 +153,16 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
         v-for="(digit, index) in digits"
         :key="index"
         class="ui-code-slots__slot"
-        :class="{ 'is-filled': !!digit, 'is-active': index === activeIndex }"
+        :class="{ 'is-filled': !!digit, 'is-active': index === caret }"
         aria-hidden="true"
+        @click.stop="placeCaret(index)"
       >
         <span
           v-if="digit"
           :key="digit + '-pop'"
           class="ui-code-slots__digit"
+          :style="{ animationDelay: (delays[index] || 0) + 'ms' }"
         >{{ mask ? '•' : digit }}</span>
-        <span v-if="index === activeIndex" class="ui-code-slots__caret"></span>
       </span>
     </div>
 
@@ -176,6 +212,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
 }
 /* 当前待输入位：主色描边 + 呼吸提示。 */
 .ui-code-slots__slot.is-active { border-color: var(--primary); background: var(--surface-container); }
+.ui-code-slots:not(.is-focused) .ui-code-slots__slot.is-active { border-color: var(--outline-variant); background: var(--surface-container-low); }
 .ui-code-slots__slot.is-filled { border-color: color-mix(in oklab, var(--primary) 34%, var(--outline-variant)); }
 .ui-code-slots:not(.is-focused) .ui-code-slots__slot.is-active { border-color: var(--outline-variant); }
 .ui-code-slots.is-disabled .ui-code-slots__slot { opacity: .42; }
@@ -191,21 +228,9 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
-.ui-code-slots__caret {
-  position: absolute;
-  bottom: 9px;
-  width: 16px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--primary);
-  animation: uiCodeCare 1.05s steps(1, end) infinite;
-}
-@keyframes uiCodeCare { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
-
 .ui-code-slots__progress { align-self: flex-end; font-size: var(--fs-micro); color: var(--on-surface-variant); font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-code-slots__digit { animation: none; }
-  .ui-code-slots__caret { animation: none; opacity: 1; }
 }
 </style>

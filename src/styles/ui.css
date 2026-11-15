@@ -309,6 +309,8 @@
 .ui-segmented {
   position: relative;
   display: flex;
+  width: 100%;
+  min-width: 0;
   gap: 3px;
   padding: 3px;
   border-radius: calc(13px * var(--radius-scale));
@@ -317,7 +319,7 @@
 }
 /* ---------- Segmented field：左侧标签 / 右侧值的单行容器 ---------- */
 /* 带标签的分段控件：标签固定在左上角，不再重复显示当前值。 */
-.ui-segmented-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ui-segmented-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; width: 100%; }
 .ui-segmented-field__label {
   align-self: flex-start;
   font-size: var(--fs-tiny);
@@ -327,7 +329,7 @@
 }
 /* 单行：标签在左、分段控件占满右侧剩余宽度。 */
 .ui-segmented-field--one-line { flex-direction: row; align-items: center; gap: 12px; }
-.ui-segmented-field--one-line > .ui-segmented { flex: 1; min-width: 0; }
+.ui-segmented-field--one-line > .ui-segmented { flex: 1; width: auto; min-width: 0; }
 .ui-segmented__indicator {
   position: absolute;
   z-index: 0;

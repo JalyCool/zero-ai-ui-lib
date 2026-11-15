@@ -1,204 +1,260 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-/* 指针捕获在指针已失效时会抛 NotFoundError，包一层避免打断手势。 */
-function safeCapture(el, id) {
-  try { el && el.setPointerCapture && el.setPointerCapture(id) } catch (error) { /* 指针已失效，忽略 */ }
-}
-function safeRelease(el, id) {
-  try { el && el.releasePointerCapture && el.releasePointerCapture(id) } catch (error) { /* 指针已失效，忽略 */ }
-}
-
 const props = defineProps({
   /* gallery | circular | depth | wall | scroll-stack | stack | swap | bounce */
   variant: { type: String, default: 'gallery' },
   /* [{ title, meta?, tone?, image? }] */
   items: { type: Array, default: () => [] },
-  /* 容器高度（px）；scroll-stack 用它算单张卡的粘性高度 */
   height: { type: Number, default: 264 },
-  /* gallery 的单卡宽度 */
+  /* gallery / 各形态的卡片宽度 */
   cardWidth: { type: Number, default: 190 },
   gap: { type: Number, default: 12 },
-  /* 自动推进 / 自动漂移 */
+  /* 自动推进（depth / swap / gallery 自动漂移） */
   auto: { type: Boolean, default: false },
-  /* 自动间隔（ms） */
   interval: { type: Number, default: 2800 },
-  /* 初始选中项 */
   modelValue: { type: Number, default: 0 }
 })
 
 const emit = defineEmits(['update:modelValue', 'select'])
 
 /* ============================================================
-   卡片组（8 种形态共用一个组件）
-   共同点：卡池、选中项、指针拖拽、键盘这些都只有一份，
-   差异只在「怎么把每张卡放到三维空间里的某个位置」。
-   · gallery      横向平铺 + 循环（拖拽跟手，越界无限环绕）
-   · circular     3D 圆环（拖拽带惯量，松手吸附到最近格位）
-   · depth        沿 Z 轴后退的轨道（拖拽 / 键盘 / 自动推进）
-   · wall         透视墙，整体缓慢漂移，悬停的瓦片抬起来
-   · scroll-stack 滚动时逐张压成牌堆，离开时整体变暗
-   · stack        牌堆，拖 / 甩 / 点把最上面的牌换到最下面
-   · swap         3D 牌堆，定时或甩动把最前面的牌送到最后面
-   · bounce       扇形牌组，弹入后散开，悬停的那张扶正
+   卡片组（8 种形态共用一套卡池 / 手势 / 键盘）
+   共同点：所有形态都能拖、能点、能用方向键，松手都有回弹或吸附；
+   差异只在「每张卡落在三维空间的哪儿」和「拖拽改变哪个量」。
+   · gallery      横向轨道：跟手 + 甩动惯性 + 吸附居中 + 循环
+   · circular     圆环：拖动旋转 + 惯性 + 吸附最近格位
+   · depth        Z 轴轨道：拖动带阻尼 + 吸附 + 自动前进
+   · wall         透视墙：持续漂移 + 拖动改变漂移位置
+   · scroll-stack 滚动压栈：滚动中逐张缩小变暗，点卡可滚过去
+   · stack        牌堆：拖 / 甩 / 点换牌，甩出去的牌绕到最下面
+   · swap         3D 牌堆：定时或甩动轮换，翻出去再绕回
+   · bounce       扇形：入场弹跳、拖动改变展开角度、悬停 / 选中扶正
    ============================================================ */
 
 const rootEl = ref(null)
 const trackEl = ref(null)
 const scrollerEl = ref(null)
-const active = ref(Math.max(0, Math.min(props.items.length - 1, props.modelValue)))
+const stageEl = ref(null)
+
 const count = computed(() => props.items.length)
-
-/* 卡池：stack / swap 用一个顺序数组表示前后关系，0 = 最前面 */
-const pile = ref([])
-watch(count, value => {
-  pile.value = Array.from({ length: value }, (_, i) => i)
-  active.value = Math.max(0, Math.min(value - 1, active.value))
-}, { immediate: true })
-
-function pick(index) {
+const active = ref(Math.max(0, Math.min(props.items.length - 1, props.modelValue)))
+const pick = index => {
+  if (index < 0 || index >= count.value) return
   active.value = index
   emit('update:modelValue', index)
   emit('select', { index, item: props.items[index] })
 }
 
-/* ---------------- 通用指针拖拽 ---------------- */
-let pointerId = null
-let startX = 0
-let startY = 0
-let lastX = 0
-let lastT = 0
-let velocity = 0
+/* 形态切换时重放入场动画：给舞台换 key 会让 CSS 动画从头跑。 */
+const enterKey = ref(0)
+watch(() => props.variant, async () => { enterKey.value++; await nextTick(); resetVariant() })
+
+/* ---------------- 通用指针手势 ---------------- */
+let pid = null
+let sx = 0
+let sy = 0
+let lx = 0
+let ly = 0
+let lt = 0
+let vx = 0
+let vy = 0
 let dragging = false
-let dragDelta = 0
+let axis = ''
 
-function dragStart(event) {
-  if (event.button > 0) return
-  pointerId = event.pointerId
-  startX = event.clientX
-  startY = event.clientY
-  lastX = event.clientX
-  lastT = event.timeStamp
-  velocity = 0
-  dragging = false
-  dragDelta = 0
+function capture(id) {
+  try { rootEl.value && rootEl.value.setPointerCapture && rootEl.value.setPointerCapture(id) } catch (error) { /* 指针已失效 */ }
+}
+function release(id) {
+  try { rootEl.value && rootEl.value.releasePointerCapture && rootEl.value.releasePointerCapture(id) } catch (error) { /* 指针已失效 */ }
 }
 
-function dragMove(event) {
-  if (pointerId === null || event.pointerId !== pointerId) return
-  const dx = event.clientX - startX
-  const dy = event.clientY - startY
-  if (!dragging && Math.abs(dx) + Math.abs(dy) > 6) dragging = true
-  if (!dragging) return
+function onDown(event) {
+  if (event.button > 1) return
+  pid = event.pointerId
+  sx = lx = event.clientX
+  sy = ly = event.clientY
+  lt = event.timeStamp
+  vx = vy = 0
+  dragging = false
+  axis = ''
+  capture(pid)
+  stopAllMotion()
+}
+
+function onMove(event) {
+  if (pid === null || event.pointerId !== pid) return
+  const dx = event.clientX - sx
+  const dy = event.clientY - sy
+  if (!dragging) {
+    if (Math.abs(dx) + Math.abs(dy) < 6) return
+    dragging = true
+    axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y'
+  }
   if (event.cancelable) event.preventDefault()
-  velocity = (event.clientX - lastX) / Math.max(1, event.timeStamp - lastT)
-  lastX = event.clientX
-  lastT = event.timeStamp
-  dragDelta = dx
-  onDrag(dx, dy, event)
+  const dt = Math.max(1, event.timeStamp - lt)
+  vx = (event.clientX - lx) / dt
+  vy = (event.clientY - ly) / dt
+  lx = event.clientX
+  ly = event.clientY
+  lt = event.timeStamp
+  applyDrag(dx, dy)
 }
 
-function dragEnd(event) {
-  if (pointerId === null) return
-  const delta = dragDelta
+function onUp(event) {
+  if (pid === null) return
+  const dx = lx - sx
+  const dy = ly - sy
   const wasDragging = dragging
-  pointerId = null
+  release(pid)
+  pid = null
   dragging = false
-  dragDelta = 0
-  if (wasDragging) onDragEnd(delta)
-  else if (event.target && event.target.closest('[data-card]')) {
-    /* 没拖动 = 点击：点到哪张就选中哪张。 */
-    const index = Number(event.target.closest('[data-card]').dataset.card)
-    if (Number.isFinite(index) && count.value) pick(index % count.value)
+  if (!wasDragging) {
+    /* 没拖动 = 点击：交给各形态自己判断点中了谁。 */
+    const target = event.target && event.target.closest && event.target.closest('[data-card-index]')
+    if (target) hitCard(Number(target.dataset.cardIndex))
+    return
+  }
+  endDrag(dx, dy)
+}
+
+/* ---------------- 动画小工具：rAF 补间 + 惯性 ---------------- */
+const motion = { frame: 0, kind: '' }
+
+function stopAllMotion() {
+  if (motion.frame) cancelAnimationFrame(motion.frame)
+  motion.frame = 0
+  motion.kind = ''
+}
+
+/* 朝目标做阻尼补间（每帧走剩余距离的固定比例），到点即停。 */
+function animateTo(getter, setter, target, done) {
+  stopAllMotion()
+  motion.kind = 'tween'
+  const step = () => {
+    const current = getter()
+    const delta = target - current
+    if (Math.abs(delta) < 0.4) {
+      setter(target)
+      motion.frame = 0
+      motion.kind = ''
+      if (done) done()
+      return
+    }
+    setter(current + delta * 0.2)
+    motion.frame = requestAnimationFrame(step)
+  }
+  motion.frame = requestAnimationFrame(step)
+}
+
+/* ---------------- gallery：横向轨道 ---------------- */
+const offset = ref(0)
+const span = computed(() => props.cardWidth + props.gap)
+const totalWidth = computed(() => span.value * Math.max(1, count.value))
+const galleryList = computed(() => (count.value ? [...props.items, ...props.items, ...props.items] : []))
+let offsetStart = 0
+
+const wrapped = computed(() => {
+  if (!totalWidth.value) return 0
+  let value = offset.value % totalWidth.value
+  if (value > 0) value -= totalWidth.value
+  return value
+})
+
+/* 离轨道中心越远越小、越淡、越模糊 —— 平铺就有了纵深。 */
+function galleryCardStyle(index, item) {
+  const el = rootEl.value
+  const width = el ? el.clientWidth : 0
+  const center = index * span.value + wrapped.value + props.cardWidth / 2
+  const distance = width ? Math.abs(center - width / 2) / (width / 2) : 0
+  const d = Math.min(1, distance)
+  return {
+    '--card-tone': item.tone || 'primary',
+    transform: 'scale(' + (1 - d * 0.14) + ') translateY(' + d * 6 + 'px)',
+    opacity: String(1 - d * 0.42),
+    filter: d > 0.24 ? 'blur(' + ((d - 0.24) * 4).toFixed(2) + 'px)' : '',
+    zIndex: String(30 - Math.round(d * 20))
   }
 }
 
-/* 各形态对拖拽的响应（默认空实现）。 */
-let onDrag = () => {}
-let onDragEnd = () => {}
-
-/* ---------------- gallery：循环平铺 ---------------- */
-const galleryOffset = ref(0)
-const spanPx = computed(() => props.cardWidth + props.gap)
-const galleryList = computed(() => (count.value ? [...props.items, ...props.items, ...props.items] : []))
-
-onDrag = (dx) => {
-  if (props.variant !== 'gallery') return
-  galleryOffset.value -= dx * 0.8
+function galleryNearest() {
+  const step = span.value
+  return Math.round(offset.value / step) * step
 }
-onDragEnd = (dx) => {
-  if (props.variant !== 'gallery') return
-  /* 甩动带一点惯性，然后归到最近的格位。 */
-  const step = spanPx.value
-  const target = Math.round((galleryOffset.value - velocity * 60) / step) * step
-  galleryOffset.value = target
-}
-/* 循环：把偏移折回一个副本的长度内，视觉上永不到头。 */
-const galleryStyle = computed(() => {
-  const span = spanPx.value * count.value
-  let value = galleryOffset.value
-  if (span > 0) value = ((value % span) + span) % span
-  return { transform: 'translate3d(' + value + 'px, 0, 0)' }
-})
 
-/* ---------------- circular：3D 圆环 ---------------- */
-const ringRotation = ref(0)
+/* ---------------- circular：圆环 ---------------- */
+const rotation = ref(0)
 const stepAngle = computed(() => (count.value ? 360 / count.value : 0))
-const radius = computed(() => {
+const ringRadius = computed(() => {
   const w = props.cardWidth
   const a = (stepAngle.value * Math.PI) / 180
-  return Math.max(w, (w / 2) / Math.max(0.15, Math.tan(a / 2)))
+  return Math.max(w * 0.62, (w * 0.5) / Math.max(0.18, Math.tan(a / 2)))
 })
+let rotationStart = 0
+const circularActive = ref(0)
 
-onDrag = (dx) => {
-  if (props.variant !== 'circular') return
-  ringRotation.value = ringRotation.value + dx * 0.24
-}
-onDragEnd = () => {
-  if (props.variant !== 'circular') return
-  /* 吸附：转到最近的格位（正对镜头的那张）。 */
-  const step = stepAngle.value
-  const snapped = Math.round(ringRotation.value / step) * step
-  ringRotation.value = snapped
-  const index = ((Math.round(-snapped / step) % count.value) + count.value) % count.value
-  pick(index)
-}
-function circleStyle(index) {
-  const angle = index * stepAngle.value + ringRotation.value
+function circularStyle(index, item) {
+  const angle = index * stepAngle.value + rotation.value
+  const rad = (angle * Math.PI) / 180
+  const facing = Math.max(0, Math.cos(rad))
   return {
-    transform: 'rotateY(' + angle + 'deg) translateZ(' + radius.value + 'px)',
-    opacity: 0.35 + 0.65 * Math.max(0, Math.cos((angle * Math.PI) / 180))
+    '--card-tone': item.tone || 'primary',
+    transform: 'rotateY(' + angle + 'deg) translateZ(' + ringRadius.value + 'px)',
+    opacity: String(0.26 + 0.74 * facing),
+    filter: facing < 0.6 ? 'blur(' + ((0.6 - facing) * 3).toFixed(2) + 'px)' : '',
+    zIndex: String(10 + Math.round(facing * 20))
   }
+}
+
+function circularNearest() {
+  const step = stepAngle.value || 1
+  return Math.round(rotation.value / step) * step
 }
 
 /* ---------------- depth：Z 轴轨道 ---------------- */
+const depthDrag = ref(0)
 const depthActive = computed(() => active.value)
-const autoTimer = ref(0)
-function depthNext(delta = 1) {
-  if (!count.value) return
-  pick((active.value + delta + count.value) % count.value)
-}
-function depthStyle(index) {
-  const d = index - depthActive.value
-  const s = Math.sign(d) * Math.min(3, Math.abs(d))
+let depthStart = 0
+
+function depthStyle(index, item) {
+  const raw = index - depthActive.value - depthDrag.value
+  const d = Math.max(-3.4, Math.min(3.4, raw))
+  const abs = Math.abs(d)
   return {
-    transform: 'translate3d(' + s * 26 + 'px, ' + Math.abs(s) * -6 + 'px, ' + (-Math.abs(s) * 120) + 'px) scale(' + (1 - Math.abs(s) * 0.1) + ')',
-    opacity: Math.abs(s) > 3 ? 0 : 1 - Math.abs(s) * 0.22,
-    zIndex: 20 - Math.abs(s)
+    '--card-tone': item.tone || 'primary',
+    transform: 'translate3d(' + d * 34 + 'px,' + abs * -8 + 'px,' + -abs * 130 + 'px) scale(' + (1 - abs * 0.13) + ')',
+    opacity: String(Math.max(0, 1 - abs * 0.3)),
+    filter: abs > 0.6 ? 'blur(' + ((abs - 0.6) * 2.4).toFixed(2) + 'px)' : '',
+    zIndex: String(30 - Math.round(abs * 8))
   }
 }
-onDrag = (dx) => { if (props.variant === 'depth') dragDelta = dx }
-onDragEnd = (dx) => {
-  if (props.variant !== 'depth') return
-  if (Math.abs(dx) > 40) depthNext(dx < 0 ? 1 : -1)
+
+function depthStep(delta) {
+  if (!count.value) return
+  const next = Math.max(0, Math.min(count.value - 1, active.value + delta))
+  if (next === active.value) return
+  pick(next)
 }
 
-/* ---------------- wall：透视墙漂移 ---------------- */
+/* ---------------- wall：透视墙 ---------------- */
+const driftY = ref(0)
+let wallLast = 0
 const wallTiles = computed(() => {
   if (!count.value) return []
-  const total = Math.max(12, count.value * 3)
-  return Array.from({ length: total }, (_, i) => props.items[i % count.value])
+  const total = Math.max(12, count.value * 4)
+  return Array.from({ length: total }, (_, i) => ({ item: props.items[i % count.value], index: i % count.value }))
 })
+let wallFrame = 0
+function wallTick(now) {
+  const dt = wallLast ? Math.min(48, now - wallLast) : 16
+  wallLast = now
+  if (props.variant === 'wall' && dragging && axis === 'y') {
+    /* 拖动时由手势写位置，自动漂移暂停。 */
+  } else {
+    driftY.value = (driftY.value - dt * 0.028) % 620
+  }
+  wallFrame = requestAnimationFrame(wallTick)
+}
 
 /* ---------------- scroll-stack：滚动压栈 ---------------- */
 const scrollProgress = ref(0)
@@ -208,99 +264,250 @@ function onScroll(event) {
   const total = Math.max(1, el.scrollHeight - el.clientHeight)
   scrollProgress.value = el.scrollTop / total
 }
-function stackScrollStyle(index) {
+function stackScrollStyle(index, item) {
   const total = Math.max(1, count.value - 1)
   const pin = index / total
-  /* 当前卡到达自身位置后，之前的卡保持压住并略微缩小、变暗。 */
   const distance = Math.max(0, scrollProgress.value - pin) * total
   return {
-    transform: 'translate3d(0,' + Math.round(index * 10) + 'px,0) scale(' + (1 - Math.min(0.12, distance * 0.04)) + ')',
-    filter: 'brightness(' + (1 - Math.min(0.42, distance * 0.14)) + ')',
-    zIndex: 10 + index
+    '--card-tone': item.tone || 'primary',
+    transform: 'translate3d(0,' + Math.round(index * 9) + 'px,0) scale(' + (1 - Math.min(0.14, distance * 0.05)) + ')',
+    filter: 'brightness(' + (1 - Math.min(0.46, distance * 0.16)) + ')' + (distance > 1.6 ? ' blur(' + ((distance - 1.6) * 0.9).toFixed(2) + 'px)' : ''),
+    zIndex: String(10 + index)
   }
+}
+function scrollToCard(index) {
+  const el = scrollerEl.value
+  if (!el) return
+  const inner = el.firstElementChild
+  const target = inner && inner.children[index]
+  if (!target) return
+  el.scrollTo({ top: Math.max(0, target.offsetTop - el.clientHeight * 0.18), behavior: 'smooth' })
 }
 
 /* ---------------- stack / swap：牌堆 ---------------- */
-const throwStyle = ref({ x: 0, y: 0, rotate: 0, animating: false })
-const frontIndex = computed(() => pile.value[0] ?? 0)
+const pile = ref([])
+watch(count, value => {
+  pile.value = Array.from({ length: value }, (_, i) => i)
+}, { immediate: true })
 
-function pileStyle(position) {
-  /* position = 0 是最上面那张，越往后越小越偏。 */
+const front = computed(() => pile.value[0] ?? 0)
+/* 最上面那张的跟手 / 飞出状态 */
+const frontMotion = ref({ x: 0, y: 0, rot: 0, scale: 1, flying: false, dim: 0 })
+let pileStartX = 0
+let pileStartY = 0
+
+function pileStyle(position, item) {
+  if (position === 0) {
+    const m = frontMotion.value
+    return {
+      '--card-tone': item.tone || 'primary',
+      transform: 'translate3d(' + m.x + 'px,' + m.y + 'px,0) rotate(' + m.rot + 'deg) scale(' + m.scale + ')',
+      opacity: String(1 - m.dim * 0.6),
+      zIndex: '60',
+      transition: m.flying ? 'transform 260ms cubic-bezier(.3,.7,.3,1), opacity 260ms ease' : 'none'
+    }
+  }
   return {
-    transform: 'translate3d(' + position * 8 + 'px, ' + position * -6 + 'px, ' + (-position * 26) + 'px) rotate(' + (position % 2 ? 1.2 : -1.2) * position + 'deg) scale(' + (1 - position * 0.05) + ')',
-    zIndex: 30 - position,
-    opacity: position > 3 ? 0 : 1
+    '--card-tone': item.tone || 'primary',
+    transform: 'translate3d(' + position * 9 + 'px,' + position * -7 + 'px,' + -position * 26 + 'px) rotate(' + (position % 2 ? 1.4 : -1.4) * position + 'deg) scale(' + (1 - position * 0.055) + ')',
+    opacity: String(Math.max(0, 1 - position * 0.16)),
+    filter: position > 1 ? 'brightness(' + (1 - Math.min(0.3, position * 0.1)) + ')' : '',
+    zIndex: String(50 - position),
+    transition: 'transform var(--t-panel) var(--spring-view), opacity var(--t-fade), filter var(--t-fade)'
   }
 }
 
-function moveFrontToBack() {
+function advancePile() {
   if (pile.value.length < 2) return
   const next = pile.value.slice(1)
   next.push(pile.value[0])
   pile.value = next
+  frontMotion.value = { x: 0, y: 0, rot: 0, scale: 1, flying: false, dim: 0 }
   pick(pile.value[0])
 }
 
-function throwFront(direction = -1) {
+/* 甩出去：先飞出去，再绕到牌堆最下面。 */
+function flingFront(direction) {
   if (pile.value.length < 2) return
-  const el = rootEl.value && rootEl.value.querySelector('[data-card="' + frontIndex.value + '"]')
-  throwStyle.value = { x: direction * 220, y: -40, rotate: direction * 18, animating: true }
+  frontMotion.value = { x: direction * 240, y: -46, rot: direction * 20, scale: 0.94, flying: true, dim: 1 }
   setTimeout(() => {
-    throwStyle.value = { x: 0, y: 0, rotate: 0, animating: false }
-    moveFrontToBack()
-  }, 260)
+    advancePile()
+  }, 250)
 }
 
-onDrag = (dx, dy) => {
-  if (props.variant !== 'stack' && props.variant !== 'swap') return
-  throwStyle.value = { x: dx, y: dy * 0.4, rotate: dx * 0.06, animating: false }
-}
-onDragEnd = (dx, dy) => {
-  if (props.variant !== 'stack' && props.variant !== 'swap') return
-  if (Math.abs(dx) > 90 || Math.abs(velocity) > 0.65) throwFront(dx > 0 ? 1 : -1)
-  else throwStyle.value = { x: 0, y: 0, rotate: 0, animating: true }
-}
+/* ---------------- bounce：扇形 ---------------- */
+const spread = ref(0)
+let spreadStart = 0
 
-/* swap：定时把最前面的牌送到最后面。 */
-let swapTimer = 0
-function startAuto() {
-  stopAuto()
-  if (!props.auto && props.variant !== 'swap' && props.variant !== 'depth') return
-  if (!props.interval) return
-  swapTimer = setInterval(() => {
-    if (props.variant === 'swap' || props.variant === 'stack') moveFrontToBack()
-    else if (props.variant === 'depth') depthNext(1)
-    else if (props.variant === 'gallery') galleryOffset.value -= spanPx.value
-    else if (props.variant === 'circular') { ringRotation.value -= stepAngle.value; onDragEnd() }
-  }, Math.max(600, props.interval))
-}
-function stopAuto() { clearInterval(swapTimer); swapTimer = 0 }
-
-watch(() => [props.variant, props.auto, props.interval], () => { if (props.auto || props.variant === 'swap') startAuto(); else stopAuto() }, { immediate: true })
-onMounted(() => { if (props.auto || props.variant === 'swap' || props.variant === 'depth') startAuto(); nextTick(() => { if (props.variant === 'scroll-stack' && scrollerEl.value) scrollerEl.value.scrollTop = 0 }) })
-onBeforeUnmount(() => { stopAuto(); pointerId = null })
-
-/* 扇形几何：JS 算好位移 / 角度 / 缩放，避免依赖 CSS abs()（支持面太窄）。 */
-function bounceVars(index) {
+function bounceStyle(index, item) {
   const mid = (count.value - 1) / 2
-  const offset = index - mid
-  const distance = Math.abs(offset)
+  const o = index - mid
+  const spreadScale = 1 + spread.value / 240
+  const x = o * 54 * spreadScale
+  const y = o * 8 - Math.abs(o) * 2
   return {
-    '--card-tone': props.items[index]?.tone || 'primary',
-    '--bounce-x': (offset * 54).toFixed(1) + 'px',
-    '--bounce-y': (offset * 8).toFixed(1) + 'px',
-    '--bounce-rot': (offset * 6).toFixed(2) + 'deg',
-    '--bounce-scale': Math.max(0.78, 1 - distance * 0.04).toFixed(3),
-    '--bounce-i': index
+    '--card-tone': item.tone || 'primary',
+    '--i': index,
+    transform: 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + o * 6 * (1 + spread.value / 400) + 'deg) scale(' + (1 - Math.abs(o) * 0.04) + ')',
+    zIndex: String(20 - Math.round(Math.abs(o)))
   }
 }
 
-function onKeydown(event) {
-  if (!count.value) return
-  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); depthNext(1) }
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); depthNext(-1) }
-  if (event.key === 'Enter') { event.preventDefault(); moveFrontToBack() }
+/* ---------------- 形态分派：拖拽 / 松手 / 点击 ---------------- */
+function applyDrag(dx, dy) {
+  const v = props.variant
+  if (v === 'gallery') offset.value = offsetStart + dx
+  else if (v === 'circular') rotation.value = rotationStart + dx * 0.3
+  else if (v === 'depth') depthDrag.value = depthStart - dx / 110
+  else if (v === 'wall') driftY.value += dy * 0.6
+  else if (v === 'stack' || v === 'swap') {
+    frontMotion.value = {
+      x: dx,
+      y: dy * 0.35,
+      rot: dx * 0.06,
+      scale: 1 - Math.min(0.05, Math.abs(dx) / 1600),
+      flying: false,
+      dim: Math.min(0.3, Math.abs(dx) / 600)
+    }
+  } else if (v === 'bounce') spread.value = spreadStart + dx * 0.5
 }
+
+function endDrag(dx, dy) {
+  const v = props.variant
+  if (v === 'gallery') {
+    /* 甩动：按速度多滑一段，再吸到最近格位。 */
+    const projected = offset.value + vx * 260
+    animateTo(() => offset.value, value => { offset.value = value }, galleryNearestOf(projected))
+    const nearestIndex = Math.round(-wrapped.value / span.value) % Math.max(1, count.value)
+    pick(((nearestIndex % count.value) + count.value) % count.value)
+  } else if (v === 'circular') {
+    const step = stepAngle.value || 1
+    const projected = rotation.value + vx * 240
+    animateTo(() => rotation.value, value => { rotation.value = value }, Math.round(projected / step) * step, () => {
+      const index = ((Math.round(-rotation.value / step) % count.value) + count.value) % count.value
+      pick(index)
+    })
+  } else if (v === 'depth') {
+    const overflow = depthDrag.value
+    const moved = Math.abs(overflow) > 0.22 || Math.abs(vx) > 0.6
+    if (moved) depthStep(overflow < 0 ? 1 : -1)
+    animateTo(() => depthDrag.value, value => { depthDrag.value = value }, 0)
+  } else if (v === 'wall') {
+    /* 惯性再飘一点，然后继续自动漂移。 */
+    animateTo(() => driftY.value, value => { driftY.value = value }, driftY.value + vy * 220)
+  } else if (v === 'stack' || v === 'swap') {
+    if (Math.abs(dx) > 92 || Math.abs(vx) > 0.65) flingFront(dx >= 0 ? 1 : -1)
+    else {
+      frontMotion.value = { ...frontMotion.value, x: 0, y: 0, rot: 0, scale: 1, dim: 0, flying: true }
+      setTimeout(() => { frontMotion.value = { x: 0, y: 0, rot: 0, scale: 1, flying: false, dim: 0 } }, 260)
+    }
+  } else if (v === 'bounce') {
+    animateTo(() => spread.value, value => { spread.value = value }, 0)
+  }
+}
+
+function galleryNearestOf(projected) {
+  const step = span.value
+  return Math.round(projected / step) * step
+}
+
+function hitCard(index) {
+  const v = props.variant
+  if (!Number.isFinite(index)) return
+  if (v === 'gallery') {
+    pick(index)
+    const current = wrapped.value
+    const want = -index * span.value
+    /* 选到最近的一圈副本，避免绕一大圈。 */
+    const delta = want - current
+    animateTo(() => offset.value, value => { offset.value = value }, offset.value + delta)
+  } else if (v === 'circular') {
+    const step = stepAngle.value || 1
+    pick(index)
+    animateTo(() => rotation.value, value => { rotation.value = value }, -index * step)
+  } else if (v === 'depth') pick(index)
+  else if (v === 'wall' || v === 'bounce') pick(index)
+  else if (v === 'scroll-stack') scrollToCard(index)
+  else if (v === 'stack' || v === 'swap') {
+    if (index === front.value) advancePile()
+    else pick(index)
+  }
+}
+
+/* ---------------- 键盘 ---------------- */
+function onKeydown(event) {
+  const v = props.variant
+  const left = event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+  const right = event.key === 'ArrowRight' || event.key === 'ArrowDown'
+  if (!left && !right) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      hitCard(v === 'stack' || v === 'swap' || v === 'scroll-stack' ? front.value : active.value)
+    }
+    return
+  }
+  event.preventDefault()
+  const delta = right ? 1 : -1
+  if (v === 'gallery') hitCard(Math.max(0, Math.min(count.value - 1, active.value + delta)))
+  else if (v === 'circular' || v === 'depth') depthStep(delta)
+  else if (v === 'stack' || v === 'swap') {
+    if (delta > 0) advancePile()
+    else {
+      /* 往回：把最后一张翻到最前面。 */
+      if (pile.value.length > 1) {
+        const next = pile.value.slice()
+        next.unshift(next.pop())
+        pile.value = next
+        pick(next[0])
+      }
+    }
+  } else if (v === 'scroll-stack') scrollToCard(Math.max(0, Math.min(count.value - 1, active.value + delta)))
+  else hitCard(Math.max(0, Math.min(count.value - 1, active.value + delta)))
+}
+
+/* ---------------- 生命周期 / 自动播放 ---------------- */
+let autoTimer = 0
+function resetVariant() {
+  stopAllMotion()
+  offsetStart = offset.value
+  offset.value = 0
+  rotation.value = 0
+  depthDrag.value = 0
+  spread.value = 0
+  frontMotion.value = { x: 0, y: 0, rot: 0, scale: 1, flying: false, dim: 0 }
+  if (props.variant === 'scroll-stack' && scrollerEl.value) scrollerEl.value.scrollTop = 0
+}
+
+function startAuto() {
+  clearInterval(autoTimer)
+  const v = props.variant
+  const shouldRun = v === 'swap' || (props.auto && (v === 'depth' || v === 'gallery' || v === 'circular' || v === 'wall'))
+  if (!shouldRun) return
+  autoTimer = setInterval(() => {
+    if (dragging) return
+    if (v === 'swap' || v === 'stack') advancePile()
+    else if (v === 'depth') depthStep(1)
+    else if (v === 'gallery') hitCard(Math.min(count.value - 1, active.value + 1))
+    else if (v === 'circular') hitCard((active.value + 1) % Math.max(1, count.value))
+  }, Math.max(700, props.interval))
+}
+
+watch(() => [props.variant, props.auto, props.interval], () => { startAuto(); resetVariant() }, { deep: true })
+
+onMounted(() => {
+  startAuto()
+  wallFrame = requestAnimationFrame(wallTick)
+  nextTick(() => { if (props.variant === 'scroll-stack' && scrollerEl.value) scrollerEl.value.scrollTop = 0 })
+})
+onBeforeUnmount(() => {
+  stopAllMotion()
+  clearInterval(autoTimer)
+  if (wallFrame) cancelAnimationFrame(wallFrame)
+})
+
+watch(() => props.modelValue, value => {
+  if (Number.isFinite(value) && value !== active.value) active.value = Math.max(0, Math.min(count.value - 1, value))
+})
 </script>
 
 <template>
@@ -311,153 +518,147 @@ function onKeydown(event) {
     :style="{ '--cg-height': height + 'px', '--cg-card-width': cardWidth + 'px', '--cg-gap': gap + 'px' }"
     tabindex="0"
     role="group"
-    aria-label="卡片组"
-    @pointerdown="dragStart"
-    @pointermove="dragMove"
-    @pointerup="dragEnd"
-    @pointercancel="dragEnd"
+    aria-label="卡片组（可拖动 / 方向键切换）"
+    @pointerdown="onDown"
+    @pointermove="onMove"
+    @pointerup="onUp"
+    @pointercancel="onUp"
     @keydown="onKeydown"
   >
-    <!-- ---------- gallery：横向平铺 + 循环 ---------- -->
-    <div v-if="variant === 'gallery'" class="ui-card-group__gallery">
-      <div ref="trackEl" class="ui-card-group__track" :style="galleryStyle">
-        <div
-          v-for="(item, index) in galleryList"
-          :key="'g' + index"
-          data-card
-          class="ui-card-group__card"
-          :class="{ 'is-active': index % (count || 1) === active }"
-          :data-card="index % (count || 1)"
-          :style="{ '--card-tone': item.tone || 'primary' }"
-        >
-          <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" />
-          <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
-          <span class="ui-card-group__caption">
-            <b>{{ item.title }}</b>
-            <small v-if="item.meta">{{ item.meta }}</small>
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- ---------- circular：3D 圆环 ---------- -->
-    <div v-else-if="variant === 'circular'" class="ui-card-group__circular">
-      <div
-        v-for="(item, index) in items"
-        :key="'c' + index"
-        data-card
-        class="ui-card-group__card"
-        :class="{ 'is-active': index === active }"
-        :data-card="index"
-        :style="[circleStyle(index), { '--card-tone': item.tone || 'primary' }]"
-      >
-        <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" />
-        <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
-        <span class="ui-card-group__caption"><b>{{ item.title }}</b><small v-if="item.meta">{{ item.meta }}</small></span>
-      </div>
-    </div>
-
-    <!-- ---------- depth：Z 轴轨道 ---------- -->
-    <div v-else-if="variant === 'depth'" class="ui-card-group__depth">
-      <div
-        v-for="(item, index) in items"
-        :key="'d' + index"
-        data-card
-        class="ui-card-group__card"
-        :class="{ 'is-active': index === active }"
-        :data-card="index"
-        :style="[depthStyle(index), { '--card-tone': item.tone || 'primary' }]"
-      >
-        <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" />
-        <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
-        <span class="ui-card-group__caption"><b>{{ item.title }}</b><small v-if="item.meta">{{ item.meta }}</small></span>
-      </div>
-    </div>
-
-    <!-- ---------- wall：透视墙 ---------- -->
-    <div v-else-if="variant === 'wall'" class="ui-card-group__wall">
-      <div class="ui-card-group__wall-plane">
-        <div
-          v-for="(item, index) in wallTiles"
-          :key="'w' + index"
-          data-card
-          class="ui-card-group__tile"
-          :data-card="index % (count || 1)"
-          :style="{ '--card-tone': item.tone || 'primary' }"
-        >
-          <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" />
-          <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
-          <span class="ui-card-group__tile-label">{{ item.title }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- ---------- scroll-stack：滚动压栈 ---------- -->
-    <div v-else-if="variant === 'scroll-stack'" ref="scrollerEl" class="ui-card-group__scroller" @scroll.passive="onScroll">
-      <div class="ui-card-group__scroller-inner" :style="{ height: (count + 1) * 62 + '%' }">
-        <div
-          v-for="(item, index) in items"
-          :key="'s' + index"
-          data-card
-          class="ui-card-group__pin"
-          :data-card="index"
-          :style="[{ top: index * 10 + 'px' }, stackScrollStyle(index)]"
-        >
-          <div class="ui-card-group__pin-card" :style="{ '--card-tone': item.tone || 'primary' }">
-            <b>{{ item.title }}</b>
-            <small v-if="item.meta">{{ item.meta }}</small>
+    <div :key="enterKey" ref="stageEl" class="ui-card-group__stage" :class="`is-${variant}`">
+      <!-- ---------- gallery ---------- -->
+      <div v-if="variant === 'gallery'" class="ui-card-group__gallery">
+        <div class="ui-card-group__track" :style="{ transform: 'translate3d(' + wrapped + 'px,0,0)' }">
+          <div
+            v-for="(item, index) in galleryList"
+            :key="'g' + index"
+            class="ui-card-group__card"
+            :class="{ 'is-active': index % (count || 1) === active }"
+            :data-card-index="index % (count || 1)"
+            :style="[galleryCardStyle(index, item), { '--i': index }]"
+          >
+            <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" draggable="false" />
+            <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
+            <span class="ui-card-group__caption"><b>{{ item.title }}</b><small v-if="item.meta">{{ item.meta }}</small></span>
           </div>
         </div>
       </div>
+
+      <!-- ---------- circular ---------- -->
+      <div v-else-if="variant === 'circular'" class="ui-card-group__ring">
+        <div
+          v-for="(item, index) in items"
+          :key="'c' + index"
+          class="ui-card-group__card ui-card-group__ring-card"
+          :class="{ 'is-active': index === active }"
+          :data-card-index="index"
+          :style="[circularStyle(index, item), { '--i': index }]"
+        >
+          <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" draggable="false" />
+          <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
+          <span class="ui-card-group__caption"><b>{{ item.title }}</b><small v-if="item.meta">{{ item.meta }}</small></span>
+        </div>
+      </div>
+
+      <!-- ---------- depth ---------- -->
+      <div v-else-if="variant === 'depth'" class="ui-card-group__depth">
+        <div
+          v-for="(item, index) in items"
+          :key="'d' + index"
+          class="ui-card-group__card ui-card-group__depth-card"
+          :class="{ 'is-active': index === active }"
+          :data-card-index="index"
+          :style="[depthStyle(index, item), { '--i': index }]"
+        >
+          <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" draggable="false" />
+          <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
+          <span class="ui-card-group__caption"><b>{{ item.title }}</b><small v-if="item.meta">{{ item.meta }}</small></span>
+        </div>
+      </div>
+
+      <!-- ---------- wall ---------- -->
+      <div v-else-if="variant === 'wall'" class="ui-card-group__wall">
+        <div
+          class="ui-card-group__wall-plane"
+          :style="{ transform: 'rotateX(24deg) rotateZ(-6deg) translate3d(0,' + driftY + 'px,0)' }"
+        >
+          <div
+            v-for="(tile, index) in wallTiles"
+            :key="'w' + index"
+            class="ui-card-group__tile"
+            :data-card-index="tile.index"
+          >
+            <img v-if="tile.item.image" :src="tile.item.image" :alt="tile.item.title" loading="lazy" draggable="false" />
+            <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
+            <span class="ui-card-group__tile-label">{{ tile.item.title }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- scroll-stack ---------- -->
+      <div v-else-if="variant === 'scroll-stack'" ref="scrollerEl" class="ui-card-group__scroller" @scroll.passive="onScroll">
+        <div class="ui-card-group__scroller-inner" :style="{ height: (count + 1) * 64 + '%' }">
+          <div
+            v-for="(item, index) in items"
+            :key="'s' + index"
+            class="ui-card-group__pin"
+            :data-card-index="index"
+            :style="[{ top: index * 9 + 'px' }, stackScrollStyle(index, item)]"
+          >
+            <div class="ui-card-group__pin-card">
+              <b>{{ item.title }}</b>
+              <small v-if="item.meta">{{ item.meta }}</small>
+              <span class="ui-card-group__pin-index">{{ index + 1 }} / {{ count }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- stack / swap ---------- -->
+      <div v-else-if="variant === 'stack' || variant === 'swap'" class="ui-card-group__pile">
+        <div
+          v-for="(index, position) in pile"
+          :key="'p' + index"
+          class="ui-card-group__card ui-card-group__pile-card"
+          :class="{ 'is-front': position === 0, 'is-flying': position === 0 && frontMotion.flying }"
+          :data-card-index="index"
+          :style="[pileStyle(position, items[index] || {}), { '--i': position }]"
+        >
+          <img v-if="items[index] && items[index].image" :src="items[index].image" :alt="items[index].title" loading="lazy" draggable="false" />
+          <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
+          <span class="ui-card-group__caption">
+            <b>{{ items[index] && items[index].title }}</b>
+            <small v-if="items[index] && items[index].meta">{{ items[index].meta }}</small>
+          </span>
+        </div>
+        <div class="ui-card-group__pile-actions">
+          <button type="button" class="ui-card-group__pill" @click.stop="advancePile">下一张</button>
+          <button type="button" class="ui-card-group__pill" @click.stop="flingFront(-1)">甩掉</button>
+        </div>
+      </div>
+
+      <!-- ---------- bounce ---------- -->
+      <div v-else class="ui-card-group__bounce">
+        <div
+          v-for="(item, index) in items"
+          :key="'b' + index"
+          class="ui-card-group__card ui-card-group__bounce-card"
+          :class="{ 'is-active': index === active }"
+          :data-card-index="index"
+          :style="[bounceStyle(index, item), { '--i': index }]"
+        >
+          <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" draggable="false" />
+          <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
+          <span class="ui-card-group__caption"><b>{{ item.title }}</b><small v-if="item.meta">{{ item.meta }}</small></span>
+        </div>
+      </div>
     </div>
 
-    <!-- ---------- stack / swap：牌堆 ---------- -->
-    <div v-else-if="variant === 'stack' || variant === 'swap'" class="ui-card-group__pile">
-      <div
-        v-for="(index, position) in pile"
-        :key="'p' + index"
-        data-card
-        class="ui-card-group__card ui-card-group__pile-card"
-        :class="{ 'is-front': position === 0, 'is-thrown': position === 0 && (throwStyle.x !== 0 || throwStyle.y !== 0) }"
-        :data-card="index"
-        :style="[
-          pileStyle(position),
-          position === 0 ? {
-            transform: (position === 0 ? 'translate3d(' + throwStyle.x + 'px,' + throwStyle.y + 'px,0) rotate(' + throwStyle.rotate + 'deg)' : '') + ' scale(1)',
-            transition: throwStyle.animating ? 'transform var(--t-panel) var(--spring-view)' : 'none'
-          } : {},
-          { '--card-tone': items[index]?.tone || 'primary' }
-        ]"
-      >
-        <img v-if="items[index]?.image" :src="items[index].image" :alt="items[index].title" loading="lazy" />
-        <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
-        <span class="ui-card-group__caption">
-          <b>{{ items[index]?.title }}</b>
-          <small v-if="items[index]?.meta">{{ items[index].meta }}</small>
-        </span>
-      </div>
-      <div class="ui-card-group__pile-actions">
-        <button type="button" class="ui-card-group__pill" @click="moveFrontToBack">下一张</button>
-        <button type="button" class="ui-card-group__pill" @click="throwFront(-1)">甩掉</button>
-      </div>
-    </div>
-
-    <!-- ---------- bounce：扇形牌组 ---------- -->
-    <div v-else class="ui-card-group__bounce">
-      <div
-        v-for="(item, index) in items"
-        :key="'b' + index"
-        data-card
-        class="ui-card-group__card ui-card-group__bounce-card"
-        :class="{ 'is-active': index === active }"
-        :data-card="index"
-        :style="bounceVars(index)"
-      >
-        <img v-if="item.image" :src="item.image" :alt="item.title" loading="lazy" />
-        <span v-else class="ui-card-group__blank" aria-hidden="true"></span>
-        <span class="ui-card-group__caption"><b>{{ item.title }}</b><small v-if="item.meta">{{ item.meta }}</small></span>
-      </div>
-    </div>
+    <!-- 底部提示：可拖 / 可点 / 方向键 -->
+    <span class="ui-card-group__hint" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 12h8M11 8l-3 4 3 4M13 8l3 4-3 4"/></svg>
+      拖拽 · 点击 · 方向键
+    </span>
   </div>
 </template>
 
@@ -465,19 +666,19 @@ function onKeydown(event) {
 .ui-card-group {
   position: relative;
   width: 100%;
-  border-radius: calc(18px * var(--radius-scale));
   outline: none;
   touch-action: pan-y;
   user-select: none;
+  cursor: grab;
 }
+.ui-card-group:active { cursor: grabbing; }
 .ui-card-group:focus-visible { outline: var(--focus-w) solid var(--primary); outline-offset: 3px; }
+.ui-card-group__stage { position: relative; }
 
 /* ---------- 通用卡片 ---------- */
 .ui-card-group__card {
   position: relative;
   flex: 0 0 auto;
-  width: var(--cg-card-width, 190px);
-  aspect-ratio: 4 / 3;
   overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(16px * var(--radius-scale));
@@ -485,15 +686,16 @@ function onKeydown(event) {
   color: var(--on-surface);
   box-shadow: var(--elev-card);
   transform-origin: center center;
-  transition: transform var(--t-panel) var(--spring-view), opacity var(--t-fade), box-shadow var(--t-fade);
-  will-change: transform;
+  animation: cgCardIn 460ms var(--spring-view) both;
+  animation-delay: calc(var(--i, 0) * 34ms);
 }
 .ui-card-group__card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
 .ui-card-group__blank {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(120% 120% at 20% 0%, color-mix(in oklab, var(--primary) 34%, transparent), transparent 62%),
+    radial-gradient(120% 120% at 18% 0%, color-mix(in oklab, var(--primary) 32%, transparent), transparent 62%),
+    radial-gradient(120% 120% at 92% 100%, color-mix(in oklab, var(--accent, var(--primary)) 24%, transparent), transparent 58%),
     linear-gradient(150deg, var(--surface-container-high), var(--surface-container));
 }
 .ui-card-group__caption {
@@ -502,36 +704,51 @@ function onKeydown(event) {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 16px 12px 9px;
-  background: linear-gradient(to top, rgba(0, 0, 0, .5), transparent);
+  padding: 18px 12px 9px;
+  background: linear-gradient(to top, rgba(0, 0, 0, .52), transparent);
   color: #fff;
   font-size: var(--fs-tiny);
 }
 .ui-card-group__caption b { font-weight: var(--w-label); }
 .ui-card-group__caption small { font-size: var(--fs-micro); opacity: .82; }
+/* 选中的卡：抬起 + 亮边，其它卡退后。 */
+.ui-card-group__card.is-active { border-color: color-mix(in oklab, var(--primary) 55%, var(--outline-variant)); }
 
 /* ---------- gallery ---------- */
-.ui-card-group__gallery { height: var(--cg-height); overflow: hidden; mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent); }
-.ui-card-group__track { display: flex; gap: var(--cg-gap); align-items: center; height: 100%; will-change: transform; }
-.ui-card-group__gallery .ui-card-group__card { height: 78%; aspect-ratio: auto; }
-.ui-card-group__gallery .ui-card-group__card.is-active { box-shadow: var(--elev-tip); }
+.ui-card-group__gallery {
+  height: var(--cg-height);
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+.ui-card-group__track {
+  display: flex;
+  gap: var(--cg-gap);
+  align-items: center;
+  height: 100%;
+  will-change: transform;
+}
+.ui-card-group__gallery .ui-card-group__card {
+  width: var(--cg-card-width);
+  height: 74%;
+  transition: transform var(--t-panel) var(--spring-view), opacity var(--t-fade), filter var(--t-fade), border-color var(--t-fade);
+}
 
 /* ---------- circular ---------- */
-.ui-card-group__circular {
+.ui-card-group__ring {
   height: var(--cg-height);
   display: grid;
   place-items: center;
-  perspective: 1200px;
+  perspective: 1100px;
   transform-style: preserve-3d;
 }
-.ui-card-group__circular .ui-card-group__card {
+.ui-card-group__ring-card {
   position: absolute;
-  width: calc(var(--cg-card-width) * 0.86);
+  width: calc(var(--cg-card-width) * 0.84);
+  aspect-ratio: 4 / 3;
   transform-style: preserve-3d;
   backface-visibility: hidden;
+  transition: transform var(--t-fade) linear, opacity var(--t-fade), filter var(--t-fade);
 }
-.ui-card-group__circular .ui-card-group__card.is-active { box-shadow: var(--elev-tip); }
-.ui-card-group__circular .ui-card-group__card.is-active .ui-card-group__caption { color: #fff; }
 
 /* ---------- depth ---------- */
 .ui-card-group__depth {
@@ -541,24 +758,28 @@ function onKeydown(event) {
   perspective: 820px;
   transform-style: preserve-3d;
 }
-.ui-card-group__depth .ui-card-group__card { position: absolute; width: calc(var(--cg-card-width) * 0.9); }
-.ui-card-group__depth .ui-card-group__card.is-active { box-shadow: var(--elev-tip); }
+.ui-card-group__depth-card {
+  position: absolute;
+  width: calc(var(--cg-card-width) * 0.9);
+  aspect-ratio: 4 / 3;
+  transition: transform var(--t-panel) var(--spring-view), opacity var(--t-fade), filter var(--t-fade);
+}
 
 /* ---------- wall ---------- */
 .ui-card-group__wall {
   height: var(--cg-height);
   overflow: hidden;
   perspective: 900px;
-  mask-image: radial-gradient(120% 110% at 50% 50%, #000 52%, transparent 100%);
+  mask-image: radial-gradient(130% 120% at 50% 50%, #000 48%, transparent 100%);
 }
 .ui-card-group__wall-plane {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  height: 160%;
+  height: 170%;
   align-content: start;
-  transform: rotateX(24deg) rotateZ(-6deg);
-  animation: cgWallDrift 22s linear infinite;
+  will-change: transform;
+  transform-origin: center top;
 }
 .ui-card-group__tile {
   position: relative;
@@ -570,17 +791,20 @@ function onKeydown(event) {
   transition: transform var(--t-panel) var(--spring-view), box-shadow var(--t-fade), border-color var(--t-fade);
 }
 .ui-card-group__tile img { width: 100%; height: 100%; object-fit: cover; }
-.ui-card-group__tile-label { position: absolute; inset: auto 6px 5px 6px; color: var(--on-surface); font-size: var(--fs-micro); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 悬停的瓦片从墙里抬起来：位移 + 放大 + 描边亮起。 */
+.ui-card-group__tile-label {
+  position: absolute;
+  inset: auto 6px 5px 6px;
+  color: var(--on-surface);
+  font-size: var(--fs-micro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ui-card-group__tile:hover {
-  transform: translateZ(46px) scale(1.06);
+  transform: translateZ(52px) scale(1.06);
   box-shadow: var(--elev-tip);
   border-color: var(--primary);
   z-index: 2;
-}
-@keyframes cgWallDrift {
-  from { transform: rotateX(24deg) rotateZ(-6deg) translateY(-8%); }
-  to { transform: rotateX(24deg) rotateZ(-6deg) translateY(-46%); }
 }
 
 /* ---------- scroll-stack ---------- */
@@ -590,16 +814,17 @@ function onKeydown(event) {
   overscroll-behavior: contain;
   scrollbar-width: none;
   border-radius: inherit;
+  cursor: default;
 }
 .ui-card-group__scroller::-webkit-scrollbar { display: none; }
 .ui-card-group__scroller-inner { position: relative; padding: 0 2px; }
-.ui-card-group__pin { position: sticky; height: 58px; transform-origin: top center; transition: transform var(--t-fade), filter var(--t-fade); }
+.ui-card-group__pin { position: sticky; height: 60px; transform-origin: top center; transition: transform var(--t-fade), filter var(--t-fade); }
 .ui-card-group__pin-card {
   display: flex;
   flex-direction: column;
   gap: 2px;
   height: 100%;
-  padding: 12px 14px;
+  padding: 11px 14px;
   border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(14px * var(--radius-scale));
   background: linear-gradient(140deg, var(--surface-container-low), var(--surface-container));
@@ -607,6 +832,7 @@ function onKeydown(event) {
   font-size: var(--fs-small);
 }
 .ui-card-group__pin-card small { color: var(--on-surface-variant); font-size: var(--fs-micro); }
+.ui-card-group__pin-index { position: absolute; right: 14px; top: 12px; color: var(--on-surface-variant); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
 
 /* ---------- stack / swap ---------- */
 .ui-card-group__pile {
@@ -619,18 +845,24 @@ function onKeydown(event) {
 .ui-card-group__pile-card {
   position: absolute;
   width: calc(var(--cg-card-width) * 0.92);
+  aspect-ratio: 4 / 3;
   transform-style: preserve-3d;
-  cursor: grab;
 }
-.ui-card-group__pile-card.is-front { cursor: grab; }
-.ui-card-group__pile-card.is-front:active { cursor: grabbing; }
-.ui-card-group__pile-card.is-front.is-thrown { opacity: .96; }
-.ui-card-group__pile-actions { position: absolute; inset: auto 0 6px 0; display: flex; justify-content: center; gap: 8px; }
+.ui-card-group__pile-card.is-front { cursor: grab; animation: none; }
+.ui-card-group__pile-card.is-front.is-flying { pointer-events: none; }
+.ui-card-group__pile-actions {
+  position: absolute;
+  inset: auto 0 6px 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  z-index: 70;
+}
 .ui-card-group__pill {
   padding: 7px 14px;
   border: var(--border-w) solid var(--outline-variant);
   border-radius: 999px;
-  background: color-mix(in oklab, var(--surface) 82%, transparent);
+  background: color-mix(in oklab, var(--surface) 84%, transparent);
   color: var(--on-surface);
   font-size: var(--fs-micro);
   font-weight: var(--w-label);
@@ -651,24 +883,47 @@ function onKeydown(event) {
 .ui-card-group__bounce-card {
   position: absolute;
   width: calc(var(--cg-card-width) * 0.68);
-  /* 扇形：以中轴为基准左右展开并倾斜，悬停的那张扶正。 */
-  transform: translate3d(var(--bounce-x, 0px), var(--bounce-y, 0px), 0) rotate(var(--bounce-rot, 0deg)) scale(var(--bounce-scale, 1));
+  aspect-ratio: 4 / 3;
+  transition: transform var(--t-panel) var(--spring-view), box-shadow var(--t-fade), border-color var(--t-fade);
   animation: cgBounceIn 620ms var(--spring-view) both;
-  animation-delay: calc(var(--bounce-i) * 55ms);
+  animation-delay: calc(var(--i, 0) * 60ms);
 }
-.ui-card-group__bounce-card:hover {
-  transform: translate3d(var(--bounce-x, 0px), calc(var(--bounce-y, 0px) - 14px), 0) rotate(0deg) scale(1.06);
+/* 悬停的那张扶正并抬起来，其它保持扇形倾斜。 */
+.ui-card-group__bounce-card:hover,
+.ui-card-group__bounce-card.is-active {
+  transform: translate3d(var(--bx, 0px), calc(var(--by, 0px) - 16px), 0) rotate(0deg) scale(1.06) !important;
   z-index: 40;
-}
-@keyframes cgBounceIn {
-  0% { opacity: 0; transform: translate3d(0, 120%, 0) rotate(0deg) scale(.7); filter: blur(10px); }
-  60% { opacity: 1; filter: blur(0); }
-  100% { opacity: 1; }
+  box-shadow: var(--elev-tip);
 }
 
+/* ---------- 入场 / 提示 ---------- */
+@keyframes cgCardIn {
+  from { opacity: 0; transform: translateY(18px) scale(.94); filter: blur(10px); }
+  to { opacity: 1; filter: blur(0); }
+}
+@keyframes cgBounceIn {
+  0% { opacity: 0; transform: translate3d(0, 130%, 0) rotate(0deg) scale(.7); filter: blur(10px); }
+  62% { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; }
+}
+.ui-card-group__hint {
+  position: absolute;
+  right: 2px;
+  bottom: -18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-micro);
+  opacity: .72;
+}
+.ui-card-group__hint svg { width: 13px; height: 13px; }
+
 @media (prefers-reduced-motion: reduce) {
-  .ui-card-group__wall-plane { animation: none; }
+  .ui-card-group__card,
   .ui-card-group__bounce-card { animation: none; }
-  .ui-card-group__card { transition-duration: .01ms; }
+  .ui-card-group__card,
+  .ui-card-group__tile,
+  .ui-card-group__pill { transition-duration: .01ms; }
 }
 </style>

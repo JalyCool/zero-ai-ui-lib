@@ -48,29 +48,59 @@ const indicatorStyle = computed(() => {
   }
 })
 
-/* 每个选项的期望最小宽度：图标在上时更高一点，纯图标最窄。 */
-const itemMinWidth = computed(() => {
-  if (props.minItemWidth > 0) return props.minItemWidth
-  if (!props.showLabels && hasIcons.value) return 52
-  if (props.iconPlacement === 'top') return 78
-  return 62
+/* 列数按「每个选项真实内容宽度」算（canvas measureText），
+   不用固定最小宽度猜：否则短内容也会被当成宽块，一行只放得下一两个。
+   文字宽度与图标宽度分别算，图标在前时是 图标 + 间距 + 文字，
+   图标在上时取两者较大值。 */
+let measureCtx = null
+function textWidth(text, font) {
+  if (!measureCtx) {
+    measureCtx = document.createElement('canvas').getContext('2d')
+  }
+  if (!measureCtx) return String(text).length * 7
+  measureCtx.font = font || '12px system-ui'
+  return measureCtx.measureText(String(text)).width
+}
+
+const naturalWidths = computed(() => {
+  const font = typeof window !== 'undefined'
+    ? (() => {
+        const el = rootEl.value && rootEl.value.querySelector('button')
+        if (!el) return '12px system-ui'
+        const cs = getComputedStyle(el)
+        return cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily
+      })()
+    : '12px system-ui'
+  const padX = 6 + 10            /* 左右内边距 */
+  const iconSize = props.iconPlacement === 'top' ? 21 : 18
+  const iconGap = 6
+  return props.options.map(option => {
+    const hasIcon = !!option.icon && props.showLabels !== false
+    const showsIconOnly = !props.showLabels && !!option.icon
+    const labelW = props.showLabels || !option.icon ? textWidth(option.label || '', font) : 0
+    if (showsIconOnly) return iconSize + padX + 8
+    if (hasIcon && props.iconPlacement === 'top') return Math.max(iconSize, labelW) + padX
+    if (hasIcon) return iconSize + iconGap + labelW + padX
+    return labelW + padX
+  })
 })
 
-/* 用「可用宽度能放下几列」算列数，而不是先布局再检测换行：
-   检测换行会在「切到网格后又能放下」之间来回抖。 */
 function measure() {
   const el = rootEl.value
+  const count = props.options.length || 1
   if (!el || !props.autoMultiline) {
-    columns.value = props.options.length || 1
+    columns.value = count
     isMultiline.value = false
     return
   }
   const available = el.clientWidth
-  const count = props.options.length || 1
-  const gap = 4
-  /* 单行有 3px padding * 2 + 3px gap；网格用 gap 4px、无 padding。 */
-  const usable = Math.max(0, available - 6 - (count - 1) * 3)
-  const fits = Math.max(1, Math.floor((usable + 3) / (itemMinWidth.value + 3)))
+  if (!available) { columns.value = count; isMultiline.value = false; return }
+  const gap = 3
+  const inner = Math.max(0, available - 6 - (count - 1) * gap)
+  /* 单个选项的自然宽度上限：最多占一半宽，否则一个长标签会把整排挤压成一列。 */
+  const cap = Math.max(props.minItemWidth || 0, available * 0.46)
+  const widest = Math.min(cap, Math.max.apply(null, naturalWidths.value.concat([props.minItemWidth || 0])))
+  const fits = Math.max(1, Math.floor((inner + gap) / (widest + gap)))
   const cols = Math.min(count, Math.max(1, fits))
   columns.value = cols
   isMultiline.value = cols < count
@@ -89,6 +119,11 @@ onMounted(() => {
 watch([() => props.options, () => props.showLabels, () => props.iconPlacement, () => props.minItemWidth], () => {
   nextTick(measure)
 }, { deep: true })
+
+/* 字体加载完再量一次：避免用回退字体算出的宽度定列数。 */
+onMounted(() => {
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => measure())
+})
 
 onBeforeUnmount(() => { if (observer) observer.disconnect() })
 
