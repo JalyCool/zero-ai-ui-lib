@@ -388,7 +388,7 @@ useZeroConfig({ ui: { motion: 'lively', colors: { primary: '#0f766e' } } })
 ## 8. 常见坑
 
 1. `inert`：库用 `inert` 屏蔽未展开面板的焦点，需要 Chrome 102+ / Safari 15.5+。
-2. 浮层都是 `position: fixed`：祖先元素不要加 `transform` / `filter` / `will-change`，否则会被困住并被裁剪。
+2. 浮层都是 `position: fixed`：祖先元素不要加 `transform` / `filter` / `backdrop-filter` / `will-change`，否则包含块会变成那个祖先，`left/top` 整体偏一段（还会被裁剪）。`UiSelect` / `useMorphWindow` 已经用 `core/fixedBox` 做包含块补偿，自定义浮层建议沿用同一个工具；纯 CSS 浮层则避开这类祖先。
 3. 忘写外壳高度（`#app` / `.app` / `#scrollArea`）→ 弹层贴不到底。
 4. 骨架里不带 `<link rel="icon" href="data:," />` 会产生一条 404 console error，和「无报错」验收冲突。
 5. 本机 Vite 的 `localhost` 可能只监听 `::1`：用 `server.host = '0.0.0.0'`，验收走 `http://127.0.0.1:<port>`。

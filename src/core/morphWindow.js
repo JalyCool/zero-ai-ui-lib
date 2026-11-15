@@ -1,4 +1,5 @@
 import { nextTick, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue'
+import { toFixedBox } from './fixedBox'
 
 /* ============================================================
    形变窗口
@@ -189,11 +190,12 @@ export function useMorphWindow(options) {
     mountPlaceholder(rect)
 
     // 先把按钮尺寸写成显式像素：auto 尺寸无法参与过渡。
+    const startBox = toFixedBox(node, { left: rect.left, top: rect.top, width: rect.width, height: rect.height })
     style.value = {
-      left: rect.left + 'px',
-      top: rect.top + 'px',
-      width: rect.width + 'px',
-      height: rect.height + 'px'
+      left: startBox.left + 'px',
+      top: startBox.top + 'px',
+      width: startBox.width + 'px',
+      height: startBox.height + 'px'
     }
     viewStyle.value = {
       width: innerW + 'px',
@@ -212,7 +214,8 @@ export function useMorphWindow(options) {
       shrinkTimer = null
       if (!floating.value) return
       compressed.value = false
-      openedBox = { left: left + 'px', top: top + 'px', width: width + 'px', height: height + 'px' }
+      const openBox = toFixedBox(node, { left, top, width, height })
+      openedBox = { left: openBox.left + 'px', top: openBox.top + 'px', width: openBox.width + 'px', height: openBox.height + 'px' }
       style.value = { ...openedBox }
       open.value = true
       options.onOpened?.()
@@ -237,11 +240,12 @@ export function useMorphWindow(options) {
     if (el) void el.offsetWidth
 
     if (anchor) {
+      const closeBox = toFixedBox(surfaceEl(), anchor)
       style.value = {
-        left: anchor.left + 'px',
-        top: anchor.top + 'px',
-        width: anchor.width + 'px',
-        height: anchor.height + 'px'
+        left: closeBox.left + 'px',
+        top: closeBox.top + 'px',
+        width: closeBox.width + 'px',
+        height: closeBox.height + 'px'
       }
     }
 

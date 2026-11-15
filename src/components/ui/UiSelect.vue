@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { usePress } from '../../core/pressFeedback'
+import { toFixedBox } from '../../core/fixedBox'
 
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
@@ -173,6 +174,19 @@ function measure(width, closedH, innerW = width, viewH = 0) {
   return { height: Math.ceil(height), shiftY, shiftX, scrollTop, selectedTop: selected ? selected.offsetTop : 0 }
 }
 
+/* toFixedBox 返回的是数值；对象式 :style 不会自动补单位，
+   直接写 top: 29.75 / width: 1140 会被浏览器当非法值丢掉（只剩 left: 0 生效）。
+   这里统一补 px。 */
+function fixedStyle(box) {
+  const fixed = toFixedBox(surfaceEl.value, box)
+  return {
+    left: fixed.left + 'px',
+    top: fixed.top + 'px',
+    width: fixed.width + 'px',
+    height: fixed.height + 'px'
+  }
+}
+
 const press = usePress({
   // 收起途中也允许按下，才有机会打断收起、重新展开。
   canPress: () => !open.value,
@@ -220,10 +234,7 @@ async function openMenu(byKeyboard = false) {
   mountPlaceholder(closedBox)
 
   surface.value = {
-    left: originLeft + 'px',
-    top: originTop + 'px',
-    width: closedW + 'px',
-    height: closedH + 'px',
+    ...fixedStyle(closedBox),
     '--select-shift': '0px', '--select-shift-x': '0px'
   }
   floating.value = true
@@ -251,10 +262,7 @@ async function openMenu(byKeyboard = false) {
   requestAnimationFrame(() => {
     if (!floating.value) return
     openedBox = {
-      left: Math.round(left) + 'px',
-      top: Math.round(top) + 'px',
-      width: closedW + 'px',
-      height: targetH + 'px',
+      ...fixedStyle({ left: Math.round(left), top: Math.round(top), width: closedW, height: targetH }),
       '--select-shift': shiftY + 'px',
       '--select-shift-x': shiftX + 'px'
     }
@@ -317,10 +325,7 @@ async function close() {
 
   if (closedBox) {
     surface.value = {
-      left: closedBox.left + 'px',
-      top: closedBox.top + 'px',
-      width: closedBox.width + 'px',
-      height: closedBox.height + 'px',
+      ...fixedStyle(closedBox),
       '--select-shift': '0px', '--select-shift-x': '0px'
     }
   }
