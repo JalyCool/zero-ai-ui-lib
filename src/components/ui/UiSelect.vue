@@ -9,7 +9,10 @@ const props = defineProps({
   hint: { type: String, default: '' },
   placeholder: { type: String, default: '请选择' },
   /* 整体禁用：直接无法展开；单个选项禁用：options 里带 disabled: true */
-  disabled: { type: Boolean, default: false }
+  disabled: { type: Boolean, default: false },
+  /* 选项图标位置：leading 在文字前端（列表行布局不变）；
+     top 在文字上方（下拉面板变成图标卡片网格）。icon 是 24x24 viewBox 内的 SVG 标记。 */
+  iconPlacement: { type: String, default: 'leading' }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -41,6 +44,9 @@ let closedBox = null
 let openedBox = null
 let borderX = 0
 let borderY = 0
+
+const selectedOption = computed(() => props.options.find(item => item.value === props.modelValue) || null)
+const showFieldIcon = computed(() => props.iconPlacement === 'leading' && !!selectedOption.value?.icon)
 
 const selectedLabel = computed(() => {
   const option = props.options.find(item => item.value === props.modelValue)
@@ -366,6 +372,9 @@ onBeforeUnmount(() => {
           @click="onTriggerClick"
           @contextmenu.prevent
         >
+          <span v-if="showFieldIcon" class="ui-select__icon ui-select__icon--field" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" v-html="selectedOption.icon"></svg>
+          </span>
           <span class="ui-select__value" :class="{ 'is-placeholder': selectedLabel === placeholder }">{{ selectedLabel }}</span>
           <span class="ui-select__chevron" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -384,7 +393,11 @@ onBeforeUnmount(() => {
         :inert="open ? null : ''"
         tabindex="-1"
       >
-        <div ref="panelContentEl" class="ui-select__panel-inner">
+        <div
+          ref="panelContentEl"
+          class="ui-select__panel-inner"
+          :class="{ 'is-icon-top': iconPlacement === 'top' }"
+        >
           <button
             v-for="option in options"
             :key="option.value"
@@ -397,6 +410,9 @@ onBeforeUnmount(() => {
             :class="{ 'is-selected': option.value === modelValue, 'is-disabled': !!option.disabled }"
             @click="choose(option)"
           >
+            <span v-if="option.icon" class="ui-select__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" v-html="option.icon"></svg>
+            </span>
             <span class="ui-select__option-label">{{ option.label }}</span>
             <svg v-if="option.value === modelValue" class="ui-select__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M5 12.5l4.2 4.2L19 7" />
@@ -585,6 +601,33 @@ onBeforeUnmount(() => {
   color: var(--primary);
   font-weight: var(--w-label);
 }
+/* ---------- 选项图标 ---------- */
+.ui-select__icon { display: grid; place-items: center; flex-shrink: 0; color: currentColor; }
+.ui-select__icon svg { width: 18px; height: 18px; }
+.ui-select__icon--field { color: var(--on-surface-variant); }
+/* 图标在文字上方：面板变成卡片网格（选中项自己填底色，勾号让位）。 */
+.ui-select__panel-inner.is-icon-top {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 4px;
+}
+.ui-select__panel-inner.is-icon-top .ui-select__option {
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  min-height: 62px;
+  padding: 9px 6px;
+  text-align: center;
+  border: var(--border-w) solid transparent;
+  background: var(--surface-container);
+}
+.ui-select__panel-inner.is-icon-top .ui-select__option .ui-select__icon svg { width: 21px; height: 21px; }
+.ui-select__panel-inner.is-icon-top .ui-select__option-label { max-width: 100%; }
+.ui-select__panel-inner.is-icon-top .ui-select__option.is-selected {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.ui-select__panel-inner.is-icon-top .ui-select__check { display: none; }
 .ui-select__option-label {
   min-width: 0;
   overflow: hidden;

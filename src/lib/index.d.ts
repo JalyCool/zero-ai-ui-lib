@@ -78,8 +78,23 @@ declare const UiSchemaForm: DefineComponent<{ schema: Record<string, unknown>; m
 declare const UiSearchField: DefineComponent<{ modelValue?: string; placeholder?: string; keepValue?: boolean; disabled?: boolean }, AnyProps, unknown>
 declare const UiSelect: DefineComponent<{
   modelValue?: string | number
-  options?: { label: string; value: string | number }[]
+  options?: { label: string; value: string | number; icon?: string; disabled?: boolean }[]
   label?: string; placeholder?: string; disabled?: boolean
+  /** 选项图标位置：leading 在文字前端；top 在文字上方（面板变卡片网格） */
+  iconPlacement?: 'leading' | 'top'
+}, AnyProps, unknown>
+declare const UiSegmented: DefineComponent<{
+  modelValue?: string | number
+  options?: { label: string; value: string | number; icon?: string; disabled?: boolean }[]
+  label?: string
+  layout?: 'stack' | 'one-line'
+  /** 图标位置：leading 在文字前端（布局不变）；top 在文字上方 */
+  iconPlacement?: 'leading' | 'top'
+  /** false 时只显示图标 */
+  showLabels?: boolean
+  /** 单行装不下时自动切多行网格 */
+  autoMultiline?: boolean
+  minItemWidth?: number
 }, AnyProps, unknown>
 declare const UiSkeleton: DefineComponent<{ width?: string; height?: string; radius?: string }, AnyProps, unknown>
 declare const UiSlider: DefineComponent<{
@@ -190,6 +205,10 @@ export declare function ansiLineToHtml(line: string): string
 export declare function ansiToHtml(text: string): string
 export interface CodeFormatMeta { family: 'qr' | 'bar'; label: string; render?: string; validate: (text: string) => boolean; defaults: Record<string, unknown>; normalize: (options: AnyProps) => AnyProps }
 export declare const CODE_FORMATS: Record<string, CodeFormatMeta>
+/** 族图标：24x24 viewBox 内的 SVG 内部标记 */
+export declare const FORMAT_ICONS: Record<'qr' | 'bar', string>
+/** 取某码制的图标标记；未知码制返回空串 */
+export declare function iconOf(format: string): string
 export declare function supports(format: string, text: string): boolean
 export declare function resolveOptions(format: string, options?: Record<string, AnyProps>, isDev?: boolean): AnyProps
 export declare function renderMode(formats: string[]): 'icon' | 'text'
@@ -203,7 +222,7 @@ export {
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
   UiRating, UiRingProgress, UiRingSlider, UiRollNumber, UiSchemaForm,
-  UiSearchField, UiSelect, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,
+  UiSearchField, UiSelect, UiSegmented, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,
   UiStepper, UiSwitch, UiTabBar, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,
   UiToastHost, UiToolMenu, UiTooltip, UiTreeView, UiVirtualList, UiWheelColumn,
   UiWheel, UiWheelDatePicker,

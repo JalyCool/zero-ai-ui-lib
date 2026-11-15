@@ -343,6 +343,11 @@
   position: relative;
   z-index: 1;
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
   padding: 8px 6px;
   border: 0;
   border-radius: calc(10px * var(--radius-scale));
@@ -350,11 +355,47 @@
   color: var(--on-surface-variant);
   font-size: var(--fs-tiny);
   font-weight: var(--w-label);
+  white-space: nowrap;
   cursor: pointer;
   transition: color var(--t-fade), transform var(--t-feedback);
 }
 .ui-segmented button:active { transform: scale(var(--press-scale)); }
 .ui-segmented button.is-active { color: var(--on-primary); }
+.ui-segmented button.is-disabled { opacity: .42; cursor: not-allowed; }
+.ui-segmented button.is-disabled:active { transform: none; }
+
+/* ---------- 图标：leading 在前端 / top 在文字上方 ---------- */
+.ui-segmented__icon { display: grid; place-items: center; flex-shrink: 0; }
+.ui-segmented__icon svg { width: 18px; height: 18px; }
+.ui-segmented__text { overflow: hidden; text-overflow: ellipsis; }
+
+/* 图标在文字上方：改成纵向卡片，图标成为视觉主体。 */
+.ui-segmented.is-icon-top button { flex-direction: column; gap: 5px; padding: 9px 6px; }
+.ui-segmented.is-icon-top .ui-segmented__icon svg { width: 21px; height: 21px; }
+
+/* 只显示图标（无文字）：收成方形，放大图标。 */
+.ui-segmented.is-icon-only button { padding: 10px; }
+.ui-segmented.is-icon-only .ui-segmented__icon svg { width: 20px; height: 20px; }
+
+/* ---------- 多行：装不下时自动切网格 ---------- */
+/* 一行里滑动的指示器换行后会跨行乱跑，所以多行时让「选中项自己填底色」。 */
+.ui-segmented.is-multiline {
+  display: grid;
+  grid-template-columns: repeat(var(--seg-cols, 3), minmax(0, 1fr));
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+}
+.ui-segmented.is-multiline button {
+  min-height: 44px;
+  background: var(--surface-container);
+  border: var(--border-w) solid transparent;
+}
+.ui-segmented.is-multiline button.is-active {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.ui-segmented.is-multiline button.is-disabled { background: var(--surface-container); }
 
 /* ---------- Avatar ---------- */
 .ui-avatar {

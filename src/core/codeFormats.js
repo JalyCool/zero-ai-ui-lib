@@ -11,6 +11,19 @@ export const FAMILY_META = {
   bar: { icon: true, label: '一维码' },
 }
 
+/* 族图标：24x24 viewBox 内的 SVG 内部标记。切换控件（分段 / 下拉）共用，
+   保证「同一码制在哪儿画出来都是同一个图标」。 */
+export const FORMAT_ICONS = {
+  qr: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/>',
+  bar: '<path d="M4 5v14M7 5v14M10 5v10M13 5v14M16 5v10M19 5v14"/>'
+}
+
+/* 取某码制的图标标记；未知码制返回空串（调用方据此不渲染图标）。 */
+export function iconOf(format) {
+  const meta = CODE_FORMATS[format]
+  return meta ? (FORMAT_ICONS[meta.family] || '') : ''
+}
+
 /* 渲染器映射：组件只按这张表分派，不关心具体库。 */
 export const RENDERER = { qrcode: 'qrcode' }
 export const BARCODE_RENDERER = { ean13: 'EAN13', ean8: 'EAN8', upc: 'UPC', code128: 'CODE128', itf14: 'ITF14' }

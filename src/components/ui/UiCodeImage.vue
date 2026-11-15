@@ -4,7 +4,7 @@ import UiSegmented from './UiSegmented.vue'
 import UiSelect from './UiSelect.vue'
 import UiEmptyState from './UiEmptyState.vue'
 import {
-  CODE_FORMATS, supports, resolveOptions, renderMode, fallbackCandidates
+  CODE_FORMATS, iconOf, supports, resolveOptions, renderMode, fallbackCandidates
 } from '../../core/codeFormats'
 
 const props = defineProps({
@@ -56,6 +56,7 @@ const optionsList = computed(() => {
 const items = computed(() => optionsList.value.map(format => ({
   format,
   label: CODE_FORMATS[format]?.label || format,
+  icon: iconOf(format),
   usable: supports(format, contentText.value)
 })))
 
@@ -76,8 +77,12 @@ const switcherKind = computed(() => (items.value.length <= 3 ? 'segmented' : 'se
    文字标签纯属冗余，只留图标。 */
 const labelsRedundant = computed(() =>
   mode.value === 'icon' && items.value.length === 2)
+/* 只有跨族（图标模式）才把图标带进切换控件：同族全是同一种图标，纯属噪音。 */
 const switcherOptions = computed(() => items.value.map(item => ({
-  label: item.label, value: item.format, disabled: !item.usable
+  label: item.label,
+  value: item.format,
+  disabled: !item.usable,
+  icon: mode.value === 'icon' ? item.icon : ''
 })))
 
 /* ---------- 预渲染：每个可用码制一个叠放层 ---------- */
@@ -251,42 +256,21 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-if="items.length > 1" class="ui-code-image__switcher">
-      <div v-if="mode === 'icon'" class="ui-code-image__icon-row" role="tablist">
-        <button
-          v-for="item in items"
-          :key="item.format"
-          type="button"
-          role="tab"
-          class="ui-code-image__icon-btn"
-          :class="{
-            'is-active': active === item.format,
-            'is-disabled': !item.usable,
-            'is-icon-only': labelsRedundant
-          }"
-          :aria-selected="active === item.format"
-          :disabled="!item.usable"
-          :title="item.usable ? item.label : item.label + '（当前内容不适用）'"
-          @click="active = item.format"
-        >
-          <svg v-if="CODE_FORMATS[item.format]?.family === 'qr'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2" />
-          </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-            <path d="M4 5v14M7 5v14M10 5v10M13 5v14M16 5v10M19 5v14" />
-          </svg>
-          <span v-if="!labelsRedundant">{{ item.label }}</span>
-        </button>
-      </div>
+      <!-- 2~3 项：分段控件（跨族时图标在上、只留图标）；
+           4 项以上：下拉框（列表行里图标在前，紧凑不占高）。 -->
       <UiSegmented
-        v-else-if="switcherKind === 'segmented'"
+        v-if="switcherKind === 'segmented'"
         :model-value="active"
         :options="switcherOptions"
+        :icon-placement="mode === 'icon' ? 'top' : 'leading'"
+        :show-labels="!labelsRedundant"
         @update:model-value="active = $event"
       />
       <UiSelect
         v-else
         :model-value="active"
         :options="switcherOptions"
+        icon-placement="leading"
         @update:model-value="active = $event"
       />
     </div>
@@ -352,40 +336,6 @@ onBeforeUnmount(() => {
 .ui-code-image__svg { max-width: 100%; height: auto; display: block; }
 .ui-code-image__error { margin: 6px 0 0; color: var(--error); font-size: var(--fs-micro); }
 .ui-code-image__switcher { width: 100%; display: flex; justify-content: center; }
-.ui-code-image__icon-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.ui-code-image__icon-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 8px 12px;
-  border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(12px * var(--radius-scale));
-  background: transparent;
-  color: var(--on-surface-variant);
-  font-size: var(--fs-micro);
-  font-weight: var(--w-label);
-  cursor: pointer;
-  transition: background var(--t-fade), color var(--t-fade), border-color var(--t-fade), transform var(--t-feedback);
-}
-.ui-code-image__icon-btn svg { width: 20px; height: 20px; }
-.ui-code-image__icon-btn:hover:not(.is-disabled) { border-color: var(--primary); color: var(--primary); }
-.ui-code-image__icon-btn:active:not(.is-disabled) { transform: scale(var(--press-scale)); }
-.ui-code-image__icon-btn.is-active {
-  border-color: var(--primary);
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-}
-.ui-code-image__icon-btn.is-disabled { opacity: .42; cursor: not-allowed; }
-/* 两个跨族选项：只剩图标，改成方形按钮并用 aria-label / title 说明。 */
-.ui-code-image__icon-btn.is-icon-only {
-  flex-direction: row;
-  gap: 0;
-  padding: 10px;
-  min-width: 44px;
-  justify-content: center;
-}
-.ui-code-image__icon-btn.is-icon-only svg { width: 22px; height: 22px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-code-image__layer,

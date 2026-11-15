@@ -181,9 +181,37 @@ const week = [18, 26, 22, 34, 28, 40, 31]
 
 /* CodeImage 演示 */
 const ciSingle = 'https://example.com'
+/* 图标标记：24x24 viewBox 内的 SVG 内部内容 */
+const ICON_QR = '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/>'
+const ICON_BAR = '<path d="M4 5v14M7 5v14M10 5v10M13 5v14M16 5v10M19 5v14"/>'
+const ICON_BUILDING = '<rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M9 8h2M13 8h2M9 12h2M13 12h2M9 16h2M13 16h2"/>'
+const ICON_FLOWER = '<path d="M12 13c0-2 1.5-3.5 3.2-3.5C17 9.5 18 11 18 12.6c0 2-1.6 3.4-3.6 3.4H12zM12 13c0-2-1.5-3.5-3.2-3.5C7 9.5 6 11 6 12.6c0 2 1.6 3.4 3.6 3.4H12z"/><path d="M12 16v4"/>'
+const ICON_MOUNT = '<path d="M3 18l6-9 4 6 2-3 6 6z"/>'
+const ICON_BIRD = '<path d="M4 14c4 0 6-2 8-5 1.5 2.5 3.5 4 6 4-2 3-5 5-9 5-2 0-3.5-.6-5-1.6zM15 6l2-2"/>'
+
+const iconSegOptions = [
+  { label: '二维码', value: 'qr', icon: ICON_QR },
+  { label: '一维码', value: 'bar', icon: ICON_BAR },
+  { label: '建筑', value: 'build', icon: ICON_BUILDING }
+]
+const iconTopOptions = [
+  { label: '全部', value: 'all', icon: ICON_QR },
+  { label: '建筑', value: 'build', icon: ICON_BUILDING },
+  { label: '花卉', value: 'flower', icon: ICON_FLOWER },
+  { label: '风景', value: 'mount', icon: ICON_MOUNT },
+  { label: '物件', value: 'object', icon: ICON_BAR },
+  { label: '野生', value: 'bird', icon: ICON_BIRD }
+]
+const iconSelectOptions = iconTopOptions
+const iconSegPick = ref('qr')
+const iconTopPick = ref('all')
+const iconOnlyPick = ref('all')
+const iconSelPick = ref('all')
+const iconSelTopPick = ref('build')
+
 const ciMixed = ['qrcode', 'ean13', 'code128']
 const ciMixedText = '1234567890128'
-const ciBarGroup = ['ean13', 'ean8', 'upc', 'code128', 'itf14']
+const ciBarGroup = ['ean13', 'ean8', 'upc', 'code128', 'itf14', 'qrcode']
 const ciBarText = 'HELLO-CODE'
 const ciFallbackType = ['ean13']
 const ciFallbackText = '任意自由文本，一维码装不下'
@@ -276,6 +304,17 @@ onMounted(() => showToast('info'))
             <UiRating v-model="rating" />
           </div>
           <span class="lib-cell__note">数字变化统一走滚动动效，越界带碰壁回弹。</span>
+        </div>
+        <div class="lib-cell">
+          <span class="lib-cell__label">分段 / 下拉的图标 <small>Segmented / Select</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiSegmented v-model="iconSegPick" layout="one-line" label="图标在前" :options="iconSegOptions" />
+            <UiSegmented v-model="iconTopPick" label="图标在上（6 项自动多行）" icon-placement="top" :options="iconTopOptions" />
+            <UiSegmented v-model="iconOnlyPick" label="仅图标" :options="iconTopOptions.slice(0, 2)" :show-labels="false" icon-placement="top" />
+            <UiSelect v-model="iconSelPick" label="下拉 · 图标在前" :options="iconSelectOptions" />
+            <UiSelect v-model="iconSelTopPick" label="下拉 · 图标在上" :options="iconSelectOptions" icon-placement="top" />
+          </div>
+          <span class="lib-cell__note">图标可放在文字前端（布局不变）或上方（卡片网格）；单行装不下时自动切成多行。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">形变菜单 <small>Floating / Tool</small></span>
@@ -497,7 +536,7 @@ onMounted(() => showToast('info'))
             <UiCodeImage :type="ciBarGroup" :width="150">{{ ciBarText }}</UiCodeImage>
             <UiCodeImage :type="ciFallbackType" :width="150">{{ ciFallbackText }}</UiCodeImage>
           </div>
-          <span class="lib-cell__note">单码 / 跨族图标切换 / 同族文字切换（&gt;3 下拉）/ 全不可用自动降级；不合规选项可见但禁用。</span>
+          <span class="lib-cell__note">单码 / 跨族 2~3 项走图标分段 / 4 项以上走带图标下拉 / 全不可用自动降级；不合规选项可见但禁用。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">骨架 / 加载 / 头像</span>

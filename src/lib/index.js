@@ -22,4 +22,4 @@ export { confirmDialog, disposeConfirmDialog } from '../core/confirm'
 export { highlightToHtml, tokenize } from '../core/highlight'
 export { ansiToHtml, ansiLineToHtml } from '../core/ansi'
 /* 码制注册中心：校验 / 参数解析 / 降级候选，供 CodeImage 与业务复用。 */
-export { CODE_FORMATS, supports, resolveOptions, renderMode, fallbackCandidates, familyOf } from '../core/codeFormats'
+export { CODE_FORMATS, FORMAT_ICONS, iconOf, supports, resolveOptions, renderMode, fallbackCandidates, familyOf } from '../core/codeFormats'
