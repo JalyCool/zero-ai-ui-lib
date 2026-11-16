@@ -394,7 +394,6 @@ watch(() => props.modelValue, () => {
   border-radius: calc(20px * var(--radius-scale));
   background: var(--surface);
   border-color: color-mix(in oklab, var(--primary) 28%, var(--outline-variant));
-  box-shadow: var(--elev-tip);
 }
 .ui-range-date__surface.is-closing {
   transition: left var(--t-exit), top var(--t-exit),

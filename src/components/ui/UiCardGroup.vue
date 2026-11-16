@@ -902,7 +902,6 @@ watch(() => props.modelValue, value => {
   border-radius: calc(16px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
-  box-shadow: var(--elev-card);
   transform-origin: center center;
   animation: cgCardIn 460ms var(--spring-view) both;
   animation-delay: calc(var(--i, 0) * 34ms);
@@ -1024,7 +1023,6 @@ watch(() => props.modelValue, value => {
 }
 .ui-card-group__tile:hover {
   transform: translateZ(52px) scale(1.06);
-  box-shadow: var(--elev-tip);
   border-color: var(--primary);
   z-index: 2;
 }
@@ -1049,7 +1047,6 @@ watch(() => props.modelValue, value => {
   padding: 11px 14px;
   border-radius: calc(14px * var(--radius-scale));
   background: linear-gradient(140deg, var(--surface-container-low), var(--surface-container));
-  box-shadow: var(--elev-card);
   font-size: var(--fs-small);
 }
 .ui-card-group__pin-card small { color: var(--on-surface-variant); font-size: var(--fs-micro); }
@@ -1131,7 +1128,6 @@ watch(() => props.modelValue, value => {
 .ui-card-group__bounce-card.is-active {
   transform: translate3d(var(--bx, 0px), calc(var(--by, 0px) - 14px), 0) rotate(0deg) scale(1.08) !important;
   z-index: 40;
-  box-shadow: var(--elev-tip);
 }
 
 /* ---------- 入场 / 提示 ---------- */

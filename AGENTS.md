@@ -5,9 +5,9 @@
 
 ## 0. 这套框架长什么样
 
-- **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 圆角分档」，不用阴影；**描边只出现在功能处**——输入框 / 开关、复选框类控件 / `variant="outline"` 变体 / 行分隔线 / 浮层边界，**能没有描边的地方就不要有描边**（卡片、告警、折叠面板、模态、表格外形、卡片组等一律无描边）。
+- **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 圆角分档」，不用阴影；**描边只出现在功能处**——输入框 / 开关、复选框类控件 / `variant="outline"` 变体 / 行分隔线 / 浮层边界，**能没有描边的地方就不要有描边**（卡片、告警、折叠面板、模态、表格外形、卡片组等一律无描边）。**阴影全库只有一处：TabBar**（移动端向上 / 桌面端向右投一层淡分离影），其他组件一律不投影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：96 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：97 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -181,6 +181,7 @@ import {
 | `UiForm` / `UiFormField` | Form 管提交与校验（`validate-on-submit`、`@submit` / `@invalid`）；FormField 提供 label / hint / rules / required，错误直接显示在 hint 行 |
 | `UiBreadcrumb` | `items` 为 `[{ label, value? }]`；最后一项是当前页，点击 `@select` 回传 |
 | `UiPagination` | `v-model` 页码 + `total` `page-size` `siblings`；中间用省略号折叠 |
+| `UiSideNav` | 预制响应式导航：**桌面端渲染为常驻侧栏（可折叠）**，**移动端渲染为左侧滑抽屉**（压暗模糊遮罩、选中即收、Esc 关闭、打开锁 `#scrollArea`）；`items` 为 `{ value, label, icon }`，`active` 当前项，`v-model` 抽屉开合，`v-model:collapsed` 桌面折叠，`breakpoint`（默认 900），`width` / `collapsed-width`，`title` / `#head`，`contain` 在父容器内 absolute 渲染（预览用，不锁滚动），`@select` 回传 value |
 | `UiSidebar` | `v-model` 展开态；`width` / `collapsed-width`；`#head` + 默认插槽（作用域带 `collapsed`）；展开 / 收起走 view 弹簧，内容随宽度收拢淡出、箭头翻转 |
 | `UiSlideover` | `v-model`；`title` `side` `width`；点遮罩或关闭键收起，`#footer` 可选；面板从指定侧整块推入 / 推出（先提交视口外一帧，再走弹簧），内容随后浮入，收起播完才卸载 |
 | `UiNavigationMenu` | `items` 为 `[{ label, value, children? }]`；悬停 / 聚焦展开子面板，`@select` 回传子项 |

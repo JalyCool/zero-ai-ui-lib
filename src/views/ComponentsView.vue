@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
-  UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
+  UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState, UiSideNav,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
   UiText, UiToolCallChip, UiTooltipGroup,
@@ -384,6 +384,17 @@ const autoOptions = [
 ]
 const pageNo = ref(2)
 const sidebarOpen = ref(true)
+
+/* SideNav 演示 */
+const sidenavItems = [
+  { value: 'today', label: '今天', icon: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.5 1.5M16.9 16.9l1.5 1.5M18.4 5.6L16.9 7.1M7.1 16.9l-1.5 1.5"/>' },
+  { value: 'all', label: '全部任务', icon: '<path d="M8 6.5h12M8 12h12M8 17.5h12"/><path d="M4 6.5h.01M4 12h.01M4 17.5h.01"/>' },
+  { value: 'done', label: '已完成', icon: '<path d="M5 12.5l4.4 4.4L19 7"/>' }
+]
+const sidenavActive = ref('today')
+const sidenavDrawer = ref(false)
+const sidenavCollapsed = ref(false)
+const sidenavLabel = computed(() => (sidenavItems.find(i => i.value === sidenavActive.value) || sidenavItems[0]).label)
 const slideoverOpen = ref(false)
 const navPick = ref('record')
 const navItems = [
@@ -537,7 +548,7 @@ onMounted(() => {
   <section class="view active lib" data-view="components">
     <div class="lib-hero">
       <h2 class="lib-hero__title">组件库</h2>
-      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。8 个分区、96 个组件，窄屏单列、宽屏自动多列。</p>
+      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。8 个分区、97 个组件，窄屏单列、宽屏自动多列。</p>
     </div>
 
     <!-- 分类选择器：一次只展示一个分区，避免把几十个组件全排在一页里 -->
@@ -1076,6 +1087,43 @@ onMounted(() => {
         </div>
 
         <div class="lib-cell">
+          <span class="lib-cell__label">响应式导航 <small>SideNav</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div class="lib-sidenav-demo">
+              <div class="lib-sidenav-demo__desktop">
+                <UiSideNav
+                  :items="sidenavItems"
+                  :active="sidenavActive"
+                  v-model:collapsed="sidenavCollapsed"
+                  title="工作台"
+                  @select="sidenavActive = $event"
+                />
+              </div>
+              <div class="lib-sidenav-demo__phone" :class="{ 'is-dim': sidenavDrawer }">
+                <div class="lib-sidenav-demo__bar">
+                  <button type="button" class="lib-sidenav-demo__menu" aria-label="打开菜单" @click="sidenavDrawer = true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+                  </button>
+                  <b>{{ sidenavLabel }}</b>
+                </div>
+                <div class="lib-sidenav-demo__body">
+                  <p v-for="i in 3" :key="i" class="lib-muted">{{ i }}. 示例内容行，抽屉打开时锁定滚动</p>
+                </div>
+                <UiSideNav
+                  contain
+                  v-model="sidenavDrawer"
+                  :items="sidenavItems"
+                  :active="sidenavActive"
+                  title="工作台"
+                  @select="sidenavActive = $event"
+                />
+              </div>
+            </div>
+          </div>
+          <span class="lib-cell__note">同一套 items：桌面端（≥900px）渲染为常驻侧栏（右下按钮折叠），窄屏渲染为左侧滑抽屉——压暗模糊遮罩、选中即收、Esc 关闭、打开锁 #scrollArea。右侧手机框是 contain 预览。</span>
+        </div>
+
+        <div class="lib-cell">
           <span class="lib-cell__label">右键菜单 / 命令面板 / 巡览</span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiContextMenu :items="ctxItems" @select="ctxLog = '选中：' + $event.label">
@@ -1428,6 +1476,26 @@ onMounted(() => {
   background: var(--surface-container-low);
 }
 .lib-sidebar-demo .ui-sidebar { height: 100%; }
+.lib-sidenav-demo { display: flex; gap: 14px; flex-wrap: wrap; }
+.lib-sidenav-demo__desktop { width: 220px; height: 210px; display: flex; background: var(--background); border-radius: 12px; overflow: hidden; }
+.lib-sidenav-demo__phone {
+  position: relative;
+  width: 170px;
+  height: 230px;
+  border-radius: 18px;
+  background: var(--background);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.lib-sidenav-demo__bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+.lib-sidenav-demo__bar b { font-size: var(--fs-small); }
+.lib-sidenav-demo__menu { border: 0; background: none; color: var(--on-surface); width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; cursor: pointer; transition: background var(--t-fade); }
+.lib-sidenav-demo__menu:hover { background: var(--surface-container-high); }
+.lib-sidenav-demo__menu svg { width: 18px; height: 18px; }
+.lib-sidenav-demo__body { padding: 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.lib-sidenav-demo__body p { margin: 0; font-size: var(--fs-micro); color: var(--on-surface-variant); }
+.lib-sidenav-demo__phone.is-dim { pointer-events: none; }
 .lib-splitter-demo { display: flex; height: 148px; min-width: 0; }
 .lib-splitter-demo > * { flex: 1; min-width: 0; }
 .lib-splitter-demo .lib-tile { height: 100%; border-radius: 0; }

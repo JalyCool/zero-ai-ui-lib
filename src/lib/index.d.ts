@@ -472,6 +472,7 @@ declare const UiFormField: DefineComponent<{ label?: string; hint?: string; rule
 declare const UiBreadcrumb: DefineComponent<{ items?: { label: string }[]; separator?: string }, AnyProps, unknown>
 declare const UiPagination: DefineComponent<{ modelValue?: number; total?: number; pageSize?: number; siblings?: number }, AnyProps, unknown>
 declare const UiSidebar: DefineComponent<{ modelValue?: boolean; collapsedWidth?: number; width?: number; label?: string }, AnyProps, unknown>
+declare const UiSideNav: DefineComponent<{ items?: { value: string; label: string; icon?: string }[]; active?: string; modelValue?: boolean; collapsed?: boolean; breakpoint?: number; width?: string; collapsedWidth?: string; title?: string; contain?: boolean }, AnyProps, unknown>
 declare const UiSlideover: DefineComponent<{ modelValue?: boolean; title?: string; side?: 'left' | 'right'; width?: string }, AnyProps, unknown>
 declare const UiNavigationMenu: DefineComponent<{ items?: { label: string; value?: string; children?: { label: string; description?: string; value?: string; icon?: string }[] }[]; modelValue?: string }, AnyProps, unknown>
 declare const UiGrid: DefineComponent<{ min?: number; gap?: number }, AnyProps, unknown>
@@ -494,7 +495,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 export {
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
   UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBarChart, UiBottomSheet, UiButton,
-  UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiLineChart, UiModal,
+  UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiSideNav,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
   UiCardGroup, UiCodeSlots, UiRotatingText, UiScrubField, UiStatusMark,

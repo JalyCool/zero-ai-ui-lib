@@ -98,7 +98,6 @@ onBeforeUnmount(() => { clearTimeout(timer); document.removeEventListener('keydo
   flex-direction: column;
   max-width: 100%;
   background: var(--surface);
-  box-shadow: var(--elev-sheet);
   will-change: transform;
   transition: transform var(--t-sheet);
 }

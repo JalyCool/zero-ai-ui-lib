@@ -594,7 +594,6 @@ const label = computed(() => `智能体头像（${props.state}${deviceOn.value ?
   z-index: 1;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px color-mix(in oklab, var(--on-surface) 22%, transparent);
   pointer-events: none;
   will-change: transform;
 }

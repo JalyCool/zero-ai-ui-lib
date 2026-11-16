@@ -478,7 +478,6 @@ onBeforeUnmount(() => {
   border-radius: calc(18px * var(--radius-scale));
   background: var(--surface);
   border-color: color-mix(in oklab, var(--primary) 30%, var(--outline-variant));
-  box-shadow: var(--elev-tip);
   color: var(--on-surface);
 }
 

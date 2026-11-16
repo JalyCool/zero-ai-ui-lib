@@ -528,7 +528,6 @@
   pointer-events: none;
   opacity: 0;
   transform: translate(-50%, 4px);
-  box-shadow: var(--elev-tip);
   transition: opacity var(--t-fade), transform var(--t-feedback);
 }
 .ui-tooltip:hover .ui-tooltip__bubble,
@@ -620,7 +619,6 @@
   padding: 20px;
   border-radius: calc(24px * var(--radius-scale));
   background: var(--surface-container-high);
-  box-shadow: var(--elev-sheet);
   scrollbar-width: none;
   opacity: 0;
   transform: translateY(14px) scale(.97);
@@ -680,7 +678,6 @@
   color: var(--surface);
   font-size: var(--fs-small);
   font-weight: 500;
-  box-shadow: var(--elev-sheet);
   pointer-events: auto;
 }
 .ui-toast__dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: #60a5fa; }

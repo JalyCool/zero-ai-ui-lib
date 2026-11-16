@@ -194,7 +194,6 @@ onBeforeUnmount(() => {
   border: var(--border-w) solid var(--outline-variant);
   border-radius: 14px;
   background: var(--surface);
-  box-shadow: var(--elev-tip);
   opacity: 0;
   transform: translate3d(0, 8px, 0) scale(.96);
   transform-origin: 20% 0;

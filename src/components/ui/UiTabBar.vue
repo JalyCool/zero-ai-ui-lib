@@ -103,6 +103,8 @@ function pick(value) {
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     display: flex;
     justify-content: center;
+    /* 全库唯一的阴影：TabBar 悬浮在内容上，向上投一层淡淡的分离影 */
+    box-shadow: 0 -6px 24px color-mix(in oklab, var(--on-surface) 14%, transparent);
   }
   /* tab 总宽上限：超出后每个 tab 按内容收拢，不再等分铺满。 */
   .ui-tabbar__tab { flex: 1 1 0; min-width: 0; max-width: 96px; }
@@ -123,6 +125,7 @@ function pick(value) {
     justify-content: flex-start;
     gap: 6px;
     padding: 16px 8px;
+    box-shadow: 8px 0 24px color-mix(in oklab, var(--on-surface) 14%, transparent);
   }
   .ui-tabbar__tab { flex: 0 0 auto; width: 100%; }
 }

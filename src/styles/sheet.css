@@ -205,7 +205,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  box-shadow: var(--elev-card);
   transition: border-radius var(--t-panel), box-shadow var(--t-fade);
 }
 .dlg-preview .sample-btn {

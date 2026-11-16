@@ -361,7 +361,6 @@ defineExpose({ close })
   border-radius: calc(18px * var(--radius-scale));
   background: var(--surface);
   border-color: color-mix(in oklab, var(--primary) 30%, var(--outline-variant));
-  box-shadow: var(--elev-tip);
 }
 
 /* 按钮原来的内容：留在原位，只缩尺寸，由模糊淡出负责隐藏。 */

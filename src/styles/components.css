@@ -5,7 +5,6 @@
   background: var(--surface-container-low);
   border-radius: calc(var(--r-card) * var(--radius-scale));
   padding: var(--space-card);
-  box-shadow: var(--elev-card);
   cursor: default;
   transition: background var(--t-fade), border-color var(--t-fade),
               border-radius var(--t-panel), box-shadow var(--t-fade),
@@ -34,7 +33,6 @@
   background: var(--surface-container-low);
   border-radius: calc(var(--r-metric) * var(--radius-scale));
   padding: var(--space-metric);
-  box-shadow: var(--elev-card);
   cursor: default;
   transition: background var(--t-fade), border-color var(--t-fade),
               border-radius var(--t-panel), box-shadow var(--t-fade),
@@ -59,7 +57,6 @@
   background: var(--surface-container-low);
   border-radius: calc(var(--r-list) * var(--radius-scale));
   padding: var(--space-item) calc(15px * var(--density));
-  box-shadow: var(--elev-card);
   cursor: default;
   transition: background var(--t-fade), border-color var(--t-fade),
               border-radius var(--t-panel), box-shadow var(--t-fade),
@@ -107,5 +104,4 @@
 .metric.is-settling[data-expand]:hover,
 .list-item.is-settling[data-expand]:hover {
   background: var(--surface-container-low);
-  box-shadow: var(--elev-card);
 }

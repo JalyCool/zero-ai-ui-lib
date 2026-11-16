@@ -319,7 +319,6 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
   border: 3px solid var(--surface);
   border-radius: 50%;
   background: var(--primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
   transform: scale(1);
   transition: transform var(--t-pop);
   pointer-events: none;

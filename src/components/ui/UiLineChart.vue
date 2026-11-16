@@ -150,7 +150,6 @@ function hide() {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  box-shadow: var(--elev-tip);
   transition: opacity var(--t-fade), transform var(--t-feedback);
 }
 .chart-tip.show {

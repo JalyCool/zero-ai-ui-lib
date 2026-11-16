@@ -318,6 +318,5 @@ onBeforeUnmount(() => { pointerId = null })
   cursor: grab;
 }
 .ui-swipe-row.is-dragging .ui-swipe-row__surface { cursor: grabbing; }
-.ui-swipe-row.is-open .ui-swipe-row__surface { box-shadow: -10px 0 20px -14px rgba(0, 0, 0, .4); }
 .ui-swipe-row.is-collapsing { min-height: 0; }
 </style>

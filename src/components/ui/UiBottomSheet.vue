@@ -507,7 +507,6 @@ onBeforeUnmount(() => {
 }
 /* 无背景版给一点离地阴影，保证与内容的分层仍然可读。 */
 .ui-sheet-panel.no-scrim {
-  box-shadow: 0 -8px 32px color-mix(in oklab, var(--on-surface) 14%, transparent);
 }
 .ui-sheet-handle {
   padding: 10px 0 4px;

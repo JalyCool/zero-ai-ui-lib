@@ -233,7 +233,6 @@ defineExpose({ focus: () => rootEl.value && rootEl.value.focus() })
   border-color: var(--primary);
   background: var(--surface-container);
   transform: scale(1.02);
-  box-shadow: var(--elev-tip);
 }
 /* 越界：描边转成警示色，配合橡皮筋的视觉回拉。 */
 .ui-scrub-field__chip.is-over { border-color: var(--ui-warning, #c8862a); }
