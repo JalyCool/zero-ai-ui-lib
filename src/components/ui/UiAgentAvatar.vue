@@ -280,6 +280,8 @@ function hash01(n) {
 }
 const easeOutCubic = u => 1 - Math.pow(1 - u, 3)
 const easeInOutSine = q => 0.5 - 0.5 * Math.cos(Math.PI * q)
+/* 起步加速、中段最快、收尾减速 —— 一条真实划动的速度曲线 */
+const easeInOutCubic = q => (q < 0.5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2)
 const smoothstep = q => { const t = Math.max(0, Math.min(1, q)); return t * t * (3 - 2 * t) }
 /* 升余弦窗：中心 1、边缘 0 —— 用于点击按压的短促包络 */
 const bump = (c, center, width) => {
@@ -293,6 +295,17 @@ function placeHand(el, x, y, scale = 1) {
   if (!el) return
   const s = scale === 1 ? '' : ` scale(${scale.toFixed(3)})`
   el.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) translate(-50%, -50%)${s}`
+}
+
+/* 手机手的回合调度状态：每回合一种行为（滑动 / 旁边悬停 / 双击） */
+let phoneEpoch = 0
+let phoneIdx = 0
+let phoneDur = 780
+function phoneEpisodeDur(idx) {
+  const r = hash01(idx * 1.37 + 5.13)
+  if (r < 0.5) return 780   /* 滑动：下 400ms + 上 380ms */
+  if (r < 0.72) return 2400 /* 休息：滑到旁边悬停等一等 */
+  return 2200               /* 双击屏幕两下 */
 }
 
 let rafId = 0
@@ -402,18 +415,46 @@ function frame(now) {
     const sw = swipeStart.value
     const se = swipeEnd.value
     const lerp = (a, b, t) => a + (b - a) * t
-    /* 上滑 950ms：快起、到上端渐出（easeOutCubic）；下滑 1250ms：略微更慢、平滑进出 */
-    const upMs = 950
-    const downMs = 1250
-    const cycleMs = upMs + downMs
-    const cycleIndex = Math.floor(now / cycleMs)
-    const c = (now % cycleMs) / cycleMs
-    const downFrac = downMs / cycleMs
+
+    /* 回合制调度：每个回合按确定性 hash 选一种行为——
+       滑动（两条 300~500ms 的腿）/ 滑到设备旁悬停等一等 / 双击屏幕。
+       每个回合的起点和终点都是滑动起点，回合之间衔接连续。 */
+    while (now >= phoneEpoch + phoneDur) {
+      phoneEpoch += phoneDur
+      phoneIdx += 1
+      phoneDur = phoneEpisodeDur(phoneIdx)
+    }
+    const c = (now - phoneEpoch) / phoneDur
+    const r = hash01(phoneIdx)
     let x = sw.x
     let y = sw.y
     let press = 0
-    if (hash01(cycleIndex) < 0.2) {
-      /* 偶尔（约 1/5 个循环）双击屏幕：滑到 A 点敲一下，挪到 B 点再敲一下 */
+    if (r < 0.5) {
+      /* 一次划动：单程 300~500ms，起步 ease-in 加速、中段快、收尾 ease-out 减速 */
+      const downFrac = 400 / phoneDur
+      if (c < downFrac) {
+        const p = easeInOutCubic(c / downFrac)
+        x = lerp(sw.x, se.x, p)
+        y = lerp(sw.y, se.y, p)
+      } else {
+        const p = easeInOutCubic((c - downFrac) / (1 - downFrac))
+        x = lerp(se.x, sw.x, p)
+        y = lerp(se.y, sw.y, p)
+      }
+    } else if (r < 0.72) {
+      /* 休息：滑到设备旁边（不在屏幕上）悬停，稍微等一等再回来 */
+      const rest = {
+        x: deviceLeft.value + deviceWidth.value + S * 0.05,
+        y: deviceTop.value + deviceHeight.value * 0.4
+      }
+      if (c < 0.22) { const q = easeInOutSine(c / 0.22); x = lerp(sw.x, rest.x, q); y = lerp(sw.y, rest.y, q) }
+      else if (c < 0.78) {
+        /* 悬停：跟着呼吸轻轻浮动，像真的拿在手里等 */
+        x = rest.x + Math.sin(now / 1300) * S * 0.004
+        y = rest.y + Math.sin(now / 900) * S * 0.005
+      } else { const q = easeInOutSine((c - 0.78) / 0.22); x = lerp(rest.x, sw.x, q); y = lerp(rest.y, sw.y, q) }
+    } else {
+      /* 偶尔双击屏幕：滑到 A 点敲一下，挪到 B 点再敲一下 */
       const P1 = { x: lerp(sw.x, se.x, 0.3), y: lerp(sw.y, se.y, 0.3) }
       const P2 = { x: lerp(sw.x, se.x, 0.8), y: lerp(sw.y, se.y, 0.8) }
       let px = sw.x
@@ -426,17 +467,6 @@ function frame(now) {
       press = bump(c, 0.24, 0.14) + bump(c, 0.62, 0.14)
       x = px
       y = py + press * S * 0.012
-    } else if (c < downFrac) {
-      /* 下滑：占更多时长，略微更慢 */
-      const p = easeInOutSine(c / downFrac)
-      x = lerp(sw.x, se.x, p)
-      y = lerp(sw.y, se.y, p)
-    } else {
-      /* 上滑：easeOut —— 起步快、到上端渐出停下 */
-      const u = (c - downFrac) / (1 - downFrac)
-      const p = 1 - easeOutCubic(u)
-      x = lerp(sw.x, se.x, p)
-      y = lerp(sw.y, se.y, p)
     }
     placeHand(swipeHandEl.value, x, y, 1 - press * 0.15)
   }
@@ -481,6 +511,9 @@ watch(() => [props.gazeWobble, props.device, props.size], () => { if (!props.ani
 
 onMounted(() => {
   applyState(props.state)
+  phoneEpoch = performance.now()
+  phoneIdx = 0
+  phoneDur = 780
   if (props.gaze === 'mouse' && !deviceOn.value) window.addEventListener('pointermove', onPointerMove, { passive: true })
   startLoop()
 })
