@@ -25,14 +25,14 @@ const colorOptions = [
   { label: '品牌紫', value: '#7438ff' }
 ]
 
-const swipeStartXModel = ref(11)
-const swipeStartYModel = ref(21)
-const swipeEndXModel = ref(19)
-const swipeEndYModel = ref(30)
+const swipeStartXModel = ref(78)
+const swipeStartYModel = ref(96)
+const swipeEndXModel = ref(77)
+const swipeEndYModel = ref(133)
 const gazeScaleModel = ref(0.37)
 const wobbleAmpModel = ref(0.34)
-const eyesOffsetXModel = ref(-0.6)
-const eyesOffsetYModel = ref(-0.95)
+const eyesOffsetXModel = ref(-0.4)
+const eyesOffsetYModel = ref(-1.15)
 
 const propsJson = ref('')
 const copied = ref(false)

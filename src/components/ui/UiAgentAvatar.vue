@@ -85,8 +85,8 @@ const props = defineProps({
   /* 注视压缩系数：看向设备 / 指定点时「距离 → 眼偏移」的换算比例 */
   gazeScale: { type: Number, default: 0.37 },
   /* 眼整体基础偏移（相对 24 盒中心）：调节台实测固化值 */
-  eyesOffsetX: { type: Number, default: -0.6 },
-  eyesOffsetY: { type: Number, default: -0.95 }
+  eyesOffsetX: { type: Number, default: -0.4 },
+  eyesOffsetY: { type: Number, default: -1.15 }
 })
 
 /* ---------- 情绪层：状态配方表（参数即状态，状态即参数向量） ---------- */
@@ -137,7 +137,7 @@ const sizeNum = computed(() => Number(props.size) || 0)
 /* 手机手大小与电脑一致（0.16），漏写会导致手 0×0 */
 const DEVICE_DEFAULTS = {
   laptop: { dx: 0.279, dy: 0.3, scale: 1, handScale: 0.16, handDy: -0.036 },
-  phone: { dx: 0.421, dy: 0.429, scale: 0.62, handScale: 0.16, holdDx: 0.286, holdDy: -0.079, swipeStartX: 0.079, swipeStartY: 0.15, swipeEndX: 0.136, swipeEndY: 0.214 }
+  phone: { dx: 0.421, dy: 0.429, scale: 0.62, handScale: 0.16, holdDx: 0.316, holdDy: -0.079, swipeStartX: 0.557, swipeStartY: 0.686, swipeEndX: 0.55, swipeEndY: 0.95 }
 }
 const deviceLeft = computed(() => {
   if (props.deviceDx !== null) return props.deviceDx
@@ -273,10 +273,26 @@ function renderEye(rect, cx, cy, w, h) {
   rect.setAttribute('ry', radius.toFixed(3))
 }
 
-/* 手：白圆，transform 只有平移（不缩放） */
-function placeHand(el, x, y) {
+/* ---------- 确定性缓动 / 噪声（只用于节奏与调度，不碰尺寸） ---------- */
+function hash01(n) {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+const easeOutCubic = u => 1 - Math.pow(1 - u, 3)
+const easeInOutSine = q => 0.5 - 0.5 * Math.cos(Math.PI * q)
+const smoothstep = q => { const t = Math.max(0, Math.min(1, q)); return t * t * (3 - 2 * t) }
+/* 升余弦窗：中心 1、边缘 0 —— 用于点击按压的短促包络 */
+const bump = (c, center, width) => {
+  const d = Math.abs(c - center)
+  if (d >= width / 2) return 0
+  return 0.5 + 0.5 * Math.cos((Math.PI * d) / (width / 2))
+}
+
+/* 手：白圆。位移用 px 平移；scale 只在「点击按压」时短暂使用（0~0.15 的按压量） */
+function placeHand(el, x, y, scale = 1) {
   if (!el) return
-  el.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) translate(-50%, -50%)`
+  const s = scale === 1 ? '' : ` scale(${scale.toFixed(3)})`
+  el.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) translate(-50%, -50%)${s}`
 }
 
 let rafId = 0
@@ -382,12 +398,47 @@ function frame(now) {
   if (props.device === 'phone') {
     /* 持机手固定不动（图层在手机前方） */
     placeHand(holdHandEl.value, holdHandBase.value.x, holdHandBase.value.y)
-    /* 滑动手：从起点来回滑到终点 */
-    const phase = (now / 1000) * Math.PI * 2 / 1.6
-    const t = (Math.sin(phase) + 1) / 2
-    placeHand(swipeHandEl.value,
-      swipeStart.value.x + (swipeEnd.value.x - swipeStart.value.x) * t,
-      swipeStart.value.y + (swipeEnd.value.y - swipeStart.value.y) * t)
+
+    const sw = swipeStart.value
+    const se = swipeEnd.value
+    const lerp = (a, b, t) => a + (b - a) * t
+    /* 上滑 950ms：快起、到上端渐出（easeOutCubic）；下滑 1250ms：略微更慢、平滑进出 */
+    const upMs = 950
+    const downMs = 1250
+    const cycleMs = upMs + downMs
+    const cycleIndex = Math.floor(now / cycleMs)
+    const c = (now % cycleMs) / cycleMs
+    const downFrac = downMs / cycleMs
+    let x = sw.x
+    let y = sw.y
+    let press = 0
+    if (hash01(cycleIndex) < 0.2) {
+      /* 偶尔（约 1/5 个循环）双击屏幕：滑到 A 点敲一下，挪到 B 点再敲一下 */
+      const P1 = { x: lerp(sw.x, se.x, 0.3), y: lerp(sw.y, se.y, 0.3) }
+      const P2 = { x: lerp(sw.x, se.x, 0.8), y: lerp(sw.y, se.y, 0.8) }
+      let px = sw.x
+      let py = sw.y
+      if (c < 0.12) { const q = smoothstep(c / 0.12); px = lerp(sw.x, P1.x, q); py = lerp(sw.y, P1.y, q) }
+      else if (c < 0.35) { px = P1.x; py = P1.y }
+      else if (c < 0.5) { const q = smoothstep((c - 0.35) / 0.15); px = lerp(P1.x, P2.x, q); py = lerp(P1.y, P2.y, q) }
+      else if (c < 0.75) { px = P2.x; py = P2.y }
+      else { const q = smoothstep((c - 0.75) / 0.25); px = lerp(P2.x, sw.x, q); py = lerp(P2.y, sw.y, q) }
+      press = bump(c, 0.24, 0.14) + bump(c, 0.62, 0.14)
+      x = px
+      y = py + press * S * 0.012
+    } else if (c < downFrac) {
+      /* 下滑：占更多时长，略微更慢 */
+      const p = easeInOutSine(c / downFrac)
+      x = lerp(sw.x, se.x, p)
+      y = lerp(sw.y, se.y, p)
+    } else {
+      /* 上滑：easeOut —— 起步快、到上端渐出停下 */
+      const u = (c - downFrac) / (1 - downFrac)
+      const p = 1 - easeOutCubic(u)
+      x = lerp(sw.x, se.x, p)
+      y = lerp(sw.y, se.y, p)
+    }
+    placeHand(swipeHandEl.value, x, y, 1 - press * 0.15)
   }
 
   rafId = requestAnimationFrame(frame)
