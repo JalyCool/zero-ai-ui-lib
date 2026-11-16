@@ -60,6 +60,10 @@
 
 ## D. 进度记录（最近提交）
 
+- 2026-11-16（第十六段）：新增 **UiUsingDevice**（电脑 / 手机变体：眼睛 gaze=point 看向设备 +
+  左右 / 上下轻摆，白圆手敲击 / 持机 + 滑屏；设备底图 Figma 3D SVG 放 src/assets/agent，
+  color 替换 #FF00FF 占位、multiply 禁 #000000）；AgentAvatar 加 gaze="point" + 注视微摆；
+  新路由 /agent-device 设备位置调节台（滑块 + 复制属性）。
 - 2026-11-15（第十五段）：尺寸随机清零（眨眼两眼同步，同一闭合度）；默认眼略偏右上
   （EYE_BASE 0.55 / -0.55）；注视范围加大（±1.5 × 1.6）；新增 `core/agentShapes`
   **AGENT_SHAPES** 内置形状注册表（10 个语义化底图，来自 111×1312 精灵图逐形状归一化，

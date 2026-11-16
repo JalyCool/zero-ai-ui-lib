@@ -29,8 +29,15 @@ const props = defineProps({
   size: { type: [Number, String], default: 40 },
   /* idle | listening | thinking | happy | confused | surprised | sleepy | speaking */
   state: { type: String, default: 'idle' },
-  /* mouse 跟随指针 | none 只做微扫视 */
+  /* mouse 跟随指针 | none 只做微扫视 | point 看向 gazeX / gazeY（供 UsingDevice 等） */
   gaze: { type: String, default: 'mouse' },
+  /* point 模式的注视点（24 盒内坐标） */
+  gazeX: { type: Number, default: 12 },
+  gazeY: { type: Number, default: 12 },
+  /* point 模式的注视微摆：none | x（左右轻扫）| y（上下轻点） */
+  gazeWobble: { type: String, default: 'none' },
+  gazeWobbleAmp: { type: Number, default: 0.3 },
+  gazeWobblePeriod: { type: Number, default: 2600 },
   /* false 时摆出当前状态的静止姿势，不跑动画循环 */
   animated: { type: Boolean, default: true },
   /* speaking 状态的外部音量包络 0~1；给了才调制开合，不给眼大小保持稳定 */
@@ -199,11 +206,24 @@ function frame(now) {
   stepSpring(saccSpring, dt)
 
   const mouseOn = props.gaze === 'mouse'
+  const pointOn = props.gaze === 'point'
   const bias = gazeBias
-  const tx = (mouseOn ? mouseTarget.x : 0) * 0.9 + saccSpring.pos * (mouseOn ? 0.5 : 1.6) + bias.x * 0.6
-  const ty = (mouseOn ? mouseTarget.y : 0) * 0.7 + saccTarget.y * (mouseOn ? 0.2 : 0.8) + bias.y * 0.6
-  lookX.target = Math.max(-1.5, Math.min(1.5, tx))
-  lookY.target = Math.max(-1.5, Math.min(1.5, ty))
+  let tx = 0
+  let ty = 0
+  if (mouseOn) { tx = mouseTarget.x * 0.9; ty = mouseTarget.y * 0.7 }
+  else if (pointOn) {
+    /* 看向指定点：距离越远偏得越多，按 0.3 压缩到 believable 的幅度 */
+    tx = (props.gazeX - 12) * 0.3
+    ty = (props.gazeY - 12) * 0.3
+  }
+  tx += saccSpring.pos * (mouseOn ? 0.5 : 1.6) + bias.x * 0.6
+  ty += saccTarget.y * (mouseOn ? 0.2 : 0.8) + bias.y * 0.6
+  /* 注视微摆：看设备时的左右轻扫 / 上下轻点（正弦，不碰尺寸） */
+  const wobble = Math.sin((now / Math.max(400, props.gazeWobblePeriod)) * Math.PI * 2) * props.gazeWobbleAmp
+  if (props.gazeWobble === 'x') tx += wobble
+  else if (props.gazeWobble === 'y') ty += wobble
+  lookX.target = Math.max(-1.8, Math.min(1.8, tx))
+  lookY.target = Math.max(-1.8, Math.min(1.8, ty))
   stepSpring(lookX, dt)
   stepSpring(lookY, dt)
 
@@ -281,6 +301,7 @@ function startLoop() {
 
 watch(() => props.state, () => { applyState(props.state); if (!props.animated) renderStatic() })
 watch(() => [props.animated, props.gaze, eyesCenter.value], () => startLoop())
+watch(() => [props.gazeWobble], () => { if (!props.animated) renderStatic() })
 
 onMounted(() => {
   applyState(props.state)

@@ -4,7 +4,7 @@ import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
-  UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
+  UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow, UiUsingDevice,
   UiText, UiToolCallChip, UiTooltipGroup,
   UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
   UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
@@ -19,6 +19,7 @@ import {
   UiTimeline, UiTour
 } from '../components/ui'
 import { confirmDialog, AGENT_SHAPES } from '../lib'
+import { useRouter } from 'vue-router'
 import supabaseSvg from '../assets/figma/supabase.svg?raw'
 
 /* Figma 5:454 里的品牌图标：留内部标记，viewBox 由 prop 传 0 0 20 20 */
@@ -26,6 +27,7 @@ const supabaseGlyph = supabaseSvg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\
 /* ZERO 头像（黑底两只白眼睛），作为「SVG 图标无遮罩」的示例 */
 const zeroFace = '<rect width="24" height="24" rx="12" fill="#111"/><rect x="8.4" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/><rect x="13" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/>'
 const agentShapeList = AGENT_SHAPES
+const router = useRouter()
 /* 状态机展示：分段切换 8 个状态，看任意状态之间的弹簧过渡 */
 const agentState = ref('idle')
 const agentGazeOn = ref(true)
@@ -666,7 +668,12 @@ onMounted(() => {
           <div class="lib-demo-row">
             <UiAgentAvatar v-for="(item, key) in agentShapeList" :key="key" :shape="key" :size="36" :animated="false" state="idle" />
           </div>
-          <span class="lib-cell__note">shape 传内置 key（{{ Object.keys(agentShapeList).join(' / ') }}）或纯剪影标记；自动描边 + 两只同尺寸圆角矩形眼（不旋转、不随机、成组位移，默认略偏右上）；eyesY 不传时按形状推荐值。上面这只用分段实时切状态，任意状态之间弹簧过渡。</span>
+          <div class="lib-demo-row">
+            <UiUsingDevice device="laptop" :size="110" state="listening" />
+            <UiUsingDevice device="phone" color="#3f5f90" :size="110" state="idle" />
+            <UiButton size="sm" variant="tonal" @click="router.push({ name: 'agent-device' })">调设备位置</UiButton>
+          </div>
+          <span class="lib-cell__note">shape 传内置 key（{{ Object.keys(agentShapeList).join(' / ') }}）或纯剪影标记；自动描边 + 两只同尺寸圆角矩形眼（不旋转、不随机、成组位移，默认略偏右上）；eyesY 不传时按形状推荐值。下面两只带 UsingDevice：眼睛看向设备（电脑左右轻扫 / 手机上下轻点），白圆手敲键盘 / 持机 + 滑屏。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">头像组 <small>AvatarGroup</small></span>

@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 0.75px 细描边 + 圆角分档」，不用阴影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：96 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：97 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -114,7 +114,7 @@ import {
   UiDataTable, UiTreeView, UiVirtualList, UiFileDropzone,
   UiMorphPanel, UiWheel, UiCodeImage, UiTabBar, confirmDialog,
   UiRotatingText, UiText, UiStatusMark, UiToolCallChip, UiCodeSlots, UiScrubField,
-  UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots,
+  UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots, UiUsingDevice,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -126,6 +126,7 @@ import {
 | `UiChip` / `UiBadge` | chip 可 `selected` `removable` `dot`；badge `tone`: primary / success / warning / danger |
 | `UiAvatar` / `UiAvatarGroup` | 头像 + 头像组：`name` 取首字母、`src` 支持 base64 data URL / 在线地址、`status` 在线点。Group 叠放（后一个压前一个、surface 色描环、悬停抬起），`size` 统一给组内头像设置尺寸（单项自己写了以单项为准），`max` 超出折叠成 **+N** |
 | `UiAgentAvatar` | 智能体头像：`shape` 传**内置 key**（`AGENT_SHAPES` 注册表：circle / squircle / triangle / diamond / hexagon / flower / tilt / star / sparkle / scallop，来自 111×1312 精灵图逐个归一化；也可传纯剪影 SVG）+ `color`，组件自动上色、白 30% 外圈描边（paint-order: stroke）、**SVG 根 overflow visible 不裁头像**，并叠加**两只同尺寸的圆角矩形眼**（四角同半径 = 宽度一半，直接写宽 / 高 / 圆角属性，不用 scale，不会被拉成椭圆）。眼睛由状态机驱动：`state` = idle / listening / thinking / happy / confused / surprised / sleepy / speaking，**任意状态→任意状态都是同一组参数（开合 / 眼距 / 高度）的弹簧过渡**，没有硬切。三条硬规则：**不旋转**（没有 tilt / 视线角度，只有位移）、**尺寸零随机**（挂载即按状态落位，开合不含噪声项，眨眼两眼同步——同一闭合度，不会出现一睁一闭的大小差）、**两眼成组位移**（注视偏移对两眼同值，永远等大）。**默认眼略偏右上**，注视可移动范围 ±1.5 单位 × 1.6 倍。生命层（呼吸 3–5s、随机眨眼快闭慢开过冲 1.02，**眨眼两眼完全同步**）永远在，注意力层（`gaze="mouse"` 弹簧注视 / 微扫视每 2–5s 换目标）叠加其上；闭眼是一条宽度略增的细线不消失；`eyesY` 调眼睛基准高度（三角脸往下调），`level` 给说话状态接外部音量包络（给了才调制开合），`animated=false` 摆静止姿势 |
+| `UiUsingDevice` | 智能体使用设备的场景组件：`device` = laptop / phone / none；设备底图（`src/assets/agent` 的 Figma 3D 导出）放在 AI **右下方**，眼睛经 `gaze="point"` 看向设备中心——电脑**左右轻扫**、手机**上下轻点**；手是纯白圆：电脑一只敲击手（连续敲键盘），手机两只——持机手**固定在手机前方**（z 在设备之上），滑动手沿屏幕上下滑动。`color` 给设备上色：替换底图里的 **#FF00FF 占位**（multiply 混色，**禁用 #000000，最深 #444444；#FFFFFF = 原色**；空 = 纯白 W 版）。位置 / 大小 / 手位全部可调（`deviceDx / deviceDy / deviceScale / handScale / laptopHandDx·Dy / holdDx·Dy / swipeDx·Dy`），示例库有「调设备位置」页面，滑块调完一键复制属性标签 |
 | `UiAvatarTag` | 头像标签：左侧探出一枚头像 + 右侧药丸文字；`src` 按 `shape`（circle / squircle / square / hexagon / diamond / blob）裁成不同形状，`icon` 直接放任意 SVG 标记 —— **图标模式不套任何遮罩 / 裁切**，保留 SVG 自身形状；`icon-view-box` 可自定义（品牌图标多半不是 24×24），`size` sm / md / lg；药丸底色上下各内缩 **1px**、头像与组件盒同高，所以头像天然探出底色 1px（对齐 Frame 11）；`accent` 给药丸底色 10% 品牌色、文字用压暗后的品牌色 |
 | `UiSegmented` | `v-model` + `options`（`{ label, value, disabled?, icon? }`）；`label` 在左上角，`layout="one-line"` 标签与控件同行；`icon-placement="leading\|top"`（图标在文字前端 / 上方卡片式）、`show-labels="false"` 只留图标、`auto-multiline`（默认开）在**真实内容宽度**放不下时切成网格多行——列数用 canvas measureText 量文字宽度算，不靠猜固定最小宽度；控件本身 `width:100%`，避免「量一次→变窄→再量更窄」的收缩循环 |
 | `UiStepper` | `v-model` 数字 + `unit` `min` `max` `step`；`size`(sm/md/lg/xl)、`controls`(sides/bottom)、`roll`(standard/reverse)、`fieldLabel` |

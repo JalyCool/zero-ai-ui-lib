@@ -1,0 +1,358 @@
+<svg width="127" height="130" viewBox="0 0 127 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+<foreignObject x="0" y="0" width="127" height="130" overflow="visible" data-figma-3d="true">
+<div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:127px;height:130px">
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 23.4956, -4.9174) translate(50%, 50%) rotateX(-38deg) rotateY(22deg) rotateZ(10deg) translate(-50%, -50%);transform-style:preserve-3d">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+</svg>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 0) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%);transform-style:preserve-3d">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+</svg>
+<div style="position:absolute;left:0;top:0;margin:0;width:24px;height:24.7407px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 28, 60) translate(50%, 50%) rotateX(90deg) rotateY(180deg) translate(-50%, -50%);backface-visibility:hidden">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24.7407" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<g opacity="0.1">
+<path d="M9.44856 17.9773C6.68914 17.9772 4.23471 16.6739 2.66938 14.6502C2.66178 14.6404 2.65768 14.6283 2.65768 14.6159V14.5978C2.65768 14.5767 2.64053 14.5596 2.61939 14.5596C2.60734 14.5596 2.596 14.5539 2.58879 14.5443C1.52116 13.1189 0.888891 11.3497 0.888885 9.4331C0.888885 4.71429 4.72119 0.888921 9.44856 0.888916C12.6161 0.88892 15.3818 2.60638 16.862 5.15926C16.998 5.39372 16.7583 5.6569 16.4989 5.57718C15.6068 5.30298 14.6734 5.16099 13.7284 5.16099C10.4192 5.161 7.73661 7.83876 7.7366 11.1419C7.73661 13.7946 9.46672 16.0439 11.862 16.8269C12.1099 16.9079 12.1735 17.2389 11.9439 17.3625C11.7904 17.4452 11.6325 17.5202 11.4708 17.587C10.9068 17.8202 10.3062 17.951 9.69716 17.9737C9.61458 17.9761 9.53171 17.9773 9.44856 17.9773Z" fill="black"/>
+<path d="M14.5514 6.76355C17.3109 6.76355 19.7653 8.06695 21.3306 10.0906C21.3382 10.1004 21.3423 10.1125 21.3423 10.1249V10.143C21.3423 10.1641 21.3595 10.1812 21.3806 10.1812C21.3927 10.1812 21.404 10.1869 21.4112 10.1965C22.4788 11.6219 23.1111 13.3911 23.1111 15.3077C23.1111 20.0265 19.2788 23.8519 14.5514 23.8519C11.3839 23.8519 8.61825 22.1344 7.138 19.5815C7.00205 19.3471 7.24176 19.0839 7.50113 19.1636C8.39324 19.4378 9.32666 19.5798 10.2716 19.5798C13.5808 19.5798 16.2634 16.902 16.2634 13.5989C16.2634 10.9462 14.5333 8.69693 12.138 7.91393C11.8902 7.83291 11.8266 7.50187 12.0561 7.37827C12.2096 7.2956 12.3675 7.22064 12.5292 7.15376C13.0932 6.92058 13.6938 6.7898 14.3029 6.76709C14.3854 6.76474 14.4683 6.76355 14.5514 6.76355Z" fill="black"/>
+<path d="M11.3674 9.66524C11.5847 9.07904 12.4153 9.07904 12.6326 9.66524L13.0816 10.8765C13.1499 11.0608 13.2955 11.2061 13.4801 11.2743L14.6936 11.7225C15.2809 11.9394 15.2809 12.7685 14.6936 12.9854L13.4801 13.4336C13.2955 13.5018 13.1499 13.6471 13.0816 13.8314L12.6326 15.0427C12.4153 15.6289 11.5847 15.6289 11.3674 15.0427L10.9184 13.8314C10.85 13.6471 10.7045 13.5018 10.5198 13.4336L9.30638 12.9854C8.71912 12.7685 8.71912 11.9394 9.30638 11.7225L10.5198 11.2743C10.7045 11.2061 10.85 11.0608 10.9184 10.8765L11.3674 9.66524Z" fill="black"/>
+</g>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:30.0025px;height:51.4001px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 3.9976, 47.2);transform-style:preserve-3d">
+<svg xmlns="http://www.w3.org/2000/svg" width="30.0025" height="51.4001" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+</svg>
+<div style="position:absolute;left:0;top:0;margin:0;width:30px;height:50px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0.0024, 0) translate(50%, 50%) translateZ(42.9999px) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="50" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="30" height="50" rx="8" fill="#BEBEBE"/>
+<rect width="30" height="50" rx="8" fill="white" style="mix-blend-mode:multiply"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:30px;height:50px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0.0024, 0.2) translate(50%, 50%) translateZ(42.9999px) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="50" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="30" height="50" rx="8" fill="#BEBEBE"/>
+<rect width="30" height="50" rx="8" fill="white" style="mix-blend-mode:multiply"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:30px;height:50px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0.0002, 0.4001) translate(50%, 50%) translateZ(42.9999px) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="50" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="30" height="50" rx="8" fill="#BEBEBE"/>
+<rect width="30" height="50" rx="8" fill="white" style="mix-blend-mode:multiply"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:30px;height:50px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0.0024, 0.6) translate(50%, 50%) translateZ(42.9999px) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="50" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="30" height="50" rx="8" fill="#BEBEBE"/>
+<rect width="30" height="50" rx="8" fill="white" style="mix-blend-mode:multiply"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:30px;height:50px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0.0001, 0.8001) translate(50%, 50%) translateZ(42.9999px) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="50" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="30" height="50" rx="8" fill="#BEBEBE"/>
+<rect width="30" height="50" rx="8" fill="white" style="mix-blend-mode:multiply"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:30px;height:50px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0.0023, 1.0001) translate(50%, 50%) translateZ(42.9999px) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="50" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="30" height="50" rx="8" fill="#BEBEBE"/>
+<rect width="30" height="50" rx="8" fill="white" style="mix-blend-mode:multiply"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:30px;height:50px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 1.2001) translate(50%, 50%) translateZ(42.9999px) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="50" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="30" height="50" rx="8" fill="#BEBEBE"/>
+<rect width="30" height="50" rx="8" fill="white" style="mix-blend-mode:multiply"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:30px;height:50px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0.0017, 1.4001) translate(50%, 50%) translateZ(42.9999px) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="50" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<path d="M0 8C0 3.58172 3.58172 0 8 0H22C26.4183 0 30 3.58172 30 8V42C30 46.4183 26.4183 50 22 50H8C3.58172 50 0 46.4183 0 42V8Z" fill="#EFEFEF"/>
+<g filter="url(#filter0_n_15_866)">
+<rect width="30" height="50" rx="8" fill="url(#paint0_linear_15_866)"/>
+</g>
+<circle cx="10.0009" cy="40" r="6" fill="black"/>
+<circle cx="10.0009" cy="26" r="6" fill="black"/>
+<circle cx="12.0009" cy="15" r="3" fill="black"/>
+<circle cx="12.0009" cy="15" r="3" fill="url(#paint1_radial_15_866)" fill-opacity="0.2"/>
+<rect x="4" y="4" width="10" height="4" rx="2" fill="url(#paint2_linear_15_866)"/>
+<rect x="20" y="26" width="4" height="8" rx="2" fill="black"/>
+<rect x="18" y="12" width="6" height="8" rx="2" fill="black"/>
+</svg>
+</div>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 0) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="url(#paint3_linear_15_866)"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:multiply"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:151.2014px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, -7.4014);transform-style:preserve-3d">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="151.201" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+</svg>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 7.2014) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 7.0014) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 6.8013) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 6.6013) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 6.4012) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 6.2012) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 6.0012) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 5.8011) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 5.6011) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 5.4011) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 5.201) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 5.001) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 4.801) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 4.6009) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 4.4009) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 4.2009) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 4.0008) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 3.8008) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 3.6008) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 3.4007) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 3.2007) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 3.0007) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 2.8006) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 2.6006) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 2.4006) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 2.2005) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 2.0005) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 1.8005) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 1.6004) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 1.4004) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 1.2003) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 1.0002) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 0.8002) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 0.6002) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 0.4001) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 0.2001) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, 0) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<rect width="80" height="144" rx="12" fill="#EBEBEB"/>
+<rect width="80" height="144" rx="12" fill="white" style="mix-blend-mode:plus-darker"/>
+</svg>
+</div>
+</div>
+<div style="position:absolute;left:0;top:0;margin:0;width:80px;height:144px;transform-origin:0 0;transform:matrix(1, 0, 0, 1, 0, -7.6014) translate(50%, 50%) rotateX(90deg) translate(-50%, -50%)">
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="144" overflow="visible" style="position:absolute;left:0;top:0;overflow:visible">
+<path d="M0 16C0 7.16344 7.16344 0 16 0H64C72.8366 0 80 7.16344 80 16V128C80 136.837 72.8366 144 64 144H16C7.16344 144 0 136.837 0 128V16Z" fill="#E8E8E8"/>
+<rect width="80" height="144" rx="12" fill="black"/>
+<rect x="2" y="2" width="76" height="140" rx="10.6" fill="#E8E8E8"/>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</foreignObject>
+<defs>
+<filter id="filter0_n_15_866" x="0" y="0" width="30" height="50" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="1 1" stitchTiles="stitch" numOctaves="3" result="noise" seed="8239" />
+<feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+<feComponentTransfer in="alphaNoise" result="coloredNoise1">
+<feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+</feComponentTransfer>
+<feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+<feFlood flood-color="rgba(0, 0, 0, 0.1)" result="color1Flood" />
+<feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+<feMerge result="effect1_noise_15_866">
+<feMergeNode in="shape" />
+<feMergeNode in="color1" />
+</feMerge>
+</filter>
+<linearGradient id="paint0_linear_15_866" x1="15" y1="50" x2="15" y2="0" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="1" stop-color="#DCDCDC"/>
+</linearGradient>
+<radialGradient id="paint1_radial_15_866" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(12.0009 15) rotate(90) scale(3)">
+<stop offset="0.346154" stop-color="#0091FF"/>
+<stop offset="0.668269" stop-color="#0090FF" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="paint2_linear_15_866" x1="4" y1="6" x2="14" y2="6" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFFFD0"/>
+<stop offset="0.5" stop-color="white"/>
+<stop offset="1" stop-color="#FFFFD0"/>
+</linearGradient>
+<linearGradient id="paint3_linear_15_866" x1="40" y1="144" x2="40" y2="0" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="1" stop-color="#E7E7E7"/>
+</linearGradient>
+</defs>
+</svg>

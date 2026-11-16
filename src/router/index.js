@@ -4,6 +4,7 @@ import ActivityView from '../views/ActivityView.vue'
 import AddRecordSheet from '../views/AddRecordSheet.vue'
 import TrendsView from '../views/TrendsView.vue'
 import ComponentsView from '../views/ComponentsView.vue'
+import DeviceLabView from '../views/DeviceLabView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import EmptyRoute from './EmptyRoute'
 
@@ -68,6 +69,12 @@ const routes = [
     name: 'components',
     component: ComponentsView,
     meta: { tab: 'components', title: '组件库', sub: '预制组件与交互状态' }
+  },
+  {
+    path: '/agent-device',
+    name: 'agent-device',
+    component: DeviceLabView,
+    meta: { tab: 'components', cacheKey: 'agent-device', title: '设备位置调节', sub: '调好后复制属性发回来' }
   },
   {
     path: '/profile',
