@@ -352,7 +352,7 @@ const cardItems = [
   { title: '游泳', meta: '800 米', tone: 'secondary' },
   { title: '冥想', meta: '10 分钟', tone: 'tertiary' }
 ]
-const cardVariant = ref('gallery')
+const cardVariant = ref(new URLSearchParams(window.location.search).get('cg') || 'gallery')
 const cardActive = ref(0)
 const cardVariants = [
   { label: '平铺', value: 'gallery' },

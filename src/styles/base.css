@@ -55,11 +55,13 @@ html, body {
   outline-offset: 2px;
 }
 
-/* 按钮默认外观归零 */
+/* 按钮默认外观归零（appearance 与 UA 的 outset 边框一起清掉） */
 button {
   -webkit-appearance: none;
   appearance: none;
+  border: 0 solid transparent;
   font: inherit;
+  color: inherit;
 }
 
 /* ============================================================

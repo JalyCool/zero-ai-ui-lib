@@ -2,6 +2,14 @@
    预制组件库 · 基础组件
    ============================================================ */
 
+/* 按钮归一化：清掉 UA 的「2px outset」斜面边框（浅左上 / 深右下），
+   这是所有自绘按钮样式错乱的根源；需要描边的组件在各自规则里显式声明。 */
+button {
+  border: 0 solid transparent;
+  font: inherit;
+  color: inherit;
+}
+
 /* ---------- Button ---------- */
 .ui-btn {
   display: inline-flex;
