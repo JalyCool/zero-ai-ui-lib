@@ -293,11 +293,11 @@ function startSpring(to) {
     emitSnap(target)
     return
   }
-  if (!frame) frame = requestAnimationFrame(step)
+  if (!frame) frame = requestAnimationFrame(springStep)
 }
 
 let lastTime = 0
-function step(now) {
+function springStep(now) {
   frame = 0
   if (!lastTime) lastTime = now
   let dt = (now - lastTime) / 1000
@@ -320,7 +320,7 @@ function step(now) {
     emitSnap(target)
     return
   }
-  frame = requestAnimationFrame(step)
+  frame = requestAnimationFrame(springStep)
 }
 
 function stopSpring() {
