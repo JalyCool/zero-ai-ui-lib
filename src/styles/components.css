@@ -3,7 +3,6 @@
    ============================================================ */
 .card {
   background: var(--surface-container-low);
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(var(--r-card) * var(--radius-scale));
   padding: var(--space-card);
   box-shadow: var(--elev-card);
@@ -33,7 +32,6 @@
 .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: calc(12px * var(--density)); }
 .metric {
   background: var(--surface-container-low);
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(var(--r-metric) * var(--radius-scale));
   padding: var(--space-metric);
   box-shadow: var(--elev-card);
@@ -59,7 +57,6 @@
   align-items: center;
   gap: calc(12px * var(--density));
   background: var(--surface-container-low);
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(var(--r-list) * var(--radius-scale));
   padding: var(--space-item) calc(15px * var(--density));
   box-shadow: var(--elev-card);
@@ -87,11 +84,6 @@
    Hover（仅鼠标设备，仅可展开内容）
    ============================================================ */
 @media (hover: hover) and (pointer: fine) {
-  [data-hover="border"] .card[data-expand]:hover,
-  [data-hover="border"] .metric[data-expand]:hover,
-  [data-hover="border"] .list-item[data-expand]:hover {
-    border-color: var(--outline);
-  }
   [data-hover="surface"] .card[data-expand]:hover,
   [data-hover="surface"] .metric[data-expand]:hover,
   [data-hover="surface"] .list-item[data-expand]:hover {
@@ -105,7 +97,6 @@
   [data-hover="mix"] .card[data-expand]:hover,
   [data-hover="mix"] .metric[data-expand]:hover,
   [data-hover="mix"] .list-item[data-expand]:hover {
-    border-color: var(--outline);
     background: var(--surface-container);
   }
   .bar:hover::after { opacity: 1; transform: translate(-50%, -4px) scale(1); }
@@ -115,7 +106,6 @@
 .card.is-settling[data-expand]:hover,
 .metric.is-settling[data-expand]:hover,
 .list-item.is-settling[data-expand]:hover {
-  border-color: var(--outline-variant);
   background: var(--surface-container-low);
   box-shadow: var(--elev-card);
 }

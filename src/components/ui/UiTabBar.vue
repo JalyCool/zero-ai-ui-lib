@@ -101,7 +101,6 @@ function pick(value) {
     width: 100%;
     max-width: none;
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-    border-top: var(--border-w) solid var(--outline-variant);
     display: flex;
     justify-content: center;
   }
@@ -124,7 +123,6 @@ function pick(value) {
     justify-content: flex-start;
     gap: 6px;
     padding: 16px 8px;
-    border-right: var(--border-w) solid var(--outline-variant);
   }
   .ui-tabbar__tab { flex: 0 0 auto; width: 100%; }
 }

@@ -167,7 +167,6 @@
 }
 .expand-chart-card {
   background: var(--surface-container-low);
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(var(--r-card) * var(--radius-scale));
   padding: calc(var(--space-card) * 1.1);
   margin-bottom: 12px;
@@ -179,7 +178,6 @@
 }
 .expand-metric-cell {
   background: var(--surface-container-low);
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(var(--r-metric) * var(--radius-scale));
   padding: 14px;
 }

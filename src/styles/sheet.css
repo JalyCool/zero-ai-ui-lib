@@ -9,7 +9,6 @@
   max-width: 480px;
   max-height: 88dvh;
   background: var(--surface-container-high);
-  border: var(--border-w) solid var(--outline-variant);
   border-bottom: 0;
   border-radius: calc(28px * var(--radius-scale)) calc(28px * var(--radius-scale)) 0 0;
   z-index: 100;
@@ -202,7 +201,6 @@
   padding: 14px;
   border-radius: calc(var(--r-preview) * var(--radius-scale));
   background: var(--surface);
-  border: var(--border-w) solid var(--outline-variant);
   display: flex;
   align-items: center;
   justify-content: space-between;

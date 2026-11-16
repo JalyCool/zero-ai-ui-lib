@@ -1347,7 +1347,6 @@ onMounted(() => {
 .lib-nav__item {
   flex-shrink: 0;
   padding: 6px 13px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: 999px;
   background: var(--surface-container-low);
   color: var(--on-surface-variant);
@@ -1381,7 +1380,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 10px;
   padding: 14px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(var(--r-card) * var(--radius-scale));
   background: var(--surface-container-low);
   min-width: 0;
@@ -1426,7 +1424,6 @@ onMounted(() => {
   width: fit-content;
   max-width: 100%;
   overflow: hidden;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(12px * var(--radius-scale));
   background: var(--surface-container-low);
 }
@@ -1440,7 +1437,6 @@ onMounted(() => {
   place-items: center;
   min-height: 52px;
   padding: 8px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(12px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface-variant);

@@ -125,7 +125,6 @@ header {
   width: 44px;
   height: 44px;
   border-radius: calc(var(--r-button) * var(--radius-scale));
-  border: var(--border-w) solid var(--outline-variant);
   background: var(--surface-container-low);
   color: var(--primary);
   cursor: pointer;

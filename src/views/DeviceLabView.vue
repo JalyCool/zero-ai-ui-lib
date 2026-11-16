@@ -135,7 +135,6 @@ async function copyProps() {
   justify-content: center;
   align-items: center;
   height: 240px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(16px * var(--radius-scale));
   background: var(--surface-container-low);
   overflow: visible;
@@ -147,7 +146,6 @@ async function copyProps() {
 .lab__out {
   min-height: 64px;
   padding: 10px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(10px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
