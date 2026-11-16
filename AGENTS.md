@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 圆角分档」，不用阴影；**描边只出现在功能处**——输入框 / 开关、复选框类控件 / `variant="outline"` 变体 / 行分隔线 / 浮层边界，**能没有描边的地方就不要有描边**（卡片、告警、折叠面板、模态、表格外形、卡片组等一律无描边）。**阴影全库只有一处：TabBar**（移动端向上 / 桌面端向右投一层淡分离影），其他组件一律不投影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：97 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：98 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -115,6 +115,7 @@ import {
   UiMorphPanel, UiWheel, UiCodeImage, UiTabBar, confirmDialog,
   UiRotatingText, UiText, UiStatusMark, UiToolCallChip, UiCodeSlots, UiScrubField,
   UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots,
+  UiSideNav, MarkdownView, normalizeIconName,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -194,12 +195,13 @@ import {
 | `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让；**进场高亮孔先铺满整屏再收拢到目标**（整体聚焦到一点），换步时孔在目标之间连续移动，退场再张回整屏 |
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
 | `UiKbd` | `keys` 字符串或数组，`size` sm / md |
-| `UiIcon` | `name` 取自库内 ICONS 注册表，`size` `filled` `stroke-width` `label` |
+| `UiIcon` | `name` **先查库内 ICONS 注册表，未命中则按 Iconify 名字渲染**（`pack:icon` / `pack/icon` / `pack--icon` / `i-pack:icon` 都自动归一化成 `pack:icon`），`size`（像素或 `1em` 内联用）`filled` `stroke-width` `label` |
 | `UiCalendar` | `v-model` 日期 + `events`（按 ISO 日期给数组）；`view` month / week |
 | `UiTimeline` | `items` 为 `[{ title, time?, text?, tone? }]` |
 | `UiCarousel` | `items` + `v-model` 索引；`autoplay` `interval` `loop` `height`，可拖拽翻页；轨道走 view 弹簧，非当前页缩小 / 变暗 / 轻模糊；翻页指示器引用独立的 `UiPagerDots` |
 | `UiPagerDots` | 独立翻页指示器：`total` + `v-model` 当前页，`clickable` `size="sm\|md"`；当前页是拉长的胶囊，轮播 / 卡片组 / 任何分页视图都能引用 |
 | `UiMarquee` | `text` `speed` `direction` `gap` `pause-on-hover` |
+| `MarkdownView` | Markdown 渲染器（marked 解析 → DOM 树 → Vue 元素，不用 v-html，天然防注入）：标题 / 强调 / 列表 / 引用 / 表格 / 代码全部走库令牌。**内联图标**（`icons` 默认开）支持 `pack:icon`、`pack/icon`、`pack--icon`、`i-pack:icon` 四种裸写法与 `::pack:icon::` 显式标记（显式优先）；**本地注册表（registerIcons）优先于 Iconify**；代码块与行内代码是字面量不解析。**@ 提及**（`mentions` 开启）渲染成 `UiAvatarTag` 药丸，`mentionResolver(username)` 返回 `{ username, showname, type: 'normal'\|'agent', image, shape }`；`tagSize` 控制药丸尺寸 |
 
 通用约定：所有浮层都能点外部收起、按 Esc 收起；`items` 形如 `[{ value, label, description?, tone? }]`。
 

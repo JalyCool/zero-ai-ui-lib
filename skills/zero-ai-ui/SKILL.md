@@ -36,8 +36,10 @@ createApp(App).mount('#app')
 10. **不重复造控件**：按钮 / 输入 / 弹窗 / toast 全用库的；确认弹层 / 操作反馈分别走 confirmDialog 与 UiToastHost 语义 API（success / error / warning / info）。
 11. **描边克制**：能没有描边的地方就不要有描边——层次靠表面色阶与圆角分档；描边只保留在输入框 / 开关复选框类控件 / `variant="outline"` / 分隔线 / 浮层边界。别给卡片、告警、面板加装饰性 outline。
 12. **阴影只有 TabBar**：全库唯一投影在 UiTabBar（移动端向上 / 桌面端向右的淡分离影）；其他组件一律不投影，浮层靠边界 + 压暗遮罩分离，别加 `box-shadow`。
+13. **图标走 Iconify**：UiIcon 先查本地注册表（registerIcons），未命中按 Iconify 名渲染；`pack:icon` / `pack/icon` / `pack--icon` / `i-pack:icon` 等价。Markdown 里四种裸写法与 `::pack:icon::` 都能识别（显式优先），代码块内保持字面量。
+14. **Markdown 用 MarkdownView**：需要 @ 提及时传 `mentions` + `mentionResolver`，返回 `{ username, showname, type: 'normal'|'agent', image, shape }`，自动渲染成 UiAvatarTag。
 
-## 组件速查（完整 96 个见 AGENTS.md 第 2 节）
+## 组件速查（完整 98 个见 AGENTS.md 第 2 节）
 
 按钮 UiButton（含 fuse / hold / slide 动作变体）· 输入族 UiInput / UiSelect / UiDatePicker / UiTimePicker · 反馈 UiToastHost / UiAlert / confirmDialog · 布局 UiTabBar / UiSidebar / UiBottomSheet / UiModal · 列表 UiSwipeRow / UiDataTable / UiTreeView / UiVirtualList · 数字 UiRollNumber（库内一切数字动效的底座）· 可展开卡片 ExpandableCard / RouteExpandCard。
 

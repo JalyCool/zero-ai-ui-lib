@@ -20,8 +20,10 @@ export { useFocusTrap, useRovingTabindex, srOnly } from '../core/a11y'
 export { zeroDirectives, vRipple, vIntersect, vResize, vClickOutside } from '../core/directives'
 /* 声明式快捷键。 */
 export { defineShortcuts, createShortcuts } from '../core/shortcuts'
-/* 图标注册表（UiIcon 按名字取图标）。 */
+/* 图标注册表（UiIcon 按名字取图标；本地名字优先于 Iconify）。 */
 export { ICONS, registerIcons, iconMarkup } from '../core/icons'
+/* Iconify 名字归一化（pack/icon、pack--icon、i-pack:icon -> pack:icon）与内联标记。 */
+export { normalizeIconName, ICON_EXPLICIT_RE, ICON_INLINE_RE, MENTION_RE } from '../core/iconify'
 
 /* 动效气质（calm / lively）：产品调性，代码里预置，不做用户设置。 */
 export {

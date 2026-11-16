@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState, UiSideNav,
+  MarkdownView,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
   UiText, UiToolCallChip, UiTooltipGroup,
@@ -353,6 +354,42 @@ const cardItems = [
   { title: '冥想', meta: '10 分钟', tone: 'tertiary' }
 ]
 const cardVariant = ref(new URLSearchParams(window.location.search).get('cg') || 'gallery')
+
+/* Markdown 渲染器演示：标题 / 强调 / 内联图标（四种裸写法 + ::显式::）/ @提及 */
+const mdMentions = ref(true)
+const MD_USERS = {
+  nova: { username: 'nova', showname: 'Nova', type: 'agent', shape: 'triangle' },
+  iris: { username: 'iris', showname: 'Iris', type: 'agent', shape: 'circle' },
+  alex: { username: 'alex', showname: 'Alex Chen', type: 'normal', shape: 'circle' }
+}
+function mdResolve(name) {
+  return MD_USERS[name] || { username: name, showname: name, type: 'normal' }
+}
+const mdDoc = [
+  '# 会话记录',
+  '',
+  '## 内联图标（四种裸写法）',
+  '',
+  'mdi:home  mdi/home  mdi--home  i-mdi:home',
+  '',
+  '显式标记优先级最高：::mdi:send:: 可以与上一行混用。',
+  '',
+  '> 代码块与行内代码是字面量，不解析图标：' + '`' + 'mdi:home' + '`' + ' 保持原样。',
+  '',
+  '## 强调与列表',
+  '',
+  '- 支持 **加粗**、*斜体*、~~删除线~~ 与 ' + '`' + '行内代码' + '`',
+  '- 也支持 [链接](https://example.com)',
+  '',
+  '## 提及',
+  '',
+  '打开「@ 提及」后 @nova 与 @alex 会渲染成头像标签药丸；关闭则保持纯文本。',
+  '',
+  '| 参数 | 说明 |',
+  '| --- | --- |',
+  '| mentions | 开启 @ 提及解析 |',
+  '| mentionResolver | 返回 username / showname / type / image / shape |'
+].join('\n')
 const cardActive = ref(0)
 const cardVariants = [
   { label: '平铺', value: 'gallery' },
@@ -933,6 +970,15 @@ onMounted(() => {
         </div>
 
         <div class="lib-cell lib-cell--span">
+          <span class="lib-cell__label">Markdown 渲染器 <small>MarkdownView</small></span>
+          <UiSwitch v-model="mdMentions" label="@ 提及渲染为头像标签" />
+          <div class="lib-md-demo">
+            <MarkdownView :content="mdDoc" :mentions="mdMentions" :mention-resolver="mdResolve" />
+          </div>
+          <span class="lib-cell__note">标题 / 强调 / 列表 / 引用 / 表格全部走库令牌；内联图标支持 pack:icon、pack/icon、pack--icon、i-pack:icon 与 ::pack:icon:: 五种写法（本地注册表优先于 Iconify）；@用户名 在 mentions 开启时渲染为 UiAvatarTag。</span>
+        </div>
+
+        <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">代码编辑器 <small>UiCodeEditor</small></span>
           <UiCodeEditor v-model="code" language="json" label="配置 JSON" :lines="7" format-json hint="Tab 缩进 / 失焦自动格式化" />
         </div>
@@ -1479,6 +1525,7 @@ onMounted(() => {
   background: var(--surface-container-low);
 }
 .lib-sidebar-demo .ui-sidebar { height: 100%; }
+.lib-md-demo { padding: 4px 2px; }
 .lib-sidenav-demo { display: flex; gap: 14px; flex-wrap: wrap; }
 .lib-sidenav-demo__desktop { width: 220px; height: 210px; display: flex; background: var(--background); border-radius: 12px; overflow: hidden; }
 .lib-sidenav-demo__phone {
