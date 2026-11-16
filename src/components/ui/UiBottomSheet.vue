@@ -481,7 +481,6 @@ onBeforeUnmount(() => {
   width: 100%;
   max-width: 480px;
   background: var(--surface-container-high);
-  border: var(--border-w) solid var(--outline-variant);
   border-bottom: 0;
   border-radius: calc(28px * var(--radius-scale)) calc(28px * var(--radius-scale)) 0 0;
   overflow: hidden;

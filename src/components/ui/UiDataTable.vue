@@ -295,7 +295,6 @@ const showPager = computed(() => props.server || props.total > props.pageSize)
 .ui-table {
   min-width: 0;
   overflow: auto;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(14px * var(--radius-scale));
   background: var(--surface-container-low);
   scrollbar-width: thin;
@@ -375,7 +374,6 @@ tbody tr.is-clickable:hover { background: var(--surface-container); }
   width: 26px;
   height: 26px;
   padding: 0;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(8px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);

@@ -114,7 +114,6 @@ const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCas
   transform: translateY(-50%);
   overflow: hidden;
   background: var(--surface-container-highest);
-  border: 1px solid color-mix(in oklab, #fff 30%, transparent);
 }
 .ui-avatar-tag--md .ui-avatar-tag__avatar { width: 24px; height: 24px; }
 .ui-avatar-tag--lg .ui-avatar-tag__avatar { width: 30px; height: 30px; }

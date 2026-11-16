@@ -146,7 +146,6 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   place-items: center;
   width: 34px;
   height: 34px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(10px * var(--radius-scale));
   background: var(--surface-container-low);
   border-bottom-width: var(--border-w);

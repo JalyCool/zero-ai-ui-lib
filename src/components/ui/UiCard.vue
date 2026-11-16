@@ -20,7 +20,7 @@ const props = defineProps({
   divider: { type: Boolean, default: true },
   /* 尺寸只影响内边距 */
   size: { type: String, default: 'md' },
-  variant: { type: String, default: 'outline' },
+  variant: { type: String, default: 'filled' },
   /* 仅表现：悬停抬色 + 按下收缩；点击事件由应用自己绑 */
   clickable: { type: Boolean, default: false },
   /* ---------- variant="product"（产品授权卡） ---------- */
@@ -99,7 +99,6 @@ const isProduct = computed(() => props.variant === 'product')
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(18px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
@@ -107,7 +106,8 @@ const isProduct = computed(() => props.variant === 'product')
               transform var(--t-pop), box-shadow var(--t-fade);
 }
 .ui-card--filled { background: var(--surface-container); }
-.ui-card--plain { border-color: transparent; background: transparent; }
+.ui-card--outline { background: transparent; border: var(--border-w) solid var(--outline-variant); }
+.ui-card--plain { background: transparent; }
 
 /* ---------- 段 ---------- */
 .ui-card__header {

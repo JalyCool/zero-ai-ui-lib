@@ -394,7 +394,6 @@ watch(() => props.precision, () => {
 }
 .ui-time__presets button {
   padding: 6px 2px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: 8px;
   background: transparent;
   color: var(--on-surface-variant);

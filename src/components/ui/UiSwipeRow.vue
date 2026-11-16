@@ -312,7 +312,6 @@ onBeforeUnmount(() => { pointerId = null })
   position: relative;
   z-index: 1;
   background: var(--surface-container-low);
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: inherit;
   will-change: transform;
   touch-action: pan-y;

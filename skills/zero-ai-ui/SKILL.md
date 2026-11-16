@@ -34,6 +34,7 @@ createApp(App).mount('#app')
 8. **浮层祖先**：不要给浮层的祖先加 transform / filter / will-change（fixed 包含块会偏移被裁剪）。
 9. **日期显示**：±3 天内用称呼（今天 / 明天…），同年省年份；数字一律 `tabular-nums`。
 10. **不重复造控件**：按钮 / 输入 / 弹窗 / toast 全用库的；确认弹层 / 操作反馈分别走 confirmDialog 与 UiToastHost 语义 API（success / error / warning / info）。
+11. **描边克制**：能没有描边的地方就不要有描边——层次靠表面色阶与圆角分档；描边只保留在输入框 / 开关复选框类控件 / `variant="outline"` / 分隔线 / 浮层边界。别给卡片、告警、面板加装饰性 outline。
 
 ## 组件速查（完整 96 个见 AGENTS.md 第 2 节）
 

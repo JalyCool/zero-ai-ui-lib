@@ -220,7 +220,6 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
 .ui-stepflow__controls { display: flex; gap: 8px; justify-content: flex-end; }
 .ui-stepflow__btn {
   padding: 9px 15px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: 999px;
   background: transparent;
   color: var(--on-surface);

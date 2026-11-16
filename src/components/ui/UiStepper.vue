@@ -172,7 +172,6 @@ onBeforeUnmount(() => {
   gap: 8px;
   min-height: 42px;
   padding: 3px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(14px * var(--radius-scale));
   background: var(--surface-container-low);
   transition: border-color var(--t-fade), background var(--t-fade),

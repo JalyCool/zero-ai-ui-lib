@@ -193,7 +193,6 @@ defineExpose({ open: () => setOpen(true), close, measure })
   position: relative;
   width: var(--mp-w, auto);
   height: var(--mp-h, auto);
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(13px * var(--radius-scale));
   background: var(--surface-container);
   overflow: hidden;

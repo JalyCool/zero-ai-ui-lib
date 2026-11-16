@@ -899,7 +899,6 @@ watch(() => props.modelValue, value => {
   /* 入场位移随气质放大（活泼模式更远一点）。 */
   animation-name: cgCardIn;
   overflow: hidden;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(16px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
@@ -1010,7 +1009,6 @@ watch(() => props.modelValue, value => {
   aspect-ratio: 5 / 4;
   overflow: hidden;
   border-radius: calc(12px * var(--radius-scale));
-  border: var(--border-w) solid var(--outline-variant);
   background: var(--surface-container-low);
   transition: transform var(--t-panel), box-shadow var(--t-fade), border-color var(--t-fade);
 }
@@ -1049,7 +1047,6 @@ watch(() => props.modelValue, value => {
   gap: 2px;
   height: 100%;
   padding: 11px 14px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(14px * var(--radius-scale));
   background: linear-gradient(140deg, var(--surface-container-low), var(--surface-container));
   box-shadow: var(--elev-card);
@@ -1098,7 +1095,6 @@ watch(() => props.modelValue, value => {
 }
 .ui-card-group__pill {
   padding: 7px 14px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: 999px;
   background: color-mix(in oklab, var(--surface) 84%, transparent);
   color: var(--on-surface);

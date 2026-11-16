@@ -86,7 +86,6 @@ async function copyAll() {
 .ui-term__copy {
   margin-left: auto;
   padding: 3px 9px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: 999px;
   background: transparent;
   color: var(--on-surface-variant);
@@ -99,7 +98,6 @@ async function copyAll() {
 .ui-term__body {
   overflow: auto;
   padding: 10px 12px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(13px * var(--radius-scale));
   background: var(--surface-container-low);
   scrollbar-width: thin;

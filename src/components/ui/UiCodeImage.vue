@@ -308,7 +308,6 @@ onBeforeUnmount(() => {
   min-height: 120px;
   width: 100%;
   padding: 14px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: calc(16px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);

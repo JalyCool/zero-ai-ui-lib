@@ -116,7 +116,6 @@ const words = computed(() => props.status === 'done' ? '已完成' : props.statu
   max-width: 100%;
   padding: 7px 11px;
   overflow: hidden;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: 999px;
   background: var(--surface-container-low);
   color: var(--on-surface);

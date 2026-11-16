@@ -544,7 +544,6 @@ watch(() => props.modelValue, () => {
 }
 .ui-range-date__preset {
   padding: 3px 10px;
-  border: var(--border-w) solid var(--outline-variant);
   border-radius: 999px;
   background: transparent;
   color: var(--on-surface-variant);
