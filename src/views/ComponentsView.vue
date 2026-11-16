@@ -636,6 +636,7 @@ onMounted(() => {
             <div class="lib-demo-row">
               <UiAvatarTag name="ZERO" :icon="zeroFace" />
               <UiAvatarTag name="Guide" :icon="guideFace" accent="#7438ff" />
+              <UiAvatarTag name="Nova" agent agent-shape="triangle" agent-color="#7438ff" agent-state="listening" />
             </div>
             <div class="lib-demo-row">
               <UiAvatarTag name="图标 · 无遮罩" :icon="zeroFace" />

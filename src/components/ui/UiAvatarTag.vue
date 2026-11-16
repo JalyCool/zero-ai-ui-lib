@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from 'vue'
+import UiAvatar from './UiAvatar.vue'
+import UiAgentAvatar from './UiAgentAvatar.vue'
 
 /* ============================================================
    AvatarTag（参考 Figma NameTag 5:52 / Frame 11）
@@ -24,8 +26,16 @@ const props = defineProps({
   /* sm | md | lg */
   size: { type: String, default: 'sm' },
   /* 品牌强调色：药丸底色用它的 10%，文字用它调暗后的颜色（参考 Frame 11 的 Guide） */
-  accent: { type: String, default: '' }
+  accent: { type: String, default: '' },
+  /* 头像本体渲染方式：true 时用 UiAgentAvatar（带眼睛的智能体头像），
+     否则用标准 UiAvatar（src 图片 / name 首字母）；icon 模式仍走原始 SVG */
+  agent: { type: Boolean, default: false },
+  agentShape: { type: String, default: 'circle' },
+  agentColor: { type: String, default: '' },
+  agentState: { type: String, default: 'idle' }
 })
+
+const headSize = computed(() => (props.size === 'md' ? 24 : props.size === 'lg' ? 30 : 18))
 
 const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCase())
 </script>
@@ -38,19 +48,27 @@ const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCas
   >
     <span
       class="ui-avatar-tag__avatar"
-      :class="['is-' + shape, { 'is-icon': !!icon, 'is-image': !!src }]"
+      :class="['is-' + shape, { 'is-icon': !!icon && !agent, 'is-image': !!src, 'is-agent': agent }]"
     >
       <slot name="avatar">
+        <UiAgentAvatar
+          v-if="agent"
+          class="ui-avatar-tag__agent"
+          :shape="agentShape"
+          :color="agentColor || accent || '#7438ff'"
+          :size="headSize"
+          :state="agentState"
+        />
         <svg
-          v-if="icon"
+          v-else-if="icon"
           class="ui-avatar-tag__glyph"
           :viewBox="iconViewBox"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           v-html="icon"
         ></svg>
-        <img v-else-if="src" :src="src" alt="" draggable="false" />
-        <span v-else class="ui-avatar-tag__initial">{{ initial }}</span>
+        <UiAvatar v-else-if="src" class="ui-avatar-tag__std" :src="src" :name="name" />
+        <UiAvatar v-else class="ui-avatar-tag__std" :name="name || '?'" />
       </slot>
     </span>
     <span class="ui-avatar-tag__label"><slot>{{ name }}</slot></span>
@@ -134,6 +152,14 @@ const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCas
   overflow: visible;
   clip-path: polygon(50% 2%, 72% 7%, 88% 22%, 98% 45%, 92% 70%, 74% 88%, 50% 98%, 26% 88%, 8% 70%, 2% 45%, 12% 22%, 28% 7%);
 }
+
+/* 标准头像 / 智能体头像填满头盒：UiAvatar 的固定尺寸在盒内强制铺满 */
+.ui-avatar-tag__avatar :deep(.ui-avatar) { width: 100%; height: 100%; background: transparent; font-size: 9px; }
+.ui-avatar-tag--md .ui-avatar-tag__avatar :deep(.ui-avatar) { font-size: 11px; }
+.ui-avatar-tag--lg .ui-avatar-tag__avatar :deep(.ui-avatar) { font-size: 13px; }
+/* 智能体头像：铺在头盒里，overflow 放开让眼睛 / 呼吸探出去 */
+.ui-avatar-tag__avatar.is-agent { background: transparent; overflow: visible; }
+.ui-avatar-tag__agent { position: absolute; inset: 0; }
 
 /* 图标：无遮罩 —— 背景、描边、裁切全部去掉，保留 SVG 自身形状 */
 .ui-avatar-tag__avatar.is-icon {

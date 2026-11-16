@@ -133,6 +133,11 @@ declare const UiAvatarTag: DefineComponent<{
   size?: 'sm' | 'md' | 'lg'
   /** 品牌强调色：药丸底色取 10%，文字压暗 / 提亮 */
   accent?: string
+  /** 头像本体改用 UiAgentAvatar 渲染（带眼睛的智能体头像） */
+  agent?: boolean
+  agentShape?: string
+  agentColor?: string
+  agentState?: string
 }, AnyProps, unknown>
 declare const UiCard: DefineComponent<{
   title?: string
