@@ -419,3 +419,5 @@ npm run build:lib    # 库产物 -> dist/
 ```
 
 发布新版本需要人工确认（改 `package.json` 的 `version` → `npm publish`），不要自动执行。
+
+> **skill 随包分发**：npm 包内自带 `skills/zero-ai-ui/SKILL.md`（速查版约定）与 `AGENTS.md`（完整规范）。消费端的 AI Agent 先加载 SKILL.md / AGENTS.md 再动手，就不会发明样式或踩已知坑；两个文件随包一起更新。
