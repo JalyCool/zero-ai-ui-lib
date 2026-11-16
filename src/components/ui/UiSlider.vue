@@ -58,7 +58,7 @@ const emit = defineEmits(['update:modelValue', 'snap', 'drag-start', 'drag-end']
      目标 = 预测值最近的吸附点（不是简单对当前位置取整）；
    · 归位用可配置的临界阻尼弹簧（stiffness / dampingRatio），
      ratio=1 不回弹过头，默认约 300–450ms 停稳；
-   · 越出边界时橡皮筋阻尼（rubber 系数 + 最大越界比例）；
+   · 越出边界时橡皮筋阻尼（rubber 系数 + 最大越界比例）——已废弃：把手现在始终钳在轨道内，rubber / maxOverscroll 仅保留兼容不再生效；
    · 鼠标 / 触摸 / 触控笔统一走 Pointer Events，
      touch-action: none 阻止拖拽时页面滚动；
    · 吸附完成时 emit('snap', { index, value })。
@@ -179,14 +179,7 @@ function posToValue(clientX) {
   return props.min + ratio * range.value
 }
 
-/* 橡皮筋：越界部分按系数衰减，并限制最大越界量 */
-function rubberValue(raw) {
-  const over = raw > props.max ? raw - props.max : raw < props.min ? raw - props.min : 0
-  if (!over) return raw
-  const limit = range.value * springCfg.value.maxOverscroll
-  const eased = Math.sign(over) * Math.min(Math.abs(over) * springCfg.value.rubber, limit)
-  return (over > 0 ? props.max : props.min) + eased
-}
+
 
 /* ---------- 速度采样 ---------- */
 let samples = []
@@ -219,7 +212,8 @@ function onPointerDown(event) {
   try { el.setPointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
 
   samples = []
-  const raw = posToValue(event.clientX)
+  /* 把手永远钳在轨道内：按到轨道外也直接落在 min / max 上 */
+  const raw = clampRaw(posToValue(event.clientX))
   shown.value = raw
   pushSample(raw)
   target = raw
@@ -230,7 +224,8 @@ function onPointerDown(event) {
 
 function onPointerMove(event) {
   if (!dragging.value || event.pointerId !== pointerId) return
-  const raw = rubberValue(posToValue(event.clientX))
+  /* 拖拽不做橡皮筋：越界的指针位置直接钳回轨道两端 */
+  const raw = clampRaw(posToValue(event.clientX))
   shown.value = raw
   target = raw
   pushSample(raw)
