@@ -22,10 +22,11 @@ import { confirmDialog, AGENT_SHAPES } from '../lib'
 import { useRouter } from 'vue-router'
 import supabaseSvg from '../assets/figma/supabase.svg?raw'
 
+/* 产品授权卡（Figma 5:454）里的 ZERO 头像：黑底两只白眼睛的图标脸 */
+const zeroFace = '<rect width="24" height="24" rx="12" fill="#111"/><rect x="8.4" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/><rect x="13" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/>'
+
 /* Figma 5:454 里的品牌图标：留内部标记，viewBox 由 prop 传 0 0 20 20 */
 const supabaseGlyph = supabaseSvg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '')
-/* ZERO 头像（黑底两只白眼睛），作为「SVG 图标无遮罩」的示例 */
-const zeroFace = '<rect width="24" height="24" rx="12" fill="#111"/><rect x="8.4" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/><rect x="13" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/>'
 const agentShapeList = AGENT_SHAPES
 const router = useRouter()
 /* 状态机展示：分段切换 8 个状态，看任意状态之间的弹簧过渡 */
@@ -42,10 +43,6 @@ const agentStates = [
   { label: '困', value: 'sleepy' },
   { label: '说话', value: 'speaking' }
 ]
-/* Frame 11 的 Guide 头像：圆角三角形 + 两只眼睛（无遮罩） */
-const guideFace = '<path d="M5.77 4.01C8.09 0 13.41 0 15.72 4.01L21.49 14C24 18.16 21.18 24 16.53 24H4.98C0.32 24-2.5 18.16 0 14Z" fill="#7438FF" stroke="white" stroke-opacity=".3"/><rect x="8.4" y="8.4" width="2.4" height="5.2" rx="1.2" fill="white"/><rect x="14.3" y="8.4" width="2.4" height="5.2" rx="1.2" fill="white"/>'
-/* 任意形状的 SVG：五角星，不套遮罩，露出的就是星形本身 */
-const starGlyph = '<path d="M12 2l2.9 6.2 6.8.9-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.9z" fill="#f59e0b"/>'
 
 /* ============================================================
    组件库示例 · 重写版
@@ -634,19 +631,17 @@ onMounted(() => {
               <UiAvatarTag name="菱形" :src="viewerSrc" shape="diamond" />
             </div>
             <div class="lib-demo-row">
-              <UiAvatarTag name="ZERO" :icon="zeroFace" />
-              <UiAvatarTag name="Guide" :icon="guideFace" accent="#7438ff" />
               <UiAvatarTag name="Nova" agent agent-shape="triangle" agent-color="#7438ff" agent-state="listening" />
+              <UiAvatarTag name="Iris" agent agent-shape="circle" agent-color="#3f5f90" agent-state="thinking" />
+              <UiAvatarTag name="Iris · md" agent agent-shape="circle" agent-color="#249361" agent-state="happy" size="md" />
             </div>
             <div class="lib-demo-row">
-              <UiAvatarTag name="图标 · 无遮罩" :icon="zeroFace" />
-              <UiAvatarTag name="星形" :icon="starGlyph" />
-              <UiAvatarTag name="星形 · md" :icon="starGlyph" size="md" />
-              <UiAvatarTag name="ZERO" :icon="zeroFace" size="md" />
+              <UiAvatarTag name="Alex Chen" :src="viewerSrc" />
+              <UiAvatarTag name="Coco Li" />
               <UiAvatarTag name="自定义形状" :src="viewerSrc" shape="blob" size="lg" />
             </div>
           </div>
-          <span class="lib-cell__note">图片按 shape 裁切；icon 模式不套遮罩，保留 SVG 自身形状。药丸底色上下各内缩 1px，头像比底色探出 1px（对齐 Frame 11）。</span>
+          <span class="lib-cell__note">头像本体默认用标准 UiAvatar（src / 首字母）或 UiAgentAvatar（agent，带眼睛会动）渲染；图片按 shape 裁切。药丸底色上下各内缩 1px，头像比底色探出 1px（对齐 Frame 11）。icon 模式（任意 SVG 无遮罩）仍支持，示例默认不展示。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">智能体头像 <small>AgentAvatar</small></span>
