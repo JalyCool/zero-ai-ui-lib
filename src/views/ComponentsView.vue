@@ -31,7 +31,7 @@ const agentShapeList = AGENT_SHAPES
 const router = useRouter()
 /* 状态机展示：分段切换 8 个状态，看任意状态之间的弹簧过渡 */
 const agentState = ref('idle')
-const agentGazeOn = ref(true)
+const agentGazeOn = ref(false)
 const agentGaze = computed(() => (agentGazeOn.value ? 'mouse' : 'none'))
 const agentStates = [
   { label: '待机', value: 'idle' },

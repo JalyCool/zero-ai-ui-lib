@@ -12,3 +12,4 @@ t1.txt
 # 无头 Chrome 的调试 profile（.chrome-color / .chrome-p* / .chrome-profile* 等）
 .chrome-*/
 .shot*
+*.swp

@@ -58,6 +58,7 @@ const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCas
           :color="agentColor || accent || '#7438ff'"
           :size="headSize"
           :state="agentState"
+          gaze="none"
         />
         <svg
           v-else-if="icon"

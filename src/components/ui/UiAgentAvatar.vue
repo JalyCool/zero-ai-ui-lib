@@ -41,9 +41,9 @@ const props = defineProps({
   size: { type: [Number, String], default: 40 },
   /* idle | listening | thinking | happy | confused | surprised | sleepy | speaking */
   state: { type: String, default: 'idle' },
-  /* mouse 跟随指针 | none 只做微扫视 | point 看向 gazeX / gazeY；
+  /* mouse 跟随指针 | none 只做微扫视（默认，不跟随鼠标） | point 看向 gazeX / gazeY；
      device != none 时自动切到 point 看向设备中心 */
-  gaze: { type: String, default: 'mouse' },
+  gaze: { type: String, default: 'none' },
   /* point 模式的注视点（24 盒内坐标） */
   gazeX: { type: Number, default: 12 },
   gazeY: { type: Number, default: 12 },
