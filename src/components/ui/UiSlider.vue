@@ -29,7 +29,7 @@ const props = defineProps({
   /** @deprecated 用 spring.stiffness */
   stiffness: { type: Number, default: 520 },
   /** @deprecated 用 spring.dampingRatio */
-  dampingRatio: { type: Number, default: 1 },
+  dampingRatio: { type: Number, default: 1.05 },
   /** @deprecated 用 spring.flingTime */
   flingTime: { type: Number, default: 0.11 },
   /** @deprecated 用 spring.rubber */
@@ -58,7 +58,9 @@ const emit = defineEmits(['update:modelValue', 'snap', 'drag-start', 'drag-end']
      目标 = 预测值最近的吸附点（不是简单对当前位置取整）；
    · 归位用可配置的临界阻尼弹簧（stiffness / dampingRatio），
      ratio=1 不回弹过头，默认约 300–450ms 停稳；
-   · 越出边界时橡皮筋阻尼（rubber 系数 + 最大越界比例）——已废弃：把手现在始终钳在轨道内，rubber / maxOverscroll 仅保留兼容不再生效；
+   · 越出边界时橡皮筋阻尼（rubber 系数衰减 + 最多越界 maxOverscroll × 量程）；
+   · 松手惯性有触发阈值：甩出速度 ≥ 0.8 × 量程 / 秒才做惯性预测，慢松手原地落定；
+     阻尼默认 1.05（略过阻尼），甩出去也不会跑太远；
    · 鼠标 / 触摸 / 触控笔统一走 Pointer Events，
      touch-action: none 阻止拖拽时页面滚动；
    · 吸附完成时 emit('snap', { index, value })。
@@ -181,6 +183,15 @@ function posToValue(clientX) {
 
 
 
+/* 橡皮筋：越界部分按 rubber 系数衰减，最多越界 maxOverscroll × 量程 */
+function rubberValue(raw) {
+  const over = raw > props.max ? raw - props.max : raw < props.min ? raw - props.min : 0
+  if (!over) return raw
+  const limit = range.value * springCfg.value.maxOverscroll
+  const eased = Math.sign(over) * Math.min(Math.abs(over) * springCfg.value.rubber, limit)
+  return (over > 0 ? props.max : props.min) + eased
+}
+
 /* ---------- 速度采样 ---------- */
 let samples = []
 function pushSample(value) {
@@ -224,8 +235,8 @@ function onPointerDown(event) {
 
 function onPointerMove(event) {
   if (!dragging.value || event.pointerId !== pointerId) return
-  /* 拖拽不做橡皮筋：越界的指针位置直接钳回轨道两端 */
-  const raw = clampRaw(posToValue(event.clientX))
+  /* 拖拽橡皮筋：越界有阻尼衰减，且最多越出 maxOverscroll × 量程 */
+  const raw = rubberValue(posToValue(event.clientX))
   shown.value = raw
   target = raw
   pushSample(raw)
@@ -240,7 +251,12 @@ function onPointerUp(event) {
   try { trackEl.value?.releasePointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
 
   velocity = currentVelocity()
-  const predicted = shown.value + velocity * springCfg.value.flingTime
+  /* 惯性触发阈值：甩出速度要足够大（≥ 0.8 × 量程 / 秒）才做惯性预测，
+     慢慢松手就原地落定，不会被轻轻一带就甩出去 */
+  const flingMin = range.value * 0.8
+  const predicted = Math.abs(velocity) >= flingMin
+    ? shown.value + velocity * springCfg.value.flingTime
+    : shown.value
 
   let next
   if (hasStops.value) {
