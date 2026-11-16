@@ -324,7 +324,11 @@ function springStep(now) {
   velocity += accel * dt
   shown.value += velocity * dt
 
-  if (Math.abs(displacement) < 0.3 && Math.abs(velocity) < 2) {
+  /* 停稳判定用「量程比例」阈值：小量程滑轨（0.2~1 这类）也要完整走完
+     弹簧过渡 —— 绝不用绝对单位在半路瞬间跳到目标（那就是「闪过去」）。 */
+  const epsPos = Math.max(1e-4, range.value * 0.002)
+  const epsVel = Math.max(1e-4, range.value * 0.01)
+  if (Math.abs(displacement) < epsPos && Math.abs(velocity) < epsVel) {
     shown.value = target
     velocity = 0
     lastTime = 0
