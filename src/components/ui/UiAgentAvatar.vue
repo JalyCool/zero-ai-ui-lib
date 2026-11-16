@@ -442,10 +442,11 @@ function frame(now) {
         y = lerp(se.y, sw.y, p)
       }
     } else if (r < 0.72) {
-      /* 休息：滑到设备旁边（不在屏幕上）悬停，稍微等一等再回来 */
+      /* 休息：滑到设备**左侧**（滑动这只手是右手，永远待在画面左边那侧）
+         不在屏幕上的区域悬停，稍微等一等再回来——绝不越过拿手机的左手 */
       const rest = {
-        x: deviceLeft.value + deviceWidth.value + S * 0.05,
-        y: deviceTop.value + deviceHeight.value * 0.4
+        x: deviceLeft.value - S * 0.08,
+        y: deviceTop.value + deviceHeight.value * 0.45
       }
       if (c < 0.22) { const q = easeInOutSine(c / 0.22); x = lerp(sw.x, rest.x, q); y = lerp(sw.y, rest.y, q) }
       else if (c < 0.78) {
