@@ -3,6 +3,19 @@
 > 说明：会话级的 todo 工具在下一轮会清空，所以**真正的待办写在这里**。
 > 每完成一项就改这一份，不依赖会话记忆。
 
+## 0. 最新一段（0.5.0）
+
+- **MarkdownView**（第 98 个组件）：marked 解析 → DOM → Vue 元素（不 v-html，防注入）；
+  标题 / 强调 / 列表 / 引用 / 表格 / 代码全部走库令牌；代码块与行内代码是字面量。
+- **内联图标**：`pack:icon` / `pack/icon` / `pack--icon` / `i-pack:icon` 四种裸写法 +
+  `::pack:icon::` 显式标记（显式优先）；本地 registerIcons 优先于 Iconify；
+  裸写法带前后边界断言，不会误伤 12:30 / https:// / mailto:。
+- **@提及**：`mentions` + `mentionResolver(username)` →
+  `{ username, showname, type: 'normal'|'agent', image, shape }`，渲染成 UiAvatarTag。
+- **UiIcon 改为 Iconify 渲染**：本地注册表未命中时按 Iconify 名字渲染（名字自动归一化）。
+- 新增依赖 @iconify/vue@5 / marked@18（pnpm 安装；npm 在 Node 26 上装不动会用
+  `Cannot read properties of null (reading 'matches')` 崩，改用 pnpm）。
+
 ## A. 已实现但还没接线（有代码、没导出 / 没类型 / 没文档 / 没示例）
 
 | 组件 | ui/index 导出 | d.ts 声明 | AGENTS 组件表 | 示例页 |
