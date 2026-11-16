@@ -133,13 +133,12 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
 .ui-tooltip-group__trigger {
   position: relative;
   padding: 2px 0;
-  border-bottom: var(--border-w) dashed var(--outline-variant);
   color: var(--on-surface);
   font-size: inherit;
   cursor: help;
-  transition: color var(--t-fade), border-color var(--t-fade);
+  transition: color var(--t-fade);
 }
-.ui-tooltip-group__trigger.is-active { color: var(--primary); border-color: var(--primary); }
+.ui-tooltip-group__trigger.is-active { color: var(--primary); }
 /* 图标按钮触发：主要是给工具栏图标用的，做成方形按钮。 */
 .ui-tooltip-group__trigger.is-icon {
   display: inline-grid;
@@ -148,8 +147,7 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   height: 34px;
   border-radius: calc(10px * var(--radius-scale));
   background: var(--surface-container-low);
-  border-bottom-width: var(--border-w);
-  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-pop);
+  transition: background var(--t-fade), color var(--t-fade), transform var(--t-pop);
 }
 .ui-tooltip-group__trigger.is-icon:active { transform: scale(var(--press-scale)); }
 .ui-tooltip-group__trigger.is-icon:hover { background: var(--surface-container); }

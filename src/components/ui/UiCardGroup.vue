@@ -1093,13 +1093,12 @@ watch(() => props.modelValue, value => {
 .ui-card-group__pill {
   padding: 7px 14px;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--surface) 84%, transparent);
+  background: var(--surface);
   color: var(--on-surface);
   font-size: var(--fs-micro);
   font-weight: var(--w-label);
   cursor: pointer;
-  backdrop-filter: blur(6px);
-  transition: transform var(--t-feedback), border-color var(--t-fade);
+  transition: transform var(--t-feedback);
 }
 .ui-card-group__pill:active { transform: scale(var(--press-scale)); }
 
@@ -1154,11 +1153,10 @@ watch(() => props.modelValue, value => {
   gap: 4px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--surface) 78%, transparent);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
   color: var(--on-surface-variant);
   font-size: var(--fs-micro);
-  opacity: .8;
-  backdrop-filter: blur(6px);
+  opacity: .92;
   pointer-events: none;
 }
 .ui-card-group__hint svg { width: 13px; height: 13px; }

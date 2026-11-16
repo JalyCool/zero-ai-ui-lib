@@ -63,6 +63,9 @@ const sections = [
   { id: 'sec-motion', label: '动效手势' }
 ]
 activeSection.value = sections[0].id
+/* 调试入口：/?sec=sec-overlay 直接落到对应分区 */
+const debugSec = new URLSearchParams(window.location.search).get('sec')
+if (debugSec && sections.some(s => s.id === debugSec)) activeSection.value = debugSec
 const sectionOptions = sections.map(section => ({ label: section.label, value: section.id }))
 
 function jump(id) {
