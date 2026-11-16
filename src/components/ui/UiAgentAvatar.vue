@@ -50,7 +50,7 @@ const props = defineProps({
   /* 注视微摆：none | x（左右轻扫）| y（上下轻点）；
      device != none 时自动按设备取 x / y */
   gazeWobble: { type: String, default: 'none' },
-  gazeWobbleAmp: { type: Number, default: 0.3 },
+  gazeWobbleAmp: { type: Number, default: 0.34 },
   gazeWobblePeriod: { type: Number, default: 2600 },
   /* false 时摆出当前状态的静止姿势，不跑动画循环 */
   animated: { type: Boolean, default: true },
@@ -83,10 +83,10 @@ const props = defineProps({
   swipeEndX: { type: Number, default: null },
   swipeEndY: { type: Number, default: null },
   /* 注视压缩系数：看向设备 / 指定点时「距离 → 眼偏移」的换算比例 */
-  gazeScale: { type: Number, default: 0.35 },
-  /* 眼整体基础偏移（相对 24 盒中心）：默认略偏右上，可调相对位置 */
-  eyesOffsetX: { type: Number, default: 0.55 },
-  eyesOffsetY: { type: Number, default: -0.55 }
+  gazeScale: { type: Number, default: 0.37 },
+  /* 眼整体基础偏移（相对 24 盒中心）：调节台实测固化值 */
+  eyesOffsetX: { type: Number, default: -0.6 },
+  eyesOffsetY: { type: Number, default: -0.95 }
 })
 
 /* ---------- 情绪层：状态配方表（参数即状态，状态即参数向量） ---------- */
@@ -134,9 +134,10 @@ const deviceAspect = computed(() => {
 })
 const sizeNum = computed(() => Number(props.size) || 0)
 /* 各设备的推荐位（size 的比例）——来自 140px 调节台的实测固化值 */
+/* 手机手大小与电脑一致（0.16），漏写会导致手 0×0 */
 const DEVICE_DEFAULTS = {
   laptop: { dx: 0.279, dy: 0.3, scale: 1, handScale: 0.16, handDy: -0.036 },
-  phone: { dx: 0.421, dy: 0.429, scale: 0.62, holdDx: 0.286, holdDy: -0.079, swipeStartX: 0.504, swipeStartY: 0.714, swipeEndX: 0.504, swipeEndY: 0.5 }
+  phone: { dx: 0.421, dy: 0.429, scale: 0.62, handScale: 0.16, holdDx: 0.286, holdDy: -0.079, swipeStartX: 0.079, swipeStartY: 0.15, swipeEndX: 0.136, swipeEndY: 0.214 }
 }
 const deviceLeft = computed(() => {
   if (props.deviceDx !== null) return props.deviceDx
