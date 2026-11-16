@@ -494,7 +494,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 export {
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
   UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBarChart, UiBottomSheet, UiButton,
-  UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
+  UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiLineChart, UiModal,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
   UiCardGroup, UiCodeSlots, UiRotatingText, UiScrubField, UiStatusMark,

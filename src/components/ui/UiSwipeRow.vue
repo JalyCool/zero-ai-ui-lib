@@ -6,8 +6,8 @@ const props = defineProps({
   actions: { type: Array, default: () => [] },
   /* 拖过多少像素算「打开」 */
   threshold: { type: Number, default: 0.42 },
-  /* 划到底直接执行最后一个操作 */
-  fullSwipe: { type: Boolean, default: true },
+  /* 划到底直接执行最后一个操作（往往是删除）——默认关闭，需要显式开启 */
+  fullSwipe: { type: Boolean, default: false },
   /* 操作后整行折叠消失 */
   collapseOnAction: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false }
@@ -40,6 +40,9 @@ let pointerId = null
 let startX = 0
 let startOffset = 0
 let hist = []
+/* 本次按压是否真的发生了拖动（>4px）——决定松手后浏览器补发的
+   click 是吞掉（拖过）还是转发给真正被点的元素（纯点按）。 */
+let moved = false
 
 function velocityOf() {
   if (hist.length < 2) return 0
@@ -59,6 +62,7 @@ function onDown(event) {
   pointerId = event.pointerId
   startX = event.clientX
   startOffset = x.value
+  moved = false
   hist = [{ x: event.clientX, t: event.timeStamp }]
   dragging.value = true
   capture(pointerId)
@@ -69,6 +73,7 @@ function onDown(event) {
 function onMove(event) {
   if (pointerId === null || event.pointerId !== pointerId) return
   const dx = event.clientX - startX
+  if (Math.abs(dx) > 4) moved = true
   if (event.cancelable) event.preventDefault()
   let next = startOffset + dx
   /* 只往左推；往右是橡皮筋。 */
@@ -84,12 +89,39 @@ function onMove(event) {
   setStyle(0, false)
 }
 
+/* 指针捕获会把松手后浏览器补发的 click 重定向到 surface：
+   · 拖过（moved）→ 吞掉，否则刚划开的操作条会被立即收起；
+   · 纯点按（!moved）→ 用 elementsFromPoint 找回真正被点的元素，
+     把 click 转发回去，行内按钮 / 复选框等不会被捕获吃掉。 */
+function handleCapturedClick(clientX, clientY, wasDragged) {
+  const surface = surfaceEl.value
+  if (!surface) return
+  const killer = event => {
+    surface.removeEventListener('click', killer, true)
+    event.preventDefault()
+    event.stopPropagation()
+    if (wasDragged || props.disabled) return
+    if (typeof document.elementsFromPoint !== 'function') return
+    const stack = document.elementsFromPoint(clientX, clientY)
+    const rail = railEl.value
+    const real = stack.find(el =>
+      el !== surface
+      && !(rail && rail.contains(el))
+      && !(el.closest && el.closest('.ui-swipe-row__commit')))
+    if (real) {
+      real.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
+    }
+  }
+  surface.addEventListener('click', killer, true)
+}
+
 function onUp(event) {
   if (pointerId === null) return
   const velocity = velocityOf()
   pointerId = null
   dragging.value = false
   try { surfaceEl.value && surfaceEl.value.releasePointerCapture && surfaceEl.value.releasePointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
+  handleCapturedClick(event.clientX, event.clientY, moved)
   const fullPoint = actionsWidth.value + 64
 
   if (props.fullSwipe && x.value <= -fullPoint + 6) {

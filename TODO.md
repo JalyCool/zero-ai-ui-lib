@@ -60,6 +60,13 @@
 
 ## D. 进度记录（最近提交）
 
+- 2026-11-16（第二十段）：修消费端实测的三个坑——① dist d.ts 补上漏导出的
+  UiModal / UiInput / UiLineChart / UiKeyValueEditor；② createShortcuts 支持
+  **mod** 修饰键（展开成 ctrl 与 meta 各注册一份，macOS / Windows 都能触发）；
+  ③ UiSwipeRow 指针捕获不再吞行内点击（纯点按 elementsFromPoint 转发回真正
+  被点的元素，拖过则吞掉补发 click，划开的操作条不会被立即收起），fullSwipe
+  默认改**关闭**。
+
 - 2026-11-16（第十九段）：手机滑动手改**回合制调度**——每条腿 300~500ms 的
   ease-in-out 速度曲线（起步加速 / 中段快 / 收尾减速，不再匀速 / 拖长）；新增
   「悬停等一等」回合（滑到设备旁边不在屏幕上的区域，跟呼吸轻浮动）；双击 / 悬停 /

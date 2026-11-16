@@ -7,7 +7,8 @@ import { onBeforeUnmount, onMounted } from 'vue'
      'escape': () => close(),
      'meta+enter': () => submit()
    })
-   组合键用 + 连接，修饰键支持 meta / ctrl / alt / shift。
+   组合键用 + 连接，修饰键支持 meta / ctrl / alt / shift，
+   以及平台无关的 mod —— 会自动展开成 ctrl 与 meta 各注册一份。
    ============================================================ */
 
 const MODS = ['meta', 'ctrl', 'alt', 'shift']
@@ -34,7 +35,19 @@ function matches(event, pattern) {
 }
 
 export function createShortcuts(map, options = {}) {
-  const patterns = Object.entries(map).map(([combo, handler]) => ({ ...parse(combo), handler }))
+  /* mod 是平台无关的修饰键别名：注册时展开成 Ctrl 与 Meta 各一份，
+     macOS 命中 Meta+k、Windows / Linux 命中 Ctrl+k，两边都能触发。 */
+  const expanded = {}
+  Object.entries(map).forEach(([combo, handler]) => {
+    const lower = String(combo).toLowerCase()
+    if (/(^|\+)mod(\+|$)/.test(lower)) {
+      expanded[lower.replace(/(^|\+)mod(?=\+|$)/g, 'ctrl')] = handler
+      expanded[lower.replace(/(^|\+)mod(?=\+|$)/g, 'meta')] = handler
+    } else {
+      expanded[lower] = handler
+    }
+  })
+  const patterns = Object.entries(expanded).map(([combo, handler]) => ({ ...parse(combo), handler }))
   const target = options.target || (typeof document !== 'undefined' ? document : null)
   function onKeydown(event) {
     /* 输入框里不劫持单字母快捷键，避免打断打字。 */

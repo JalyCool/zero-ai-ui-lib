@@ -139,7 +139,7 @@ import {
 | `UiToolCallChip` | 工具调用胶囊（仅受控）：`name` `detail` `status="running|success|error"` `expected`（秒）；运行中填充按耗时擦过、右侧计时器跳动，成功补满转绿、失败转红抖动 |
 | `UiCodeSlots` | 一次性验证码（按 react-bits CodeSlots 手法）：每个数字**独立落位**（透明度 + 模糊 + 上移 + 缩放，spring 曲线），粘贴按 `cascade`（默认 20ms）逐位错开；**当前输入位直接整格填充主色容器**（不再有独立光标线），空位 / 错误态时强调，成功后洗色时自动收起；`status="success"` 洗色从中间展开 + 数字下沉 + 勾升起，`status="error"` 从后往前逐位抽走再清空；键盘可完全操作（数字 / 退格删前一位 / Delete 删本位 / 方向键 / Home / End），原生 input 负责焦点与 `autocomplete="one-time-code"` |
 | `UiScrubField` | 可拖数字：横向拖动改值（`pixels-per-range` 定灵敏度），越界走橡皮筋松手弹回；不拖直接点击切换成输入框；方向键可微调 |
-| `UiSwipeRow` | 划开式列表行：`actions` 露在右侧，拖拽跟手、按位移 + 速度吸附；继续划到底直接执行最后一个操作（`full-swipe-action`）；`once` 触发后自动收回 |
+| `UiSwipeRow` | 划开式列表行：`actions` 露在右侧，拖拽跟手、按位移 + 速度吸附；`fullSwipe`（默认**关闭**）开启后继续划到底直接执行最后一个操作（往往是删除，列表场景慎开）；`once` 触发后自动收回。指针捕获不吞行内点击：纯点按会用 elementsFromPoint 转发回真正被点的元素，拖过则吞掉浏览器补发的 click，不会刚划开就被收起 |
 | `UiStepFlow` | 多步流程：`steps` + `v-model` 索引；指示器是一块绝对定位的薄条，靠 transform 在轨道上滑到当前格位，面板内容按方向滑入并模糊；`orientation="horizontal|vertical"` |
 | `UiTooltipGroup` | 提示词组：冷态第一次悬停要等 `wait`（默认 520ms），打开过一次后在 `warm-window` 内兄弟项瞬时打开；气泡只渲染一个，跟着当前项移动 |
 | `UiCardGroup` | 卡片组，**每种形态都可拖拽 / 点击 / 方向键**，松手有惯性或吸附；`variant` 8 种形态：`gallery` 横向平铺循环、`circular` 3D 圆环（拖拽惯量 + 吸附）、`depth` Z 轴轨道（拖拽 / 键盘 / 自动推进）、`wall` 透视墙漂移 + 悬停抬起、`scroll-stack` 滚动压栈、`stack` 牌堆拖甩点、`swap` 定时 / 甩动轮换、`bounce` 扇形弹入。吸附与惯性用真弹簧求解（`core/springPhysics`：place 220/26、settle 300/30、tuck 240/28、fling 650/42），松手速度会作为初速度注入，所以甩得快冲得远、落点干净；gallery 拖拽后按速度惯性再吸到最近格位并循环，圆环拖动带惯性吸附到最近格位，depth 拖过阈值换卡并回弹归零，wall 持续漂移且可拖动，牌堆可拖 / 甩 / 点且甩出的牌绕到最下面，bounce 拖动改展开角度、悬停或选中扶正；卡池 / 选中 / 拖拽 / 键盘共用一套 |
