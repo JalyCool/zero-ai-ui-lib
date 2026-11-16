@@ -35,6 +35,7 @@ createApp(App).mount('#app')
 9. **日期显示**：±3 天内用称呼（今天 / 明天…），同年省年份；数字一律 `tabular-nums`。
 10. **不重复造控件**：按钮 / 输入 / 弹窗 / toast 全用库的；确认弹层 / 操作反馈分别走 confirmDialog 与 UiToastHost 语义 API（success / error / warning / info）。
 11. **描边克制**：能没有描边的地方就不要有描边——层次靠表面色阶与圆角分档；描边只保留在输入框 / 开关复选框类控件 / `variant="outline"` / 分隔线 / 浮层边界。别给卡片、告警、面板加装饰性 outline。
+12. **阴影只有 TabBar**：全库唯一投影在 UiTabBar（移动端向上 / 桌面端向右的淡分离影）；其他组件一律不投影，浮层靠边界 + 压暗遮罩分离，别加 `box-shadow`。
 
 ## 组件速查（完整 96 个见 AGENTS.md 第 2 节）
 
