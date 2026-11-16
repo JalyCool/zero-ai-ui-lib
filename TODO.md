@@ -60,6 +60,10 @@
 
 ## D. 进度记录（最近提交）
 
+- 2026-11-16（第十七段）：固化调节台实测设备位（laptop 39/42/scale1、phone 59/60/scale.62、
+  hold 40/-11，按 size 比例存）；滑动手改起点↔终点（swipeStart/End X·Y）；动态手压到设备
+  下层、持机手保持设备上层；设备层抗锯齿（translateZ + 透明 outline）；眼参数外显
+  （gazeScale / gazeWobbleAmp / eyesOffsetX·Y）进调节台。
 - 2026-11-16（第十六段）：AgentAvatar 本体并入 **UsingDevice 设备变体**（device = laptop /
   phone / none，不单列组件）：设备底图 Figma 3D SVG 放 src/assets/agent，deviceColor 替换
   #FF00FF 占位、multiply 禁 #000000；眼睛 gaze=point 自动看向设备 + 左右 / 上下轻摆，

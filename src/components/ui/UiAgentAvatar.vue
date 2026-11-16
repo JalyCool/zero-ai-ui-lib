@@ -74,11 +74,19 @@ const props = defineProps({
   /* 电脑：敲击手相对推荐位的偏移 */
   laptopHandDx: { type: Number, default: 0 },
   laptopHandDy: { type: Number, default: 0 },
-  /* 手机：持机手（在手机前方，固定）/ 滑动手的偏移 */
+  /* 手机：持机手（在手机前方，固定）偏移 */
   holdDx: { type: Number, default: 0 },
   holdDy: { type: Number, default: 0 },
-  swipeDx: { type: Number, default: 0 },
-  swipeDy: { type: Number, default: 0 }
+  /* 滑动手轨迹：从起点来回滑到终点（容器左上原点 px）；不传用推荐值 */
+  swipeStartX: { type: Number, default: null },
+  swipeStartY: { type: Number, default: null },
+  swipeEndX: { type: Number, default: null },
+  swipeEndY: { type: Number, default: null },
+  /* 注视压缩系数：看向设备 / 指定点时「距离 → 眼偏移」的换算比例 */
+  gazeScale: { type: Number, default: 0.35 },
+  /* 眼整体基础偏移（相对 24 盒中心）：默认略偏右上，可调相对位置 */
+  eyesOffsetX: { type: Number, default: 0.55 },
+  eyesOffsetY: { type: Number, default: -0.55 }
 })
 
 /* ---------- 情绪层：状态配方表（参数即状态，状态即参数向量） ---------- */
@@ -125,20 +133,32 @@ const deviceAspect = computed(() => {
   return m ? Number(m[1]) / Number(m[2]) : 1.6
 })
 const sizeNum = computed(() => Number(props.size) || 0)
+/* 各设备的推荐位（size 的比例）——来自 140px 调节台的实测固化值 */
+const DEVICE_DEFAULTS = {
+  laptop: { dx: 0.279, dy: 0.3, scale: 1, handScale: 0.16, handDy: -0.036 },
+  phone: { dx: 0.421, dy: 0.429, scale: 0.62, holdDx: 0.286, holdDy: -0.079, swipeStartX: 0.504, swipeStartY: 0.714, swipeEndX: 0.504, swipeEndY: 0.5 }
+}
 const deviceLeft = computed(() => {
   if (props.deviceDx !== null) return props.deviceDx
-  return props.device === 'laptop' ? sizeNum.value * 0.5 : sizeNum.value * 0.46
+  return sizeNum.value * DEVICE_DEFAULTS[props.device].dx
 })
 const deviceTop = computed(() => {
   if (props.deviceDy !== null) return props.deviceDy
-  return props.device === 'laptop' ? sizeNum.value * 0.3 : sizeNum.value * 0.26
+  return sizeNum.value * DEVICE_DEFAULTS[props.device].dy
 })
-const deviceWidth = computed(() => sizeNum.value * (props.deviceScale ?? (props.device === 'laptop' ? 0.58 : 0.42)))
+const deviceWidth = computed(() => sizeNum.value * (props.deviceScale ?? DEVICE_DEFAULTS[props.device].scale))
 const deviceHeight = computed(() => deviceWidth.value / deviceAspect.value)
-const handPx = computed(() => sizeNum.value * (props.handScale ?? 0.15))
-const laptopHandBase = computed(() => ({ x: sizeNum.value * 0.58 + props.laptopHandDx, y: sizeNum.value * 0.8 + props.laptopHandDy }))
-const holdHandBase = computed(() => ({ x: sizeNum.value * 0.55 + props.holdDx, y: sizeNum.value * 0.88 + props.holdDy }))
-const swipeHandBase = computed(() => ({ x: sizeNum.value * 0.64 + props.swipeDx, y: sizeNum.value * 0.5 + props.swipeDy }))
+const handPx = computed(() => sizeNum.value * (props.handScale ?? DEVICE_DEFAULTS[props.device].handScale))
+const laptopHandBase = computed(() => ({ x: sizeNum.value * 0.58 + props.laptopHandDx, y: sizeNum.value * (0.764) + props.laptopHandDy }))
+const holdHandBase = computed(() => ({ x: sizeNum.value * (0.55 + 0.286) + props.holdDx, y: sizeNum.value * (0.88 - 0.079) + props.holdDy }))
+const swipeStart = computed(() => ({
+  x: props.swipeStartX !== null ? props.swipeStartX : sizeNum.value * DEVICE_DEFAULTS[props.device].swipeStartX,
+  y: props.swipeStartY !== null ? props.swipeStartY : sizeNum.value * DEVICE_DEFAULTS[props.device].swipeStartY
+}))
+const swipeEnd = computed(() => ({
+  x: props.swipeEndX !== null ? props.swipeEndX : sizeNum.value * DEVICE_DEFAULTS[props.device].swipeEndX,
+  y: props.swipeEndY !== null ? props.swipeEndY : sizeNum.value * DEVICE_DEFAULTS[props.device].swipeEndY
+}))
 
 /* ---------- 弹簧：情绪参数向目标过渡（AnyState→AnyState 的实现本体） ---------- */
 function makeSpring(k, c) { return { pos: 0, vel: 0, target: 0, k, c } }
@@ -238,9 +258,6 @@ const swipeHandEl = ref(null)
 const BASE_W = 2
 const BASE_H = 4.8
 const BASE_GAP = 4.6
-/* 默认眼略偏右上一点 */
-const EYE_BASE_X = 0.55
-const EYE_BASE_Y = -0.55
 
 /* 圆角矩形：四角同半径（= 宽度一半，再被高度夹住）。
    绝不用 scale 缩放 —— 宽 / 高 / 圆角直接写属性，transform 只有平移。 */
@@ -296,9 +313,9 @@ function frame(now) {
   let ty = 0
   if (mouseOn) { tx = mouseTarget.x * 0.9; ty = mouseTarget.y * 0.7 }
   else if (pointOn) {
-    /* 看向指定点：距离越远偏得越多，按 0.3 压缩到 believable 的幅度 */
-    tx = (pointX - 12) * 0.3
-    ty = (pointY - 12) * 0.3
+    /* 看向指定点：距离越远偏得越多，gazeScale 决定压缩比例（可调） */
+    tx = (pointX - 12) * props.gazeScale
+    ty = (pointY - 12) * props.gazeScale
   }
   tx += saccSpring.pos * (mouseOn ? 0.5 : 1.6) + bias.x * 0.6
   ty += saccTarget.y * (mouseOn ? 0.2 : 0.8) + bias.y * 0.6
@@ -341,9 +358,9 @@ function frame(now) {
   const half = BASE_GAP / 2 + springs.spread.pos / 2 + spreadBreath / 2
   const gx = lookX.pos * 1.6
   const gy = lookY.pos * 1.2
-  const cxL = 12 - half + gx + EYE_BASE_X
-  const cxR = 12 + half + gx + EYE_BASE_X
-  const cy = eyesCenter.value + springs.eyeY.pos + gy + breath * 0.5 + EYE_BASE_Y
+  const cxL = 12 - half + gx + props.eyesOffsetX
+  const cxR = 12 + half + gx + props.eyesOffsetX
+  const cy = eyesCenter.value + springs.eyeY.pos + gy + breath * 0.5 + props.eyesOffsetY
 
   if (eyeL.value && eyeR.value) {
     renderEye(eyeL.value, cxL, cy, wL, hL)
@@ -364,11 +381,12 @@ function frame(now) {
   if (props.device === 'phone') {
     /* 持机手固定不动（图层在手机前方） */
     placeHand(holdHandEl.value, holdHandBase.value.x, holdHandBase.value.y)
-    /* 滑动手：沿屏幕上下滑动，带一点横向弧度 */
+    /* 滑动手：从起点来回滑到终点 */
     const phase = (now / 1000) * Math.PI * 2 / 1.6
+    const t = (Math.sin(phase) + 1) / 2
     placeHand(swipeHandEl.value,
-      swipeHandBase.value.x + Math.sin(phase) * S * 0.018,
-      swipeHandBase.value.y + Math.sin(phase) * S * 0.07)
+      swipeStart.value.x + (swipeEnd.value.x - swipeStart.value.x) * t,
+      swipeStart.value.y + (swipeEnd.value.y - swipeStart.value.y) * t)
   }
 
   rafId = requestAnimationFrame(frame)
@@ -380,15 +398,15 @@ function renderStatic() {
   const half = BASE_GAP / 2 + springs.spread.target / 2
   const open = springs.open.target
   const h = Math.max(0.45, BASE_H * open)
-  const cx = 12 + EYE_BASE_X
-  const cy = eyesCenter.value + springs.eyeY.target + EYE_BASE_Y
+  const cx = 12 + props.eyesOffsetX
+  const cy = eyesCenter.value + springs.eyeY.target + props.eyesOffsetY
   renderEye(eyeL.value, cx - half, cy, BASE_W, h)
   renderEye(eyeR.value, cx + half, cy, BASE_W, h)
   if (svgEl.value) svgEl.value.setAttribute('transform', 'translate(0 0)')
   if (props.device === 'laptop') placeHand(laptopHandEl.value, laptopHandBase.value.x, laptopHandBase.value.y)
   if (props.device === 'phone') {
     placeHand(holdHandEl.value, holdHandBase.value.x, holdHandBase.value.y)
-    placeHand(swipeHandEl.value, swipeHandBase.value.x, swipeHandBase.value.y)
+    placeHand(swipeHandEl.value, swipeStart.value.x, swipeStart.value.y)
   }
 }
 
@@ -451,7 +469,7 @@ const label = computed(() => `智能体头像（${props.state}${deviceOn.value ?
       :style="{ width: handPx + 'px', height: handPx + 'px' }"
     ></span>
     <template v-if="device === 'phone'">
-      <span ref="holdHandEl" class="ui-agent-avatar__hand" :style="{ width: handPx * 1.15 + 'px', height: handPx * 1.15 + 'px' }"></span>
+      <span ref="holdHandEl" class="ui-agent-avatar__hand is-hold" :style="{ width: handPx * 1.15 + 'px', height: handPx * 1.15 + 'px' }"></span>
       <span ref="swipeHandEl" class="ui-agent-avatar__hand" :style="{ width: handPx + 'px', height: handPx + 'px' }"></span>
     </template>
   </span>
@@ -474,19 +492,30 @@ const label = computed(() => `智能体头像（${props.state}${deviceOn.value ?
 }
 .ui-agent-avatar__eye { pointer-events: none; }
 /* 设备层在头像之上；手再上一层（持机手在手机前方）。 */
-.ui-agent-avatar__device { position: absolute; z-index: 1; pointer-events: none; }
+.ui-agent-avatar__device {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  /* 抗锯齿：提升合成层 + 透明 outline 让旋转过的 3D DOM 层走平滑边缘 */
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+}
+.ui-agent-avatar__device :deep(div) { outline: 1px solid transparent; backface-visibility: hidden; }
 .ui-agent-avatar__device :deep(svg) { display: block; width: 100%; height: 100%; overflow: visible; }
+/* 手：纯白圆；动态手（敲击 / 滑动）在设备下层，持机手 is-hold 在设备上层（手机前方）。 */
 .ui-agent-avatar__hand {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 2;
+  z-index: 1;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px color-mix(in oklab, var(--on-surface) 22%, transparent);
   pointer-events: none;
   will-change: transform;
 }
+.ui-agent-avatar__hand.is-hold { z-index: 3; }
+
 
 @media (prefers-reduced-motion: reduce) {
   .ui-agent-avatar__body { transform: none !important; }

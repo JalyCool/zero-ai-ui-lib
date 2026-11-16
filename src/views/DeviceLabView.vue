@@ -33,8 +33,14 @@ const laptopHandDxModel = ref(0)
 const laptopHandDyModel = ref(0)
 const holdDxModel = ref(0)
 const holdDyModel = ref(0)
-const swipeDxModel = ref(0)
-const swipeDyModel = ref(0)
+const swipeStartXModel = ref(70)
+const swipeStartYModel = ref(100)
+const swipeEndXModel = ref(70)
+const swipeEndYModel = ref(80)
+const gazeScaleModel = ref(0.35)
+const wobbleAmpModel = ref(0.3)
+const eyesOffsetXModel = ref(0.55)
+const eyesOffsetYModel = ref(-0.55)
 
 const propsJson = ref('')
 const copied = ref(false)
@@ -54,8 +60,14 @@ function buildProps() {
     laptopHandDy: round1(laptopHandDyModel.value),
     holdDx: round1(holdDxModel.value),
     holdDy: round1(holdDyModel.value),
-    swipeDx: round1(swipeDxModel.value),
-    swipeDy: round1(swipeDyModel.value)
+    swipeStartX: round1(swipeStartXModel.value),
+    swipeStartY: round1(swipeStartYModel.value),
+    swipeEndX: round1(swipeEndXModel.value),
+    swipeEndY: round1(swipeEndYModel.value),
+    gazeScale: Math.round(gazeScaleModel.value * 100) / 100,
+    gazeWobbleAmp: Math.round(wobbleAmpModel.value * 100) / 100,
+    eyesOffsetX: Math.round(eyesOffsetXModel.value * 100) / 100,
+    eyesOffsetY: Math.round(eyesOffsetYModel.value * 100) / 100
   }
 }
 
@@ -93,8 +105,14 @@ async function copyProps() {
         :laptop-hand-dy="laptopHandDyModel"
         :hold-dx="holdDxModel"
         :hold-dy="holdDyModel"
-        :swipe-dx="swipeDxModel"
-        :swipe-dy="swipeDyModel"
+        :swipe-start-x="swipeStartXModel"
+        :swipe-start-y="swipeStartYModel"
+        :swipe-end-x="swipeEndXModel"
+        :swipe-end-y="swipeEndYModel"
+        :gaze-scale="gazeScaleModel"
+        :gaze-wobble-amp="wobbleAmpModel"
+        :eyes-offset-x="eyesOffsetXModel"
+        :eyes-offset-y="eyesOffsetYModel"
       />
     </div>
 
@@ -125,11 +143,24 @@ async function copyProps() {
         <UiSlider v-model="holdDxModel" :min="-40" :max="40" :step="1" />
         <span class="lab__label">持机手 Y：{{ holdDyModel }}</span>
         <UiSlider v-model="holdDyModel" :min="-40" :max="40" :step="1" />
-        <span class="lab__label">滑动手 X：{{ swipeDxModel }}</span>
-        <UiSlider v-model="swipeDxModel" :min="-40" :max="40" :step="1" />
-        <span class="lab__label">滑动手 Y：{{ swipeDyModel }}</span>
-        <UiSlider v-model="swipeDyModel" :min="-40" :max="40" :step="1" />
+        <span class="lab__label">滑动手起点 X：{{ swipeStartXModel }}</span>
+        <UiSlider v-model="swipeStartXModel" :min="0" :max="200" :step="1" />
+        <span class="lab__label">滑动手起点 Y：{{ swipeStartYModel }}</span>
+        <UiSlider v-model="swipeStartYModel" :min="0" :max="200" :step="1" />
+        <span class="lab__label">滑动手终点 X：{{ swipeEndXModel }}</span>
+        <UiSlider v-model="swipeEndXModel" :min="0" :max="200" :step="1" />
+        <span class="lab__label">滑动手终点 Y：{{ swipeEndYModel }}</span>
+        <UiSlider v-model="swipeEndYModel" :min="0" :max="200" :step="1" />
       </template>
+
+      <span class="lab__label">眼睛注视强度：{{ gazeScaleModel.toFixed(2) }}</span>
+      <UiSlider v-model="gazeScaleModel" :min="0.1" :max="1" :step="0.01" />
+      <span class="lab__label">注视微摆幅度：{{ wobbleAmpModel.toFixed(2) }}</span>
+      <UiSlider v-model="wobbleAmpModel" :min="0" :max="0.8" :step="0.02" />
+      <span class="lab__label">眼位偏移 X：{{ eyesOffsetXModel.toFixed(2) }}</span>
+      <UiSlider v-model="eyesOffsetXModel" :min="-2" :max="2" :step="0.05" />
+      <span class="lab__label">眼位偏移 Y：{{ eyesOffsetYModel.toFixed(2) }}</span>
+      <UiSlider v-model="eyesOffsetYModel" :min="-2" :max="2" :step="0.05" />
     </div>
 
     <div class="lab__copy">

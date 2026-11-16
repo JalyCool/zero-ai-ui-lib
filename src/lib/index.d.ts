@@ -88,11 +88,19 @@ declare const UiAgentAvatar: DefineComponent<{
   /** 电脑：敲击手偏移 */
   laptopHandDx?: number
   laptopHandDy?: number
-  /** 手机：持机手（手机前方固定）/ 滑动手偏移 */
+  /** 手机：持机手（手机前方固定）偏移 */
   holdDx?: number
   holdDy?: number
-  swipeDx?: number
-  swipeDy?: number
+  /** 滑动手轨迹：起点来回滑到终点（容器左上原点 px）；不传用推荐值 */
+  swipeStartX?: number | null
+  swipeStartY?: number | null
+  swipeEndX?: number | null
+  swipeEndY?: number | null
+  /** 注视压缩系数：距离 → 眼偏移的换算比例 */
+  gazeScale?: number
+  /** 眼整体基础偏移（24 盒内，默认略偏右上） */
+  eyesOffsetX?: number
+  eyesOffsetY?: number
   /** 内置形状 key（AGENT_SHAPES：circle / squircle / triangle / diamond / hexagon / flower / tilt / star / sparkle / scallop）或纯剪影 SVG 标记 */
   shape?: string
   /** 形状主色 */
