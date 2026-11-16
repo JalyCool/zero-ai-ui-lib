@@ -74,6 +74,25 @@ declare const UiAvatarGroup: DefineComponent<{
 }, AnyProps, unknown>
 declare const AGENT_SHAPES: Record<string, { key: string; label: string; faceY: number; markup: string }>
 declare const UiAgentAvatar: DefineComponent<{
+  /** none 不带设备 | laptop 电脑 | phone 手机（UsingDevice 变体，归 AgentAvatar 本体） */
+  device?: 'none' | 'laptop' | 'phone'
+  /** 设备上色：替换底图 #FF00FF 占位；空 = 纯白 W 版；#FFFFFF = 原色；最深 #444444（multiply 下禁用 #000000） */
+  deviceColor?: string
+  /** 设备位置（容器左上原点 px）；不传用各设备推荐位 */
+  deviceDx?: number | null
+  deviceDy?: number | null
+  /** 设备宽度 = size * deviceScale */
+  deviceScale?: number | null
+  /** 手直径 = size * handScale */
+  handScale?: number | null
+  /** 电脑：敲击手偏移 */
+  laptopHandDx?: number
+  laptopHandDy?: number
+  /** 手机：持机手（手机前方固定）/ 滑动手偏移 */
+  holdDx?: number
+  holdDy?: number
+  swipeDx?: number
+  swipeDy?: number
   /** 内置形状 key（AGENT_SHAPES：circle / squircle / triangle / diamond / hexagon / flower / tilt / star / sparkle / scallop）或纯剪影 SVG 标记 */
   shape?: string
   /** 形状主色 */
@@ -96,34 +115,6 @@ declare const UiBadge: DefineComponent<{ tone?: 'primary' | 'success' | 'warning
 declare const UiBarChart: DefineComponent<{ data?: number[]; labels?: string[]; height?: number }, AnyProps, unknown>
 declare const UiBottomSheet: DefineComponent<{ modelValue?: boolean; title?: string; maxHeight?: string; closeOnBackdrop?: boolean; scrim?: boolean; anchors?: number[] }, AnyProps, unknown>
 declare const UiCheckbox: DefineComponent<{ modelValue?: boolean; label?: string; disabled?: boolean }, AnyProps, unknown>
-declare const UiUsingDevice: DefineComponent<{
-  /** none 不带设备 | laptop 电脑 | phone 手机 */
-  device?: 'none' | 'laptop' | 'phone'
-  /** 设备上色：替换底图 #FF00FF 占位；空 = 纯白 W 版；#FFFFFF = 原色；最深 #444444（multiply 下禁用 #000000） */
-  color?: string
-  /** 容器边长 px */
-  size?: number
-  /** 设备位置（容器左上原点 px）；不传用各设备推荐位 */
-  deviceDx?: number | null
-  deviceDy?: number | null
-  /** 设备宽度 = size * deviceScale */
-  deviceScale?: number | null
-  /** 手直径 = size * handScale */
-  handScale?: number | null
-  /** 电脑：敲击手偏移 */
-  laptopHandDx?: number
-  laptopHandDy?: number
-  /** 手机：持机手（手机前方固定）/ 滑动手偏移 */
-  holdDx?: number
-  holdDy?: number
-  swipeDx?: number
-  swipeDy?: number
-  agentShape?: string
-  agentColor?: string
-  state?: string
-  animated?: boolean
-  eyeColor?: string
-}, AnyProps, unknown>
 declare const UiAvatarTag: DefineComponent<{
   name?: string
   src?: string
@@ -489,7 +480,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 /* ---------- components ---------- */
 export {
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
-  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, UiUsingDevice, AGENT_SHAPES, UiBadge, UiBarChart, UiBottomSheet, UiButton,
+  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,

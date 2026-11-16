@@ -4,7 +4,7 @@ import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
-  UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow, UiUsingDevice,
+  UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
   UiText, UiToolCallChip, UiTooltipGroup,
   UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
   UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
@@ -669,8 +669,8 @@ onMounted(() => {
             <UiAgentAvatar v-for="(item, key) in agentShapeList" :key="key" :shape="key" :size="36" :animated="false" state="idle" />
           </div>
           <div class="lib-demo-row">
-            <UiUsingDevice device="laptop" :size="110" state="listening" />
-            <UiUsingDevice device="phone" color="#3f5f90" :size="110" state="idle" />
+            <UiAgentAvatar device="laptop" :size="110" state="listening" />
+            <UiAgentAvatar device="phone" device-color="#3f5f90" :size="110" state="idle" />
             <UiButton size="sm" variant="tonal" @click="router.push({ name: 'agent-device' })">调设备位置</UiButton>
           </div>
           <span class="lib-cell__note">shape 传内置 key（{{ Object.keys(agentShapeList).join(' / ') }}）或纯剪影标记；自动描边 + 两只同尺寸圆角矩形眼（不旋转、不随机、成组位移，默认略偏右上）；eyesY 不传时按形状推荐值。下面两只带 UsingDevice：眼睛看向设备（电脑左右轻扫 / 手机上下轻点），白圆手敲键盘 / 持机 + 滑屏。</span>

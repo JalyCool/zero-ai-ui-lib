@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { UiButton, UiSegmented, UiSlider, UiUsingDevice } from '../components/ui'
+import { UiAgentAvatar, UiButton, UiSegmented, UiSlider } from '../components/ui'
 
 /* ============================================================
    设备位置调节台
@@ -61,7 +61,7 @@ function buildProps() {
 
 async function copyProps() {
   const entries = Object.entries(buildProps()).filter(([, value]) => value !== undefined)
-  const text = '<UiUsingDevice ' + entries
+  const text = '<UiAgentAvatar ' + entries
     .map(([key, value]) => (typeof value === 'number' ? ':' + key + '="' + value + '"' : key + '="' + value + '"'))
     .join(' ') + ' />'
   propsJson.value = text
@@ -81,9 +81,9 @@ async function copyProps() {
     <UiButton variant="text" size="sm" @click="router.replace({ name: 'components' })">← 返回组件库</UiButton>
 
     <div class="lab__stage">
-      <UiUsingDevice
+      <UiAgentAvatar
         :device="device"
-        :color="color"
+        :device-color="color"
         :size="size"
         :device-dx="deviceDxModel"
         :device-dy="deviceDyModel"

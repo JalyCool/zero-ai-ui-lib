@@ -1,6 +1,10 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { AGENT_SHAPES } from '../../core/agentShapes'
+import LaptopColorSvg from '../../assets/agent/Laptop.svg?raw'
+import LaptopWhiteSvg from '../../assets/agent/LaptopW.svg?raw'
+import PhoneColorSvg from '../../assets/agent/Phone.svg?raw'
+import PhoneWhiteSvg from '../../assets/agent/PhoneW.svg?raw'
 
 /* ============================================================
    AgentAvatar —— 两只胶囊眼给出生命感的智能体头像
@@ -15,8 +19,16 @@ import { AGENT_SHAPES } from '../../core/agentShapes'
        2. 尺寸零随机 —— 挂载即按状态落位，开合无噪声；眨眼两眼
           完全同步（同一闭合度），不会出现一睁一闭的大小差；
        3. 两眼成组位移 —— 注视偏移对两只眼完全同值。
-   · 默认眼略偏右上（EYE_BASE），可移动范围 ±1.5 单位 × 1.6 倍。
-   · SVG 根 overflow visible：眼移到边上、描边外圈都不会被裁。
+   · 默认眼略偏右上（EYE_BASE）。
+   · 根元素 overflow visible：眼移到边上、描边外圈、设备 / 手都
+     不会被裁。
+   · ---------- UsingDevice：设备使用变体 ----------
+     device = laptop / phone / none：设备底图（Figma 3D 导出）放在
+     AI 右下方，眼睛自动看向设备中心 —— 电脑左右轻扫、手机上下
+     轻点；手是纯白圆：电脑一只敲击手（连续敲键盘），手机两只，
+     持机手固定在手机前方（z 在设备之上），滑动手沿屏幕滑动。
+     deviceColor 替换底图里的 #FF00FF 占位（multiply 混色，禁用
+     #000000，最深 #444444；#FFFFFF = 原色；空 = 纯白 W 版）。
    ============================================================ */
 
 const props = defineProps({
@@ -29,12 +41,14 @@ const props = defineProps({
   size: { type: [Number, String], default: 40 },
   /* idle | listening | thinking | happy | confused | surprised | sleepy | speaking */
   state: { type: String, default: 'idle' },
-  /* mouse 跟随指针 | none 只做微扫视 | point 看向 gazeX / gazeY（供 UsingDevice 等） */
+  /* mouse 跟随指针 | none 只做微扫视 | point 看向 gazeX / gazeY；
+     device != none 时自动切到 point 看向设备中心 */
   gaze: { type: String, default: 'mouse' },
   /* point 模式的注视点（24 盒内坐标） */
   gazeX: { type: Number, default: 12 },
   gazeY: { type: Number, default: 12 },
-  /* point 模式的注视微摆：none | x（左右轻扫）| y（上下轻点） */
+  /* 注视微摆：none | x（左右轻扫）| y（上下轻点）；
+     device != none 时自动按设备取 x / y */
   gazeWobble: { type: String, default: 'none' },
   gazeWobbleAmp: { type: Number, default: 0.3 },
   gazeWobblePeriod: { type: Number, default: 2600 },
@@ -43,7 +57,28 @@ const props = defineProps({
   /* speaking 状态的外部音量包络 0~1；给了才调制开合，不给眼大小保持稳定 */
   level: { type: Number, default: -1 },
   /* 眼睛基准高度；不传时用内置形状的推荐值 faceY（三角这类下半脸会往下调） */
-  eyesY: { type: Number, default: null }
+  eyesY: { type: Number, default: null },
+  /* ---------- UsingDevice：设备使用变体 ---------- */
+  /* none 不带设备 | laptop 电脑 | phone 手机 */
+  device: { type: String, default: 'none' },
+  /* 设备上色：替换底图里的 #FF00FF 占位。空 = 纯白 W 版；
+     #FFFFFF = 原色；最深只能给 #444444（multiply 下禁用 #000000） */
+  deviceColor: { type: String, default: '' },
+  /* 设备位置（容器左上原点，px）；不传用各设备的推荐位 */
+  deviceDx: { type: Number, default: null },
+  deviceDy: { type: Number, default: null },
+  /* 设备宽度 = size * deviceScale；不传用推荐值 */
+  deviceScale: { type: Number, default: null },
+  /* 手的直径 = size * handScale；不传用推荐值 */
+  handScale: { type: Number, default: null },
+  /* 电脑：敲击手相对推荐位的偏移 */
+  laptopHandDx: { type: Number, default: 0 },
+  laptopHandDy: { type: Number, default: 0 },
+  /* 手机：持机手（在手机前方，固定）/ 滑动手的偏移 */
+  holdDx: { type: Number, default: 0 },
+  holdDy: { type: Number, default: 0 },
+  swipeDx: { type: Number, default: 0 },
+  swipeDy: { type: Number, default: 0 }
 })
 
 /* ---------- 情绪层：状态配方表（参数即状态，状态即参数向量） ---------- */
@@ -72,6 +107,38 @@ const eyesCenter = computed(() => {
   const builtin = AGENT_SHAPES[props.shape]
   return builtin ? builtin.faceY : 12
 })
+
+/* ---------- UsingDevice：设备底图 / 位置 / 手 ---------- */
+const DEVICE_RAW = {
+  laptop: { color: LaptopColorSvg, white: LaptopWhiteSvg },
+  phone: { color: PhoneColorSvg, white: PhoneWhiteSvg }
+}
+const deviceOn = computed(() => props.device === 'laptop' || props.device === 'phone')
+const deviceMarkup = computed(() => {
+  if (!deviceOn.value) return ''
+  const base = props.deviceColor ? DEVICE_RAW[props.device].color : DEVICE_RAW[props.device].white
+  return props.deviceColor ? base.replaceAll('#FF00FF', props.deviceColor) : base
+})
+const deviceAspect = computed(() => {
+  if (!deviceOn.value) return 1
+  const m = deviceMarkup.value.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)
+  return m ? Number(m[1]) / Number(m[2]) : 1.6
+})
+const sizeNum = computed(() => Number(props.size) || 0)
+const deviceLeft = computed(() => {
+  if (props.deviceDx !== null) return props.deviceDx
+  return props.device === 'laptop' ? sizeNum.value * 0.5 : sizeNum.value * 0.46
+})
+const deviceTop = computed(() => {
+  if (props.deviceDy !== null) return props.deviceDy
+  return props.device === 'laptop' ? sizeNum.value * 0.3 : sizeNum.value * 0.26
+})
+const deviceWidth = computed(() => sizeNum.value * (props.deviceScale ?? (props.device === 'laptop' ? 0.58 : 0.42)))
+const deviceHeight = computed(() => deviceWidth.value / deviceAspect.value)
+const handPx = computed(() => sizeNum.value * (props.handScale ?? 0.15))
+const laptopHandBase = computed(() => ({ x: sizeNum.value * 0.58 + props.laptopHandDx, y: sizeNum.value * 0.8 + props.laptopHandDy }))
+const holdHandBase = computed(() => ({ x: sizeNum.value * 0.55 + props.holdDx, y: sizeNum.value * 0.88 + props.holdDy }))
+const swipeHandBase = computed(() => ({ x: sizeNum.value * 0.64 + props.swipeDx, y: sizeNum.value * 0.5 + props.swipeDy }))
 
 /* ---------- 弹簧：情绪参数向目标过渡（AnyState→AnyState 的实现本体） ---------- */
 function makeSpring(k, c) { return { pos: 0, vel: 0, target: 0, k, c } }
@@ -164,6 +231,9 @@ function onPointerMove(event) {
 const svgEl = ref(null)
 const eyeL = ref(null)
 const eyeR = ref(null)
+const laptopHandEl = ref(null)
+const holdHandEl = ref(null)
+const swipeHandEl = ref(null)
 
 const BASE_W = 2
 const BASE_H = 4.8
@@ -183,6 +253,12 @@ function renderEye(rect, cx, cy, w, h) {
   rect.setAttribute('y', (-h / 2).toFixed(3))
   rect.setAttribute('rx', radius.toFixed(3))
   rect.setAttribute('ry', radius.toFixed(3))
+}
+
+/* 手：白圆，transform 只有平移（不缩放） */
+function placeHand(el, x, y) {
+  if (!el) return
+  el.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) translate(-50%, -50%)`
 }
 
 let rafId = 0
@@ -205,23 +281,31 @@ function frame(now) {
   saccSpring.target = saccTarget.x
   stepSpring(saccSpring, dt)
 
-  const mouseOn = props.gaze === 'mouse'
-  const pointOn = props.gaze === 'point'
+  /* device != none 时自动看向设备中心（覆盖 gaze / 注视点 / 微摆轴） */
+  const devicePoint = deviceOn.value
+    ? { x: ((deviceLeft.value + deviceWidth.value / 2) / sizeNum.value) * 24,
+        y: ((deviceTop.value + deviceHeight.value / 2) / sizeNum.value) * 24 }
+    : null
+  const mouseOn = !devicePoint && props.gaze === 'mouse'
+  const pointOn = devicePoint || props.gaze === 'point'
+  const pointX = devicePoint ? devicePoint.x : props.gazeX
+  const pointY = devicePoint ? devicePoint.y : props.gazeY
+  const wobbleAxis = deviceOn.value ? (props.device === 'laptop' ? 'x' : 'y') : props.gazeWobble
   const bias = gazeBias
   let tx = 0
   let ty = 0
   if (mouseOn) { tx = mouseTarget.x * 0.9; ty = mouseTarget.y * 0.7 }
   else if (pointOn) {
     /* 看向指定点：距离越远偏得越多，按 0.3 压缩到 believable 的幅度 */
-    tx = (props.gazeX - 12) * 0.3
-    ty = (props.gazeY - 12) * 0.3
+    tx = (pointX - 12) * 0.3
+    ty = (pointY - 12) * 0.3
   }
   tx += saccSpring.pos * (mouseOn ? 0.5 : 1.6) + bias.x * 0.6
   ty += saccTarget.y * (mouseOn ? 0.2 : 0.8) + bias.y * 0.6
-  /* 注视微摆：看设备时的左右轻扫 / 上下轻点（正弦，不碰尺寸） */
+  /* 注视微摆：看电脑左右轻扫 / 看手机上下轻点（正弦，不碰尺寸） */
   const wobble = Math.sin((now / Math.max(400, props.gazeWobblePeriod)) * Math.PI * 2) * props.gazeWobbleAmp
-  if (props.gazeWobble === 'x') tx += wobble
-  else if (props.gazeWobble === 'y') ty += wobble
+  if (wobbleAxis === 'x') tx += wobble
+  else if (wobbleAxis === 'y') ty += wobble
   lookX.target = Math.max(-1.8, Math.min(1.8, tx))
   lookY.target = Math.max(-1.8, Math.min(1.8, ty))
   stepSpring(lookX, dt)
@@ -246,13 +330,12 @@ function frame(now) {
   if (talkMode && props.level >= 0) talk = (props.level - 0.5) * 0.3
 
   const openL = Math.max(0.08, springs.open.pos * (1 - closed) + talk)
-  const openR = openL
 
   const hL = Math.max(0.45, BASE_H * openL)
-  const hR = Math.max(0.45, BASE_H * openR)
+  const hR = hL
   /* 闭眼是一条宽度略增 5–10% 的细线，不是消失 */
   const wL = BASE_W * (1 + 0.08 * Math.max(0, 1 - openL))
-  const wR = BASE_W * (1 + 0.08 * Math.max(0, 1 - openR))
+  const wR = wL
 
   /* 两眼成组位移：同一个 look 偏移画两只眼；默认略偏右上 */
   const half = BASE_GAP / 2 + springs.spread.pos / 2 + spreadBreath / 2
@@ -270,10 +353,28 @@ function frame(now) {
     svgEl.value.setAttribute('transform', `translate(0 ${breath.toFixed(3)})`)
   }
 
+  /* 手的动画：确定性正弦，只有位置在动（尺寸零随机） */
+  const S = sizeNum.value
+  if (props.device === 'laptop' && laptopHandEl.value) {
+    /* 敲击：快速下按回弹 + 轻微换位 */
+    const tap = -Math.abs(Math.sin((now / 1000) * Math.PI * 2 * 2.6)) * S * 0.028
+    const drift = Math.sin((now / 1000) * Math.PI * 2 * 1.3) * S * 0.012
+    placeHand(laptopHandEl.value, laptopHandBase.value.x + drift, laptopHandBase.value.y + tap)
+  }
+  if (props.device === 'phone') {
+    /* 持机手固定不动（图层在手机前方） */
+    placeHand(holdHandEl.value, holdHandBase.value.x, holdHandBase.value.y)
+    /* 滑动手：沿屏幕上下滑动，带一点横向弧度 */
+    const phase = (now / 1000) * Math.PI * 2 / 1.6
+    placeHand(swipeHandEl.value,
+      swipeHandBase.value.x + Math.sin(phase) * S * 0.018,
+      swipeHandBase.value.y + Math.sin(phase) * S * 0.07)
+  }
+
   rafId = requestAnimationFrame(frame)
 }
 
-/* 静止姿势：参数直接落位，不跑循环 */
+/* 静止姿势：参数直接落位，不跑循环；手摆在推荐位 */
 function renderStatic() {
   if (!eyeL.value || !eyeR.value) return
   const half = BASE_GAP / 2 + springs.spread.target / 2
@@ -284,6 +385,11 @@ function renderStatic() {
   renderEye(eyeL.value, cx - half, cy, BASE_W, h)
   renderEye(eyeR.value, cx + half, cy, BASE_W, h)
   if (svgEl.value) svgEl.value.setAttribute('transform', 'translate(0 0)')
+  if (props.device === 'laptop') placeHand(laptopHandEl.value, laptopHandBase.value.x, laptopHandBase.value.y)
+  if (props.device === 'phone') {
+    placeHand(holdHandEl.value, holdHandBase.value.x, holdHandBase.value.y)
+    placeHand(swipeHandEl.value, swipeHandBase.value.x, swipeHandBase.value.y)
+  }
 }
 
 function startLoop() {
@@ -301,11 +407,11 @@ function startLoop() {
 
 watch(() => props.state, () => { applyState(props.state); if (!props.animated) renderStatic() })
 watch(() => [props.animated, props.gaze, eyesCenter.value], () => startLoop())
-watch(() => [props.gazeWobble], () => { if (!props.animated) renderStatic() })
+watch(() => [props.gazeWobble, props.device, props.size], () => { if (!props.animated) renderStatic() })
 
 onMounted(() => {
   applyState(props.state)
-  if (props.gaze === 'mouse') window.addEventListener('pointermove', onPointerMove, { passive: true })
+  if (props.gaze === 'mouse' && !deviceOn.value) window.addEventListener('pointermove', onPointerMove, { passive: true })
   startLoop()
 })
 onBeforeUnmount(() => {
@@ -313,34 +419,49 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onPointerMove)
 })
 
-const label = computed(() => `智能体头像（${props.state}）`)
+const label = computed(() => `智能体头像（${props.state}${deviceOn.value ? ' · ' + (props.device === 'laptop' ? '电脑' : '手机') : ''}）`)
 </script>
 
 <template>
-  <svg
-    ref="svgEl"
-    class="ui-agent-avatar"
-    :width="size"
-    :height="size"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    role="img"
-    :aria-label="label"
-    :style="{ '--agent-color': color }"
-  >
-    <g class="ui-agent-avatar__body">
-      <g class="ui-agent-avatar__shape" v-html="shapeMarkup"></g>
-      <rect ref="eyeL" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="-0.45" :y="eyesCenter - 2.95" rx="1" ry="1" />
-      <rect ref="eyeR" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="4.15" :y="eyesCenter - 2.95" rx="1" ry="1" />
-    </g>
-  </svg>
+  <span class="ui-agent-avatar" :style="{ width: size + 'px', height: size + 'px' }" role="img" :aria-label="label">
+    <svg
+      ref="svgEl"
+      class="ui-agent-avatar__svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      :style="{ '--agent-color': color }"
+    >
+      <g class="ui-agent-avatar__body">
+        <g class="ui-agent-avatar__shape" v-html="shapeMarkup"></g>
+        <rect ref="eyeL" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="-0.45" :y="eyesCenter - 2.95" rx="1" ry="1" />
+        <rect ref="eyeR" class="ui-agent-avatar__eye" :fill="eyeColor" width="2" height="4.8" x="4.15" :y="eyesCenter - 2.95" rx="1" ry="1" />
+      </g>
+    </svg>
+    <span
+      v-if="deviceOn"
+      class="ui-agent-avatar__device"
+      :style="{ left: deviceLeft + 'px', top: deviceTop + 'px', width: deviceWidth + 'px', height: deviceHeight + 'px' }"
+      v-html="deviceMarkup"
+    ></span>
+    <span
+      v-if="device === 'laptop'"
+      ref="laptopHandEl"
+      class="ui-agent-avatar__hand"
+      :style="{ width: handPx + 'px', height: handPx + 'px' }"
+    ></span>
+    <template v-if="device === 'phone'">
+      <span ref="holdHandEl" class="ui-agent-avatar__hand" :style="{ width: handPx * 1.15 + 'px', height: handPx * 1.15 + 'px' }"></span>
+      <span ref="swipeHandEl" class="ui-agent-avatar__hand" :style="{ width: handPx + 'px', height: handPx + 'px' }"></span>
+    </template>
+  </span>
 </template>
 
 <style scoped>
-/* overflow visible：眼移到边上、描边外圈都不会被 SVG 根裁掉，
+/* 根是定位容器：overflow visible，设备 / 手 / 描边都不被裁，
    容器裁不裁头像由使用方自己决定，组件绝不主动裁。 */
-.ui-agent-avatar { display: block; flex-shrink: 0; overflow: visible; }
+.ui-agent-avatar { position: relative; display: inline-block; flex-shrink: 0; overflow: visible; }
+.ui-agent-avatar__svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .ui-agent-avatar__body { will-change: transform; }
 /* 形状上色 + 外圈描边：CSS 覆盖标记里的 fill / stroke 表现属性，
    paint-order: stroke 让描边画在填充下面，只露出外半圈 —— 和设计稿的细环一致。 */
@@ -352,6 +473,20 @@ const label = computed(() => `智能体头像（${props.state}）`)
   stroke-linejoin: round;
 }
 .ui-agent-avatar__eye { pointer-events: none; }
+/* 设备层在头像之上；手再上一层（持机手在手机前方）。 */
+.ui-agent-avatar__device { position: absolute; z-index: 1; pointer-events: none; }
+.ui-agent-avatar__device :deep(svg) { display: block; width: 100%; height: 100%; overflow: visible; }
+.ui-agent-avatar__hand {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px color-mix(in oklab, var(--on-surface) 22%, transparent);
+  pointer-events: none;
+  will-change: transform;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .ui-agent-avatar__body { transform: none !important; }
