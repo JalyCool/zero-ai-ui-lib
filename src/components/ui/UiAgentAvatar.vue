@@ -491,16 +491,10 @@ const label = computed(() => `智能体头像（${props.state}${deviceOn.value ?
   stroke-linejoin: round;
 }
 .ui-agent-avatar__eye { pointer-events: none; }
-/* 设备层在头像之上；手再上一层（持机手在手机前方）。 */
-.ui-agent-avatar__device {
-  position: absolute;
-  z-index: 2;
-  pointer-events: none;
-  /* 抗锯齿：提升合成层 + 透明 outline 让旋转过的 3D DOM 层走平滑边缘 */
-  transform: translateZ(0);
-  -webkit-font-smoothing: antialiased;
-}
-.ui-agent-avatar__device :deep(div) { outline: 1px solid transparent; backface-visibility: hidden; }
+/* 设备层在头像之上；手再上一层（持机手在手机前方）。
+   不做任何额外合成 / AA 处理：设备是 Figma 3D 场景，translateZ /
+   透明 outline / backface-visibility 都会干扰它的原生透视渲染。 */
+.ui-agent-avatar__device { position: absolute; z-index: 2; pointer-events: none; }
 .ui-agent-avatar__device :deep(svg) { display: block; width: 100%; height: 100%; overflow: visible; }
 /* 手：纯白圆；动态手（敲击 / 滑动）在设备下层，持机手 is-hold 在设备上层（手机前方）。 */
 .ui-agent-avatar__hand {
