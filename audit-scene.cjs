@@ -18,11 +18,19 @@ const libIndex = readFileSync('src/components/ui/index.js', 'utf8') +
 const exported = new Set()
 for (const m of libIndex.matchAll(/export \{ default as (\w+) \}/g)) exported.add(m[1])
 
-const sceneFiles = walk('src/views').filter(f => !f.includes('ComponentsView'))
+/* 场景页 = views/ + App.vue（外壳层：ZeroApp / ZeroScroll / UiTabBar 都在这儿）。
+   排除清单页 ComponentsView —— 那里堆了所有组件，不算数。
+   内部实现（UiWheelColumn / UiConfirmDialog）不算「场景使用」。 */
+const INTERNAL = new Set(['UiWheelColumn', 'UiConfirmDialog'])
+
+const sceneFiles = walk('src/views')
+  .filter(f => !f.includes('ComponentsView'))
+  .concat(walk('src').filter(f => f.replace(/\\/g, '/').endsWith('/App.vue')))
 const usage = new Map()
 for (const f of sceneFiles) {
   const text = readFileSync(f, 'utf8')
   for (const comp of exported) {
+    if (INTERNAL.has(comp)) continue
     if (new RegExp(`<${comp}[\\s>/]`).test(text)) {
       if (!usage.has(comp)) usage.set(comp, new Set())
       usage.get(comp).add(f.replace(/\\/g, '/').split('/').pop())
@@ -30,12 +38,11 @@ for (const f of sceneFiles) {
   }
 }
 
-const unused = [...exported].filter(c => !usage.has(c)).sort()
-console.log('场景页已用:', usage.size, '/', exported.size)
+const unused = [...exported].filter(c => !usage.has(c) && !INTERNAL.has(c)).sort()
+const internalUsed = [...exported].filter(c => INTERNAL.has(c) && usage.has(c))
+console.log('场景页已用:', usage.size, '/', exported.size - INTERNAL.size)
 console.log('\n尚未进入场景页 (' + unused.length + '):')
-for (const c of unused) {
-  console.log('  ' + c)
-}
+for (const c of unused) console.log('  ' + c)
 console.log('\n各场景页覆盖:')
 for (const [c, files] of [...usage.entries()].sort((a, b) => b[1].size - a[1].size)) {
   console.log('  ' + String(files.size) + '  ' + c + '  [' + [...files].join(', ') + ']')

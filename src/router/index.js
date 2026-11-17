@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ChatView from '../views/ChatView.vue'
+import LabView from '../views/LabView.vue'
 import ActivityView from '../views/ActivityView.vue'
 import AddRecordSheet from '../views/AddRecordSheet.vue'
 import TrendsView from '../views/TrendsView.vue'
@@ -83,6 +84,12 @@ const routes = [
     name: 'agent-device',
     component: DeviceLabView,
     meta: { tab: 'components', cacheKey: 'agent-device', title: '设备位置调节', sub: '调好后复制属性发回来' }
+  },
+  {
+    path: '/lab',
+    name: 'lab',
+    component: LabView,
+    meta: { tab: 'components', cacheKey: 'lab', title: '实验室', sub: '输入型与展示型组件的真实用例' }
   },
   {
     path: '/profile',
