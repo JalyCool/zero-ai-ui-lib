@@ -152,7 +152,7 @@ onBeforeUnmount(() => {
        padding 传 none —— 内边距仍由应用自己的 #scrollArea 规则管
        （它带 media query，内联样式会把它盖掉）。 -->
   <div class="app">
-    <ZeroApp ref="scrollRef" :max-width="0" padding="none" :fade="104" :fade-blur="9">
+    <ZeroApp ref="scrollRef" :max-width="0" padding="none">
       <header class="app-head">
         <div class="greet">
           <h1 id="greetTitle">{{ meta.title }}</h1>

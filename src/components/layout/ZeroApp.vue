@@ -12,8 +12,8 @@ const props = defineProps({
   /* 底部给 TabBar 留的高度（px）；0 = 没有 TabBar */
   tabbarSpace: { type: Number, default: 0 },
   /* 顶 / 底淡出带高度（px）；0 = 关闭 */
-  fade: { type: Number, default: 132 },
-  fadeBlur: { type: Number, default: 9 },
+  fade: { type: Number, default: 84 },
+  fadeBlur: { type: Number, default: 7 },
   fadeLayers: { type: Number, default: 12 },
   fadeTint: { type: String, default: 'var(--surface)' },
   fadeTintStrength: { type: Number, default: 0.8 }
@@ -77,7 +77,10 @@ defineExpose({
     >
       <slot />
     </ZeroScroll>
-    <slot name="tabbar" />
+    <!-- TabBar 槽位：UiTabBar 自己是 position:fixed 悬浮层（z-20），
+         而 ZeroScroll 的模糊层 z-50 —— 不包一层的话，底部模糊会糊在
+         TabBar 文字上（截图中 tab 被一层白雾盖住就是这个原因）。 -->
+    <div v-if="$slots.tabbar" class="zero-app__bar"><slot name="tabbar" /></div>
   </div>
 </template>
 
@@ -90,5 +93,11 @@ defineExpose({
   height: 100%;
   margin: 0 auto;
   min-height: 0;
+}
+/* 槽位本身不占布局（内部是 fixed），只负责抬高 z：
+   必须高于模糊层的 z-50，TabBar 才不会被底部模糊盖住 */
+.zero-app__bar {
+  position: relative;
+  z-index: 60;
 }
 </style>

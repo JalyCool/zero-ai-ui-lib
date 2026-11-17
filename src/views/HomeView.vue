@@ -6,7 +6,7 @@ import ExpandSteps from '../expand/ExpandSteps.vue'
 import ExpandHeart from '../expand/ExpandHeart.vue'
 import ExpandSleep from '../expand/ExpandSleep.vue'
 import ExpandMetric from '../expand/ExpandMetric.vue'
-import { UiBadge, UiCard, UiCarousel, UiChip, UiLineChart, UiBarChart, UiPagerDots, UiRingProgress } from '../lib'
+import { UiBadge, UiCard, UiCarousel, UiChip, UiLineChart, UiBarChart, UiRingProgress } from '../lib'
 
 const router = useRouter()
 
@@ -114,8 +114,7 @@ const highlights = [
           </div>
         </template>
       </UiCarousel>
-
-      <UiPagerDots :total="highlights.length" v-model="hlIndex" clickable />
+      <!-- 圆点由 Carousel 自带（__bar：箭头 + PagerDots），不要再加一组 -->
     </UiCard>
 
     <!-- 快捷入口 -->

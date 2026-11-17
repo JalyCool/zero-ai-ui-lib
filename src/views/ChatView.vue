@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import {
   UiButton, UiChatMessage, UiChatSystemLine, UiChatThread,
-  UiChip, UiCodeImage, UiMorphPanel, UiProgressiveBlur,
+  UiChip, UiCodeImage, UiMorphPanel,
   UiRotatingText, UiStatusMark, UiTextarea
 } from '../lib'
 
@@ -45,7 +45,7 @@ const messages = ref([
     content: '我按评分和人均排了一版，前两家步行 10 分钟内到地铁：\n\n- **巷子口小馆** · 4.8 · 人均 68\n- **老城面馆** · 4.7 · 人均 42\n\n要不要我直接问问 @Planner 排进行程？'
   },
   { id: 'm5', role: 'user', content: '好，顺便把路线也排一下' },
-  { id: 'm6', role: 'system', variant: 'activity', icon: '<path d="M4 12l16-8-6 16-3-6z" fill="currentColor"/>', text: '私信了', trailing: 'Gourmet · Planner' }
+  { id: 'm6', role: 'system', variant: 'activity', icon: '<path d="M4 12l16-8-6 16-3-6z" fill="currentColor"/>', text: '私信了 @Gourmet 和 @Planner' }
 ])
 
 /* ---------- 流式回复演示 ---------- */
@@ -108,11 +108,21 @@ function usePrompt(text) { draft.value = text }
 <template>
   <section class="view chat-view" data-view="chat">
     <!-- 消息流：自己就是滚动容器，新消息自动贴底 -->
-    <UiChatThread ref="threadRef" class="chat-view__thread" :gap="16" padding="0 0 12px" :auto-scroll="true">
+    <UiChatThread
+      ref="threadRef"
+      class="chat-view__thread"
+      :gap="16"
+      padding="10px 14px 12px"
+      :auto-scroll="true"
+      :fade="64"
+      :fade-blur="6"
+      :fade-layers="12"
+    >
       <template v-for="m in messages" :key="m.id">
         <UiChatSystemLine
           v-if="m.role === 'system'"
           :icon="m.icon"
+          :agents="AGENTS"
           :align="m.variant === 'status' ? 'center' : 'start'"
           :size="m.variant === 'status' ? 'sm' : 'md'"
         >
@@ -152,10 +162,6 @@ function usePrompt(text) { draft.value = text }
         />
       </div>
     </UiChatThread>
-
-    <!-- 顶 / 底渐进模糊：盖在滚动内容上，越靠边越糊 -->
-    <UiProgressiveBlur placement="top" :height="88" :max-blur="8" :layers="12" />
-    <UiProgressiveBlur placement="bottom" :height="104" :max-blur="9" :layers="12" />
 
     <!-- 输入区：按钮 ⇄ 文本域的形变容器 -->
     <div class="chat-view__composer">
@@ -203,25 +209,22 @@ function usePrompt(text) { draft.value = text }
 </template>
 
 <style scoped>
-/* 固定为一屏：头部 + 消息流 + 输入条，消息流自己滚 */
+/* 一屏布局：消息流占满剩余高度并自己滚，输入区是流内固定块 ——
+   不用 absolute 叠（absolute 会让底部模糊带与 chip 行重叠）。 */
 .chat-view {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  height: calc(100dvh - 168px);
-  min-height: 420px;
-  max-height: 720px;
-  overflow: hidden;
-  border-radius: calc(var(--r-20) * var(--radius-scale));
-  background: var(--surface-container-low);
+  gap: 8px;
+  height: calc(100dvh - 190px);
+  min-height: 440px;
+  max-height: 780px;
 }
 
 .chat-view__thread {
   flex: 1;
   min-height: 0;
-  /* 上下留白：给顶 / 底模糊与输入条让位 */
-  padding: 56px 14px 104px;
+  background: var(--surface-container-low);
+  border-radius: calc(var(--r-20) * var(--radius-scale));
 }
 
 .chat-view__thinking {
@@ -234,14 +237,10 @@ function usePrompt(text) { draft.value = text }
 }
 
 .chat-view__composer {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 14px 12px;
+  padding: 2px 2px 6px;
 }
 
 .chat-view__quick { display: flex; gap: 6px; flex-wrap: wrap; }

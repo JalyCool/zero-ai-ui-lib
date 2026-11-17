@@ -149,25 +149,36 @@ function measure() {
   nextTick(measureRows)
 }
 
-/* 多行时量真实行高与行数：max-height 必须按实测算；顺带量出指示器矩形。 */
+/* 多行时量真实行高与行数：max-height 必须按实测算；顺带量出指示器矩形。
+   ⚠️ 行高取所有按钮的「未压缩自然高度」的最大值，而不是首格的
+   offsetHeight —— icon-top 按钮内容高（图标 + 文字），被容器限高一压
+   后 offsetHeight 是压缩值，按它算行高会算出更矮的限高，进一步压扁
+   按钮，文字直接被 flex 收缩吃成 0。先放开限高量自然值，再落回去。 */
 function measureRows() {
   const el = rootEl.value
   if (!el) return
   const buttons = Array.from(el.querySelectorAll(":scope > button"))
   if (!buttons.length) return
-  const first = buttons[0]
-  rowHeight.value = first.offsetHeight
+  /* 先解除限高与压缩，量自然行高 */
+  const prevMax = el.style.getPropertyValue("--seg-max-h")
+  const prevScroll = el.style.getPropertyValue("--seg-scroll")
+  el.style.setProperty("--seg-max-h", "none")
+  el.style.setProperty("--seg-scroll", "hidden")
+
+  const rowGap = parseFloat(getComputedStyle(el).rowGap) || 0
+  const rowH = Math.max(...buttons.map(b => b.offsetHeight))
+  rowHeight.value = rowH
   const tops = new Set(buttons.map(b => b.offsetTop))
   rowCount.value = tops.size
-  /* 行间距同样以 CSS 为准，不再写死。 */
-  const rowGap = parseFloat(getComputedStyle(el).rowGap) || 0
   const rows = Math.max(1, Math.round(props.maxRows))
   /* 只有真的超过 maxRows 才限高；否则不设上限，避免留白 */
   scrollMaxHeight.value = rowCount.value > rows
-    ? rows * first.offsetHeight + (rows - 1) * rowGap
+    ? rows * rowH + (rows - 1) * rowGap
     : 0
-  el.style.setProperty("--seg-max-h", scrollMaxHeight.value ? scrollMaxHeight.value + "px" : "none")
-  el.style.setProperty("--seg-scroll", scrollMaxHeight.value ? "auto" : "hidden")
+
+  /* 落回限高 */
+  el.style.setProperty("--seg-max-h", scrollMaxHeight.value ? scrollMaxHeight.value + "px" : prevMax || "none")
+  el.style.setProperty("--seg-scroll", scrollMaxHeight.value ? "auto" : prevScroll || "hidden")
   measureIndicator(buttons)
 }
 

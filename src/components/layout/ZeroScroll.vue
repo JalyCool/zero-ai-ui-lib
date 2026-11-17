@@ -10,9 +10,9 @@ const props = defineProps({
   /* 滚动元素用什么标签：外层外壳用 main / div，卡片内用 div */
   tag: { type: String, default: 'div' },
   /* 淡出带高度（px）；0 = 关闭（不渲染模糊层，省一层合成） */
-  fade: { type: Number, default: 132 },
+  fade: { type: Number, default: 84 },
   /* 贴边处最大模糊（px） */
-  fadeBlur: { type: Number, default: 9 },
+  fadeBlur: { type: Number, default: 7 },
   /* 层数：4~6 足够平滑，越多合成成本越高 */
   fadeLayers: { type: Number, default: 12 },
   /* 染色：默认 surface，向内渐隐到透明 */
@@ -92,13 +92,15 @@ defineExpose({
 /* 两种父级都要能撑满：
    · flex 父级 -> flex: 1 分配剩余空间
    · 固定高度的普通块级父级 -> height: 100% 生效
-   只写 flex: 1 的话，放进一个 height:240px 的普通 div 里会塌成内容高度，
-   于是永远「不溢出」、模糊永远不出现。 */
+   ⚠️ flex-basis 必须是 0（flex: 1 = 1 1 0%），不能用 1 1 auto：
+   auto 会让 basis 取 height（100% 父高）→ ZeroApp 这种 flex column
+   外壳里它把兄弟（TabBar）挤出布局流，滚动区延伸到 TabBar 底下。
+   非 flex 父级里 height: 100% 仍然兜底生效。 */
 .zero-scroll {
   position: relative;
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   height: 100%;
   min-height: 0;
   overflow: hidden;

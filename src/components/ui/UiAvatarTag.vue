@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import UiAvatar from './UiAvatar.vue'
 import UiAgentAvatar from './UiAgentAvatar.vue'
 import { getSpringConfig, motion } from '../../composables/useMotion'
@@ -47,24 +47,51 @@ const props = defineProps({
 const labelEl = ref(null)
 const labelWidth = ref(0)
 const labelOpen = ref(false)
+let labelRo = null
 
 function measureLabel() {
   /* motion 组件的 ref 给的是**组件实例**，没有 style —— 必须取 $el */
   const el = labelEl.value?.$el || labelEl.value
-  if (!el?.style) return
+  if (!el?.style) return false
+  /* 量不到宽度 = 组件此刻不可见（keep-alive 缓存、display:none 的
+     父容器里挂载），scrollWidth 恒为 0。不能把 0 当作展开宽度 ——
+     否则标签永远停在 0px，文字整个消失。返回 false，等可见再量。 */
   const prev = el.style.maxWidth
   el.style.maxWidth = 'none'
-  labelWidth.value = Math.ceil(el.scrollWidth)
+  const w = Math.ceil(el.scrollWidth)
   el.style.maxWidth = prev
+  if (!w) return false
+  labelWidth.value = w
+  return true
 }
 
 onMounted(() => {
   if (!props.reveal) return
   nextTick(() => {
-    measureLabel()
-    /* 头像弹到差不多满时再吐标签 */
-    setTimeout(() => { labelOpen.value = true }, 110)
+    if (measureLabel()) {
+      /* 头像弹到差不多满时再吐标签 */
+      setTimeout(() => { labelOpen.value = true }, 110)
+    } else {
+      /* 父容器此刻不可见：用 ResizeObserver 等它有尺寸了再量再开 */
+      const el = labelEl.value?.$el || labelEl.value
+      if (el && typeof ResizeObserver !== 'undefined') {
+        labelRo = new ResizeObserver(() => {
+          if (measureLabel()) {
+            if (labelRo) { labelRo.disconnect(); labelRo = null }
+            labelOpen.value = true
+          }
+        })
+        labelRo.observe(el)
+      } else {
+        /* 没有 RO 就退化为直接展开（max-width none 走 CSS） */
+        labelOpen.value = true
+      }
+    }
   })
+})
+
+onBeforeUnmount(() => {
+  if (labelRo) { labelRo.disconnect(); labelRo = null }
 })
 
 const headSize = computed(() => (props.size === 'md' ? 24 : props.size === 'lg' ? 30 : 18))

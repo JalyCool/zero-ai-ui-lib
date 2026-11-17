@@ -177,17 +177,20 @@ const tagSize = computed(() => (props.size === 'lg' ? 'md' : 'sm'))
   padding: 12px 20px;
   border-radius: calc(var(--r-24) * var(--radius-scale));
 }
-/* 用户：右上收窄 → 指向发送者 */
+/* 用户：右上收窄 → 指向发送者。
+   ⚠️ fallback 不能引用 var(--on-surface)：下面一行会在**同一元素**上
+   把 --on-surface 重定义为浅色，自定义属性的 fallback 是在同一元素上
+   解析的，循环引用后 background 变成浅色 → 白底白字（气泡隐形）。
+   直接写具体令牌。 */
 .ui-chat-msg.is-user.has-bubble .ui-chat-msg__bubble {
   border-top-right-radius: calc(var(--r-8) * var(--radius-scale));
-  background: var(--chat-user-surface, var(--on-surface));
-  color: var(--chat-user-on, var(--surface));
-  /* 在气泡里重定义色板变量，而不是逐个元素去赢特异性：
-     MarkdownView 的 .ui-md 写的是 color: var(--on-surface)，只要这个
-     变量在气泡内被改成前景色，标题 / 引用 / 行内代码 / 内联 AvatarTag
-     全部自动跟着变，且不需要 !important。 */
-  --on-surface: var(--chat-user-on, var(--surface));
-  --on-surface-variant: color-mix(in oklab, var(--chat-user-on, var(--surface)) 74%, transparent);
+  background: var(--chat-user-surface, #1b1b1f);
+  color: var(--chat-user-on, #faf9fd);
+  /* 在气泡里重定义色板变量：MarkdownView 的 .ui-md 写的是
+     color: var(--on-surface)，变量在气泡内被改成前景色后，
+     标题 / 引用 / 行内代码 / 内联 AvatarTag 全部自动跟随。 */
+  --on-surface: var(--chat-user-on, #faf9fd);
+  --on-surface-variant: color-mix(in oklab, var(--chat-user-on, #faf9fd) 74%, transparent);
 }
 /* agent：左上收窄 → 指向左侧头像 */
 .ui-chat-msg.is-agent.has-bubble .ui-chat-msg__bubble {

@@ -124,6 +124,21 @@ const rollText = ref('7842')
 
 /* ---------- 文本动效 ---------- */
 const typedPhrases = ['读取传感器…', '计算步数…', '同步完成']
+/* Markdown 演示内容：
+ 必须由 JS 解释成真换行 —— 写在模板属性里
+   只是字面的反斜杠 n，marked 不认。 */
+const mdDemo = [
+  '**加粗**、*斜体*、`行内代码`、[链接](https://example.com)。',
+  '',
+  '> 引用块',
+  '',
+  '- 列表项一',
+  '- 列表项二',
+  '',
+  '| 指标 | 值 |',
+  '| --- | --- |',
+  '| 步数 | 7842 |'
+].join('\n')
 </script>
 
 <template>
@@ -140,7 +155,7 @@ const typedPhrases = ['读取传感器…', '计算步数…', '同步完成']
 
       <div class="lab-card">
         <h3 class="lab-title">文字动效</h3>
-        <UiText variant="type" :phrases="typedPhrases" :cps="18" type-effect="blur" />
+        <UiText variant="type" text="正在读取传感器数据，请稍候……" :cps="18" type-effect="blur" />
       </div>
 
       <div class="lab-card">
@@ -152,10 +167,13 @@ const typedPhrases = ['读取传感器…', '计算步数…', '同步完成']
       <div class="lab-card">
         <h3 class="lab-title">图标</h3>
         <div class="lab-icons">
-          <UiIcon name="pack:heart" />
-          <UiIcon name="pack:activity" />
-          <UiIcon name="pack:moon" />
+          <UiIcon name="mdi:heart" />
+          <UiIcon name="mdi:chart-line" />
+          <UiIcon name="mdi:weather-night" />
           <UiIcon name="mdi:run" />
+          <UiIcon name="mdi:home" backdrop="circle" />
+          <UiIcon name="mdi:cog" backdrop="squircle" backdrop-color="var(--secondary-container)" />
+          <UiIcon name="mdi:star" backdrop="circle" backdrop-color="var(--error-container)" />
         </div>
       </div>
     </div>
@@ -163,9 +181,7 @@ const typedPhrases = ['读取传感器…', '计算步数…', '同步完成']
     <!-- Markdown -->
     <div class="lab-card">
       <h3 class="lab-title">Markdown 渲染</h3>
-      <MarkdownView
-        content="**加粗**、*斜体*、`行内代码`、[链接](https://example.com)。\n\n> 引用块\n\n- 列表项一\n- 列表项二\n\n| 指标 | 值 |\n| --- | --- |\n| 步数 | 7842 |"
-      />
+      <MarkdownView :content="mdDemo" />
     </div>
 
     <!-- 提及药丸 -->
@@ -237,7 +253,7 @@ const typedPhrases = ['读取传感器…', '计算步数…', '同步完成']
     <div class="lab-card">
       <h3 class="lab-title">零配置滚动区 <small>ZeroScroll</small></h3>
       <div class="lab-zero-scroll">
-        <ZeroScroll id="labScroll" :fade="56" :fade-blur="7" padding="12px 14px">
+        <ZeroScroll id="labScroll" :fade="64" :fade-blur="6" :fade-layers="12" padding="12px 14px">
           <div class="lab-scroll-body">
             <p v-for="n in 16" :key="n">第 {{ n }} 行 —— 上下滚动，靠边的一侧自己糊起来。</p>
           </div>

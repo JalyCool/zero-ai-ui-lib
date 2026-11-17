@@ -133,7 +133,7 @@ header {
 .icon-btn:active { transform: scale(var(--press-scale)); }
 .icon-btn svg { width: 21px; height: 21px; }
 
-.view { display: none; flex-direction: column; gap: var(--space-gap); min-width: 0; max-width: 100%; }
+.view { display: flex; flex-direction: column; gap: var(--space-gap); min-width: 0; max-width: 100%; }
 .view.active { display: flex; animation: viewIn var(--t-view); }
 @keyframes viewIn {
   from { opacity: 0; transform: translateY(8px); }
