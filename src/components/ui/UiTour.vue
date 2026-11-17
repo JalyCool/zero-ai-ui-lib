@@ -106,16 +106,17 @@ watch(() => props.modelValue, async value => {
     index.value = props.startAt
     closing.value = false
     landed.value = false
-    spot.value = viewportRect()
+    /* 首帧就把孔放到目标上（第一项要能直接聚焦目标），
+       遮罩靠 opacity 渐入 —— 不再从「整屏黑」收拢，那一下太突然。 */
     rendered.value = true
     await nextTick()
-    /* 先让「孔 = 整屏」这一帧真正画出来，再量目标并收拢，
-       否则初始值直接被覆盖，看起来就是凭空出现一个高亮框。 */
+    measure()
+    /* 目标还没渲染出来时（异步内容）再量一次 */
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     measure()
     requestAnimationFrame(() => {
       open.value = true
-      requestAnimationFrame(() => { landed.value = true })
+      landed.value = true
     })
     window.addEventListener('resize', measure)
     document.addEventListener('keydown', onKey)
@@ -174,8 +175,10 @@ onBeforeUnmount(() => {
 .ui-tour__spot {
   position: fixed;
   border-radius: calc(14px * var(--radius-scale));
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .46);
+  /* 遮罩压暗用 color-mix 变量，透明度由 --tour-scrim 控制，便于渐入渐出 */
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / var(--tour-scrim, 0));
   pointer-events: none;
+  transition: box-shadow var(--t-fade);
   will-change: left, top, width, height, border-radius;
   transition:
     left var(--t-view),
@@ -184,7 +187,9 @@ onBeforeUnmount(() => {
     height var(--t-view),
     border-radius var(--t-view);
 }
-.ui-tour.is-closing .ui-tour__spot { transition-duration: var(--spring-exit-dur); }
+/* 打开后才把遮罩推到满档：黑是从 0 渐入的，不会「啪」地压下来 */
+.ui-tour.is-landed .ui-tour__spot { --tour-scrim: .46; }
+.ui-tour.is-closing .ui-tour__spot { transition-duration: var(--spring-exit-dur); --tour-scrim: 0; }
 /* 进场瞬间孔还是整屏：把遮罩收进 box-shadow 之外的那圈，视觉上就是「整屏压暗」。 */
 
 .ui-tour__bubble {

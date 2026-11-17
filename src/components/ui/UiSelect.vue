@@ -54,8 +54,11 @@ function measureGlide() {
   const index = glideIndex.value
   const el = buttons[index]
   if (!el) { glideStyle.value = null; return }
+  /* 以条目**中心**为运动参照：先用 translate 到中心，再负半个高度回正。
+     这样高度变化（不同选项换行数不同）时，视觉上也是「从中心长出来 / 缩回去」，
+     而不是从顶边滑 —— 与文字的重合也更稳。 */
   glideStyle.value = {
-    transform: 'translate3d(0,' + el.offsetTop + 'px,0)',
+    transform: 'translate3d(0,' + (el.offsetTop + el.offsetHeight / 2) + 'px,0) translateY(-50%)',
     height: el.offsetHeight + 'px'
   }
 }
