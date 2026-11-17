@@ -1,10 +1,11 @@
 <script setup>
-import { nextTick, onBeforeUnmount, ref, watch, computed } from 'vue'
-import { useProjectAnimate, getSpringConfig } from '../../composables/useMotion'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { animate, getSpringConfig } from '../../composables/useMotion'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
   placeholder: { type: String, default: '搜索' },
+  /* 收起时是否保留已输入的值（false = 收起即清空） */
   keepValue: { type: Boolean, default: true },
   disabled: { type: Boolean, default: false }
 })
@@ -12,53 +13,45 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'search', 'clear', 'expand', 'collapse'])
 
 /* ============================================================
-   搜索框 (motion-v 版本)：
-   · 使用 motion-v 的 useAnimate 进行外壳几何动画
-   · 图标位移与外壳宽度同步
-   · 内容替换动画使用 blur + opacity + transform
-   · 支持中断动画
+   搜索框（motion-v 评估版）
+   外壳宽度与图标位移从 CSS transition 迁移为 motion 弹簧：
+   · 展开：宽度 → 字段宽，图标 x → 字段宽-40，同一 view 弹簧
+   · 收起：走 exit 弹簧；动画途中再点可打断（motion 续接当前位置）
+   · 输入区的内容替换（透明度 + 模糊 + 位移）保持 CSS 令牌驱动：
+     单属性的淡入淡出按项目约定留在 CSS（--t-fade），混合使用
+   图标始终贴着右边框走：位移量与宽度用同一个 fieldWidth() 算出。
    ============================================================ */
 
 const open = ref(!!props.modelValue)
 const inputEl = ref(null)
 const rootEl = ref(null)
 const iconEl = ref(null)
-const innerEl = ref(null)
 
-const [scope, animate] = useProjectAnimate()
+function fieldWidth() {
+  return Math.min(320, Math.max(40, window.innerWidth - 64))
+}
 
-// 计算字段宽度
-const fieldWidth = computed(() => Math.min(320, window.innerWidth - 64))
-
-async function expand() {
+function expand() {
   if (props.disabled || open.value) return
-  
-  const wasOpen = open.value
   open.value = true
   emit('expand')
-  
-  // Animate shell width
-  if (!wasOpen) {
-    const config = getSpringConfig('view')
-    await animate(scope.current, { width: fieldWidth.value + 'px' }, config)
-  }
-  
+  if (rootEl.value) animate(rootEl.value, { width: fieldWidth() + 'px' }, getSpringConfig('view'))
+  if (iconEl.value) animate(iconEl.value, { x: fieldWidth() - 40 }, getSpringConfig('view'))
   nextTick(() => inputEl.value?.focus())
 }
 
-async function collapse() {
+function collapse() {
   if (!open.value) return
-  
   open.value = false
   emit('collapse')
   if (!props.keepValue) emit('update:modelValue', '')
   emit('clear')
-  
-  const config = getSpringConfig('exit')
-  await animate(scope.current, { width: '40px' }, config)
+  if (rootEl.value) animate(rootEl.value, { width: '40px' }, getSpringConfig('exit'))
+  if (iconEl.value) animate(iconEl.value, { x: 0 }, getSpringConfig('exit'))
 }
 
 function onTriggerClick() {
+  /* 收起态：展开；展开态：同一个图标就是搜索动作。 */
   if (open.value) emit('search', props.modelValue)
   else expand()
 }
@@ -73,20 +66,15 @@ function onKeydown(event) {
   }
 }
 
+/* 点击外部收起 */
 function onDocPointer(event) {
   if (!open.value) return
   if (rootEl.value && !rootEl.value.contains(event.target)) collapse()
 }
-
 document.addEventListener('pointerdown', onDocPointer)
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
 
-watch(() => props.modelValue, value => { if (value) open.value = true })
-
-// Compute icon transform based on open state
-const iconTransform = computed(() => {
-  return open.value ? `translateX(${fieldWidth.value - 40}px)` : 'translateX(0)'
-})
+watch(() => props.modelValue, value => { if (value && !open.value) expand() })
 </script>
 
 <template>
@@ -95,10 +83,9 @@ const iconTransform = computed(() => {
     class="ui-search"
     :class="{ 'is-open': open, 'is-disabled': disabled }"
     role="search"
-    :style="{ width: open ? fieldWidth + 'px' : '40px' }"
   >
-    <!-- 输入区：外壳长出来之后从模糊中浮现（内容替换语言）。 -->
-    <div ref="innerEl" class="ui-search__inner">
+    <!-- 输入区：外壳长出来之后从模糊中浮现（内容替换语言，CSS 令牌驱动）。 -->
+    <div class="ui-search__inner">
       <input
         ref="inputEl"
         class="ui-search__input"
@@ -123,25 +110,22 @@ const iconTransform = computed(() => {
       </button>
     </div>
 
-    <!-- 同一个元素：收起态是展开按钮，展开态平移到尾部成为搜索动作。 -->
+    <!-- 同一个元素：收起态是展开按钮，展开态平移到尾部成为搜索动作。
+         位移由 motion 弹簧驱动（x = 字段宽 - 40），与外壳宽度同源。 -->
     <button
       ref="iconEl"
       type="button"
       class="ui-search__icon"
       :aria-label="open ? '执行搜索' : '展开搜索'"
       @click.stop="onTriggerClick"
-      :style="{ transform: iconTransform }"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.8-3.8" /></svg>
-      <!-- 背景单独一层：hover / 按压 / 压缩动画都只作用于它，图标本体不动。 -->
-      <span class="ui-search__icon-bg" />
     </button>
   </div>
 </template>
 
 <style scoped>
 .ui-search {
-  --field-w: min(320px, calc(100vw - 64px));
   position: relative;
   display: inline-block;
   width: 40px;
@@ -149,8 +133,7 @@ const iconTransform = computed(() => {
   border: var(--border-w) solid transparent;
   border-radius: calc(13px * var(--radius-scale));
   background: var(--surface-container);
-  /* motion-v will handle the width animation */
-  background: var(--surface-container);
+  /* 宽度由 motion 弹簧驱动；底色/描边保持 CSS 令牌过渡 */
   transition: background var(--t-fade), border-color var(--t-fade);
 }
 .ui-search.is-open {
@@ -160,7 +143,7 @@ const iconTransform = computed(() => {
 .ui-search.is-open:focus-within { border-color: var(--primary); background: var(--surface); }
 .ui-search.is-disabled { opacity: .42; }
 
-/* 图标：使用 inline style 控制 transform，motion-v 会处理动画 */
+/* 图标：同一个元素，motion 驱动 translateX；背景层只管 hover / 按压。 */
 .ui-search__icon {
   position: absolute;
   top: 0;
@@ -175,17 +158,16 @@ const iconTransform = computed(() => {
   cursor: pointer;
   will-change: transform;
 }
-.ui-search__icon-bg {
+.ui-search__icon::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: calc(12px * var(--radius-scale));
   background: transparent;
   transition: background var(--t-fade), transform var(--t-feedback);
-  transform: scale(1);
 }
-.ui-search__icon:hover .ui-search__icon-bg { background: color-mix(in oklab, var(--primary) 12%, transparent); }
-.ui-search__icon:active .ui-search__icon-bg { background: color-mix(in oklab, var(--primary) 18%, transparent); transform: scale(0.94); }
+.ui-search__icon:hover::before { background: color-mix(in oklab, var(--primary) 12%, transparent); }
+.ui-search__icon:active::before { background: color-mix(in oklab, var(--primary) 18%, transparent); transform: scale(.94); }
 .ui-search.is-open .ui-search__icon { color: var(--primary); }
 .ui-search__icon svg { position: relative; z-index: 1; width: 17px; height: 17px; }
 
@@ -193,6 +175,7 @@ const iconTransform = computed(() => {
 .ui-search__inner {
   position: absolute;
   top: 0;
+  /* 收起时让位给图标；展开时随图标离开向左扩展，不留空白。 */
   left: 40px;
   right: 40px;
   height: 100%;

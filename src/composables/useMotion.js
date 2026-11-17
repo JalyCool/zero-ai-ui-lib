@@ -1,116 +1,90 @@
 /* ============================================================
-   Motion composable — bridges motion-v with project's spring system
-   ============================================================ */
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { 
-  useSpring, 
-  useMotionValue, 
-  useAnimate, 
-  motion, 
-  AnimatePresence,
-  useInView,
-  useScroll,
-  useTransform
-} from 'motion-v'
-import { springDuration, motionFactor, isLively, getMotionTone } from '../core/motionTone'
+   motion-v 桥接层（Motion for Vue ↔ 项目弹簧令牌）
+   ------------------------------------------------------------
+   单一事实来源仍是 core/spring.js 的 TONE_SPRINGS：
+   · response（周期感，秒）+ damping（阻尼比 ζ，1 = 完全不过冲）
+   motion 的 duration-based spring 用另一套语言：
+   · duration（秒）+ bounce（0 = 不弹，1 = 极弹，与 ζ 方向相反）
+   本文件负责这组换算，业务代码只认场景名（feedback/view/…）。
 
-/**
- * Spring configuration for each scene based on motion tone
- */
-const SPRING_CONFIGS = {
-  calm: {
-    feedback: { damping: 1.0, stiffness: 300 },
-    view: { damping: 1.0, stiffness: 250 },
-    sheet: { damping: 1.0, stiffness: 220 },
-    expand: { damping: 1.0, stiffness: 250 },
-    exit: { damping: 1.0, stiffness: 300 },
-    fade: { damping: 1.0, stiffness: 350 }
-  },
-  lively: {
-    feedback: { damping: 0.52, stiffness: 400 },
-    view: { damping: 0.55, stiffness: 350 },
-    sheet: { damping: 0.62, stiffness: 300 },
-    expand: { damping: 0.62, stiffness: 350 },
-    exit: { damping: 0.66, stiffness: 400 },
-    fade: { damping: 0.78, stiffness: 450 }
-  }
+   ⚠️ motion 的 spring 是互斥两套参数：
+      { bounce, duration } 或 { stiffness, damping, mass }，
+      混传时后者覆盖前者。本层只用前者，节奏与 CSS linear() 曲线一致。
+
+   用法：
+   · 声明式： <motion.div :transition="getSpringConfig('view')" … />
+   · 命令式： await animate(el, keyframes, getSpringConfig('expand'))
+   · 数值弹簧： const v = useProjectSpring(sourceRef, 'feedback')
+   · prefers-reduced-motion 在 getSpringConfig 里统一降级为瞬时。
+   ============================================================ */
+import { isRef, toValue, watch } from 'vue'
+import {
+  animate,
+  AnimatePresence,
+  isMotionValue,
+  motion,
+  useAnimate,
+  useInView,
+  useMotionValue,
+  useMotionValueEvent,
+  useScroll,
+  useSpring,
+  useTransform,
+  useVelocity
+} from 'motion-v'
+import { LIVELY_DURATION_SCALE, TONE_SPRINGS } from '../core/spring'
+import { getMotionTone } from '../core/motionTone'
+
+export function prefersReducedMotion() {
+  return typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /**
- * Get spring config for a scene
+ * 项目弹簧（response/ζ）→ motion 弹簧（duration/bounce）。
+ * duration 沿用 springLinear 的落定时长公式，保证与 CSS 曲线节奏一致；
+ * bounce 与 ζ 反向换算（calm 的 ζ=1 → bounce=0 不弹；lively 的 ζ=0.52 → bounce=0.48）。
+ * 返回值直接可作为 motion 组件的 :transition，或 animate() 的 options。
  */
 export function getSpringConfig(scene = 'view', tone = null) {
-  const activeTone = tone || getMotionTone()
-  const config = SPRING_CONFIGS[activeTone][scene] || SPRING_CONFIGS[activeTone].view
-  const duration = springDuration(scene)
-  
-  return {
-    type: 'spring',
-    duration: duration * 1000, // motion-v expects ms
-    ...config
+  if (prefersReducedMotion()) {
+    return { type: 'spring', duration: 0.01, bounce: 0 }
   }
+  const active = tone || getMotionTone()
+  const table = TONE_SPRINGS[active === 'lively' ? 'lively' : 'calm']
+  const params = table[scene] || table.view
+  const zeta = Math.min(1, Math.max(0.15, params.damping))
+  /* 与 core/spring.js 的落定时长公式保持一致：欠阻尼多留振荡周期。 */
+  const settle = params.response * (zeta >= 0.999 ? 1.35 : 1.35 + (1 - zeta) * 1.5)
+  const duration = active === 'lively' ? settle * LIVELY_DURATION_SCALE : settle
+  return { type: 'spring', duration, bounce: 1 - zeta }
 }
 
 /**
- * Create a spring motion value that respects the project's motion tokens
- * @param {number|Ref<number>} source - Source value to spring towards
- * @param {string} scene - Spring scene name (feedback, view, sheet, expand, exit, fade)
- * @param {object} options - Additional spring options
+ * 数值弹簧：source 是 Ref<number> / getter / number / MotionValue。
+ * 返回跟随用 MotionValue（驱动源变化时带弹簧跟随），可直接绑进
+ * motion 组件的 :style（如 { scale: v }）。只接受数值，布尔态请用
+ * motion 组件的 :animate 目标切换，不要把布尔喂给弹簧。
  */
-export function useProjectSpring(source, scene = 'view', options = {}) {
-  const config = computed(() => ({
+export function useProjectSpring(source, scene = 'view', options = null) {
+  const initial = isMotionValue(source) ? source.get() : toValue(source)
+  const driver = useMotionValue(Number.isFinite(initial) ? initial : 0)
+  const follower = useSpring(driver, () => ({
     ...getSpringConfig(scene),
-    ...options
+    ...(options || {})
   }))
-  
-  return useSpring(source, config)
-}
-
-/**
- * Create a motion value that springs to target values
- */
-export function useSpringValue(initial, scene = 'view', options = {}) {
-  const value = useMotionValue(initial)
-  const config = getSpringConfig(scene, options.tone)
-  
-  const springTo = (target, customConfig = {}) => {
-    // This would need motion-dom's animate function for imperative animations
-    // For now, return the value and config for use with motion components
-    return { value, config: { ...config, ...customConfig } }
+  if (isRef(source) || typeof source === 'function') {
+    watch(() => toValue(source), value => {
+      if (Number.isFinite(value)) driver.set(value)
+    })
   }
-  
-  return { value, springTo, config }
+  return follower
 }
 
 /**
- * Use animate with project spring tokens
- */
-export function useProjectAnimate() {
-  const [scope, animate] = useAnimate()
-  
-  // Wrap animate to apply project spring defaults
-  const animateWithTokens = (elements, keyframes, options = {}) => {
-    const scene = options.scene || 'view'
-    const defaults = getSpringConfig(scene)
-    
-    const mergedOptions = {
-      ...defaults,
-      ...options,
-      transition: {
-        ...defaults,
-        ...options.transition
-      }
-    }
-    
-    return animate(elements, keyframes, mergedOptions)
-  }
-  
-  return [scope, animateWithTokens]
-}
-
-/**
- * Spring config for a specific scene - returns CSS-compatible values
- * Useful for CSS transitions that need to match JS springs
+ * CSS 令牌形式（混合场景用）：想让纯 CSS 元素与 motion 弹簧同节奏时，
+ * 直接写 transition: transform var(--spring-view-dur) var(--spring-view)。
  */
 export function getSpringTokens(scene = 'view') {
   return {
@@ -119,124 +93,19 @@ export function getSpringTokens(scene = 'view') {
   }
 }
 
-/**
- * Motion component with project spring defaults
- * Usage: <ProjectMotion.div :animate="{ x: 100 }" scene="view" />
- */
-export const ProjectMotion = {
-  ...motion,
-  // Could extend with project defaults
-}
-
-/**
- * AnimatePresence with project defaults
- */
-export { AnimatePresence }
-
-/**
- * Composable for expand card animations - uses project expand spring
- */
-export function useExpandAnimation(isExpanded, elementRef) {
-  const scale = useProjectSpring(isExpanded, 'expand')
-  const opacity = useProjectSpring(isExpanded, 'fade')
-  
-  return { scale, opacity }
-}
-
-/**
- * Composable for modal/dialog animations - uses project view spring
- */
-export function useModalAnimation(isOpen, elementRef) {
-  const scale = useProjectSpring(isOpen, 'view')
-  const opacity = useProjectSpring(isOpen, 'fade')
-  const y = useProjectSpring(() => isOpen.value ? 0 : 20, 'view')
-  
-  return { scale, opacity, y }
-}
-
-/**
- * Composable for bottom sheet animations - uses project sheet spring
- */
-export function useSheetAnimation(isOpen, height) {
-  const y = useProjectSpring(() => isOpen.value ? 0 : 100, 'sheet')
-  const opacity = useProjectSpring(isOpen, 'fade')
-  
-  return { y, opacity }
-}
-
-/**
- * Composable for list item animations (staggered)
- */
-export function useStaggeredAnimation(items, scene = 'view') {
-  const duration = springDuration(scene)
-  const delay = isLively() ? duration * 0.1 : duration * 0.05
-  
-  return {
-    duration: duration * 1000,
-    delay,
-    stagger: delay
-  }
-}
-
-/**
- * Get motion config for motion-v components
- */
-export function useMotionConfig() {
-  return computed(() => ({
-    skipAnimations: !isLively() && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  }))
-}
-
-/**
- * Scroll-linked animations using project tokens
- */
-export function useScrollAnimation(elementRef, scene = 'view') {
-  const { scrollY } = useScroll({
-    target: elementRef,
-    offset: ['start start', 'end end']
-  })
-  
-  const progress = useTransform(scrollY, [0, 1], [0, 1])
-  
-  return { progress, scrollY }
-}
-
-/**
- * Viewport entrance animations
- */
-export function useEntranceAnimation(elementRef, scene = 'view') {
-  const isInView = useInView(elementRef, { once: true, margin: '-100px' })
-  
-  return { isInView }
-}
-
-/**
- * Drag animations with project springs
- */
-export function useDragAnimation(elementRef, scene = 'view') {
-  const config = getSpringConfig(scene)
-  
-  return {
-    dragTransition: config,
-    dragElastic: 0.2
-  }
-}
-
-export default {
-  useProjectSpring,
-  useSpringValue,
-  useProjectAnimate,
-  getSpringTokens,
-  getSpringConfig,
-  ProjectMotion,
+/* motion-v 原语统一出口：业务侧不必直接 import 'motion-v'，
+   统一从这里取，将来换底层动画库只改这一个文件。 */
+export {
+  animate,
   AnimatePresence,
-  useExpandAnimation,
-  useModalAnimation,
-  useSheetAnimation,
-  useStaggeredAnimation,
-  useMotionConfig,
-  useScrollAnimation,
-  useEntranceAnimation,
-  useDragAnimation
+  isMotionValue,
+  motion,
+  useAnimate,
+  useInView,
+  useMotionValue,
+  useMotionValueEvent,
+  useScroll,
+  useSpring,
+  useTransform,
+  useVelocity
 }

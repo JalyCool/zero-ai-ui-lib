@@ -38,23 +38,12 @@ export {
 
 /* 时长文本（00h00m00s 规则）与时刻解析。 */
 export { formatDuration, formatDurationBetween, parseClockTime } from '../core/duration'
-/* Motion composable - bridges motion-v with project spring tokens. */
+/* motion-v 桥接层：项目弹簧令牌 ↔ Motion for Vue，动画原语统一出口。 */
 export {
-  useProjectSpring,
-  useSpringValue,
-  useProjectAnimate,
-  getSpringTokens,
-  getSpringConfig,
-  ProjectMotion,
-  AnimatePresence,
-  useExpandAnimation,
-  useModalAnimation,
-  useSheetAnimation,
-  useStaggeredAnimation,
-  useMotionConfig,
-  useScrollAnimation,
-  useEntranceAnimation,
-  useDragAnimation
+  getSpringConfig, getSpringTokens, useProjectSpring, prefersReducedMotion,
+  animate, AnimatePresence, isMotionValue, motion, useAnimate,
+  useInView, useMotionValue, useMotionValueEvent, useScroll, useSpring,
+  useTransform, useVelocity
 } from '../composables/useMotion'
 /* 库级确认对话框：await confirmDialog({ title, message }) -> boolean。 */
 export { confirmDialog, disposeConfirmDialog } from '../core/confirm'

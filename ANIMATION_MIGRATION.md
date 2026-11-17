@@ -2,308 +2,148 @@
 
 ## Overview
 
-This document describes the migration from the custom CSS-based animation system to **motion-v** (Motion for Vue), a production-ready animation library with a hybrid engine combining JavaScript animations with native browser APIs.
+Migrate the project's hand-rolled animation system to **motion-v** (Motion for Vue), a production-ready animation library with a hybrid engine combining JavaScript animations with native browser APIs (WAAPI).
 
-## Current Animation System
+Repository branch: `animation-migration`. The migration is **additive**: existing CSS-token-driven components keep working untouched; migrated variants live beside the originals (`.motion.vue` / `.motion.js`) until validated, then swap in per component.
 
-### Spring Tokens (CSS Variables)
+## Current Animation System (source of truth: `core/spring.js`)
 
-The project defines 6 spring scenes with two motion tones:
+Six spring scenes × two motion tones (calm / lively), driven by two parameters per scene:
 
-| Scene | Calm (default) | Lively |
+| Scene | Calm (response / ζ) | Lively (response / ζ) |
 |-------|---------------|--------|
-| `feedback` | response: 0.26s, damping: 1.0 | response: 0.20s, damping: 0.52 |
-| `view` | response: 0.34s, damping: 1.0 | response: 0.26s, damping: 0.55 |
-| `sheet` | response: 0.44s, damping: 1.0 | response: 0.34s, damping: 0.62 |
-| `expand` | response: 0.34s, damping: 1.0 | response: 0.28s, damping: 0.62 |
-| `exit` | response: 0.34s, damping: 1.0 | response: 0.24s, damping: 0.66 |
-| `fade` | response: 0.24s, damping: 1.0 | response: 0.20s, damping: 0.78 |
+| `feedback` | 0.26s / 1.00 | 0.20s / 0.52 |
+| `view` | 0.34s / 1.00 | 0.26s / 0.55 |
+| `sheet` | 0.44s / 1.00 | 0.34s / 0.62 |
+| `expand` | 0.34s / 1.00 | 0.28s / 0.62 |
+| `exit` | 0.34s / 1.00 | 0.24s / 0.66 |
+| `fade` | 0.24s / 1.00 | 0.20s / 0.78 |
 
-CSS Variables generated:
-- `--spring-{scene}` - linear() easing curve
-- `--spring-{scene}-dur` - duration in seconds
-- `--motion-scale/bounce/distance/blur` - amplitude multipliers
-- `--pop-scale` - pop animation scale
-- `--press-scale` - press feedback scale
+- ζ = damping ratio (1 = never overshoots). `core/spring.js` compiles these into CSS `linear()` curves on `--spring-<scene>` / `--spring-<scene>-dur`.
+- `core/motionTone.js` switches tone via `data-motion` attr + `setMotionTone()`.
+- `core/springPhysics.js` solves real springs with entry velocity for drag-release (UI Slider / swipe rows).
+- Lively tone scales durations by `LIVELY_DURATION_SCALE` (1.25).
 
-### Key Components Using Animations
+## The Bridge (`src/composables/useMotion.js`)
 
-1. **ExpandableCard** - Card expand/collapse with fixed positioning morph
-2. **UiModal** - Dialog with scale + fade + translate
-3. **UiBottomSheet** - Draggable sheet with spring anchors
-4. **UiSearchField** - Morphing search input with icon travel
-5. **morphWindow** - Generic button-to-panel morph
-6. **UiButton** - Fuse/hold/slide action variants
-7. **UiSlider** - Spring-based drag with rubber-band
-8. **edgeSwipeBack** - iOS edge swipe back gesture
-9. **Expandable content** - Staggered enter/exit animations
+Single conversion point between project tokens and motion-v. Business code only ever names a scene.
 
-## Motion-v Integration
+### Parameter mapping (verified against motion-dom 14.11)
 
-### Installation
+motion's duration-based spring is `{ duration, bounce }` — **seconds**, and mutually exclusive with `{ stiffness, damping, mass }` (mixing them silently overrides `bounce`/`duration`). `bounce` is the *inverse* of ζ: `0` = no bounce, `1` = extremely bouncy.
 
-```bash
-pnpm add motion-v
-```
-
-### Core Composables
-
-Created `src/composables/useMotion.js` with:
-
-```javascript
-// Spring configuration matching project tokens
-getSpringConfig(scene, tone) // Returns motion-v spring config
-
-// Project-aware spring motion value
-useProjectSpring(source, scene, options)
-
-// Motion-v animate with project defaults
-useProjectAnimate() // Returns [scope, animate]
-
-// Specialized composables
-useExpandAnimation(isExpanded, elementRef)
-useModalAnimation(isOpen, elementRef)
-useSheetAnimation(isOpen, height)
-useStaggeredAnimation(items, scene)
-useScrollAnimation(elementRef, scene)
-useEntranceAnimation(elementRef, scene)
-useDragAnimation(elementRef, scene)
-```
-
-### Migration Pattern
-
-#### Before (CSS Transitions)
-```vue
-<template>
-  <div class="panel" :class="{ 'is-open': open }">
-    Content
-  </div>
-</template>
-
-<style>
-.panel {
-  opacity: 0;
-  transform: translateY(20px) scale(0.97);
-  transition: opacity var(--t-fade), transform var(--t-view);
-}
-.panel.is-open {
-  opacity: 1;
-  transform: none;
-}
-</style>
-```
-
-#### After (motion-v)
-```vue
-<script setup>
-import { motion } from 'motion-v'
-import { getSpringConfig } from '@/composables/useMotion'
-</script>
-
-<template>
-  <motion.div
-    :initial="{ opacity: 0, y: 20, scale: 0.97 }"
-    :animate="{ opacity: 1, y: 0, scale: 1 }"
-    :transition="getSpringConfig('view')"
-  >
-    Content
-  </motion.div>
-</template>
-```
-
-### Complex Animations with useAnimate
-
-```vue
-<script setup>
-import { useProjectAnimate, getSpringConfig } from '@/composables/useMotion'
-
-const [scope, animate] = useProjectAnimate()
-
-async function openPanel() {
-  await animate(scope.current, { 
-    opacity: [0, 1], 
-    y: [20, 0], 
-    scale: [0.97, 1] 
-  }, getSpringConfig('view'))
-  
-  // Stagger children
-  await animate(
-    children.value,
-    { opacity: [0, 1], y: [10, 0] },
-    { ...getSpringConfig('view'), delay: 0.1 }
-  )
-}
-</script>
-
-<template>
-  <div ref="scope">
-    <motion.div v-for="child in children" :key="child.id">
-      {{ child.content }}
-    </motion.div>
-  </div>
-</template>
-```
-
-### AnimatePresence for Exit Animations
-
-```vue
-<template>
-  <AnimatePresence mode="wait">
-    <motion.div
-      v-if="show"
-      :key="item.id"
-      :initial="{ opacity: 0, y: 20 }"
-      :animate="{ opacity: 1, y: 0 }"
-      :exit="{ opacity: 0, y: -20 }"
-      :transition="getSpringConfig('exit')"
-    >
-      Content
-    </motion.div>
-  </AnimatePresence>
-</template>
-```
-
-## Migration Status
-
-### Completed
-- [x] Install motion-v
-- [x] Create useMotion composable bridging project tokens
-- [x] Add MotionDemo view for testing
-- [x] Create morphWindow.motion.js
-- [x] Create UiSearchField.motion.vue
-- [x] Create UiModal.motion.vue
-
-### In Progress
-- [ ] UiBottomSheet.motion.vue
-- [ ] ExpandableCard.motion.vue
-- [ ] UiButton.motion.vue (action variants)
-- [ ] UiSlider.motion.vue
-- [ ] edgeSwipeBack.motion.js
-
-### Planned
-- [ ] Create migration utilities for gradual adoption
-- [ ] Update documentation
-- [ ] Performance benchmarks
-- [ ] Accessibility testing (prefers-reduced-motion)
-
-## Usage Examples
-
-### Basic Spring Animation
-```javascript
-import { useProjectSpring, useMotionValue } from '@/composables/useMotion'
-import { motion } from 'motion-v'
-
-const scale = useProjectSpring(isHovered, 'feedback')
-
-// In template
-<motion.div :style="{ scale }">Hover me</motion.div>
-```
-
-### Sequence Animation
-```javascript
-const [scope, animate] = useProjectAnimate()
-
-async function runSequence() {
-  await animate(el, { x: [0, 100, 0] }, { scene: 'view' })
-  await animate(el, { scale: [1, 1.2, 1] }, { scene: 'feedback' })
-  await animate(el, { rotate: [0, 180, 360] }, { scene: 'expand' })
+```js
+export function getSpringConfig(scene = 'view', tone = null) {
+  // reduced-motion → instant (0.01s)
+  // duration = response × (ζ ≥ 0.999 ? 1.35 : 1.35 + (1−ζ)×1.5)  [same settle formula as springLinear]
+  //            × LIVELY_DURATION_SCALE when lively
+  // bounce   = 1 − ζ
+  return { type: 'spring', duration, bounce: 1 - zeta }
 }
 ```
 
-### Scroll-Linked Animation
-```javascript
-import { useScrollAnimation } from '@/composables/useMotion'
+Because `duration` comes from the same settle formula as `springLinear()`, a CSS-token transition and a motion spring on the same scene land with the same rhythm.
 
-const { progress } = useScrollAnimation(containerRef, 'view')
+### Exports
 
-// progress is a motion value from 0 to 1
-<motion.div :style="{ x: progress }">Scroll me</motion.div>
-```
+| Export | Purpose |
+|---|---|
+| `getSpringConfig(scene, tone?)` | `{ type:'spring', duration, bounce }` — use as `:transition` or `animate()` options |
+| `useProjectSpring(source, scene)` | numeric spring follower MotionValue (source: `Ref<number>` / getter / number / MotionValue) |
+| `getSpringTokens(scene)` | CSS var form (`--spring-<scene>`), for hybrid CSS elements |
+| `prefersReducedMotion()` | reduced-motion check (already applied inside `getSpringConfig`) |
+| re-exports | `motion`, `AnimatePresence`, `animate`, `useAnimate`, `useMotionValue`, `useSpring`, `useMotionValueEvent`, `useScroll`, `useTransform`, `useInView`, `useVelocity`, `isMotionValue` — import motion-v only through this module |
 
-### Viewport Entrance
-```javascript
-import { useInView } from 'motion-v'
+`animate` (standalone, from framer-motion/dom) accepts a raw Element, starts from the element's current rendered value, and is await-able — this is how non-template DOM nodes (morphWindow) are animated. Do **not** use `useAnimate()` without binding its scope: an unbound `scope.current` makes `animate(scope.current, …)` a no-op.
 
-const isInView = useInView(elementRef, { once: true, margin: '-100px' })
+### Vue specifics
 
+- `<motion.div>` / `<motion.button>` dotted tags compile to `$setup["motion"].div` against the script-setup import — no resolver plugin needed.
+- A `ref` on a motion component returns the component instance; get the DOM node via `node.$el || node`.
+- `useMotionValueEvent(mv, 'change', cb)` returns an unlisten function and cleans itself up on unmount.
+- `useScroll(() => ({ container: el }))` accepts a getter; the container element may be resolved after mount (watchEffect re-registers).
+
+## Migration Patterns
+
+### Pattern A — declarative enter/exit (UiModal.motion.vue)
+
+Replace hand-driven double-rAF + `.is-open`/`.is-closing` CSS with motion targets. Interruption (re-open mid-close) is native: flip the `:animate` target and motion continues from the current position.
+
+```vue
 <motion.div
-  :initial="{ opacity: 0, y: 30 }"
-  :whileInView="{ opacity: 1, y: 0 }"
-  :viewport="{ once: true }"
-  :transition="getSpringConfig('expand')"
+  class="ui-modal__panel"
+  :initial="{ opacity: 0, y: 14, scale: 0.97 }"
+  :animate="open ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 12, scale: 0.98 }"
+  :transition="getSpringConfig(open ? 'view' : 'exit')"
 >
-  Animates on scroll
-</motion.div>
 ```
 
-## Spring Token Reference
+Unmount timing uses `getSpringConfig('exit').duration * 1000 + CLOSE_BUFFER` instead of duration-estimate timers.
 
-### CSS Variables (Legacy - still supported)
+**Required when migrating an existing component:** neutralize the global CSS initial-state/transition on the same node (scoped override), otherwise CSS transitions double-drive the same properties:
+
 ```css
-/* These are still generated by spring.apply() */
---spring-feedback: linear(...);
---spring-feedback-dur: 0.33s;
---spring-view: linear(...);
---spring-view-dur: 0.43s;
---spring-sheet: linear(...);
---spring-sheet-dur: 0.55s;
---spring-expand: linear(...);
---spring-expand-dur: 0.43s;
---spring-exit: linear(...);
---spring-exit-dur: 0.43s;
---spring-fade: linear(...);
---spring-fade-dur: 0.30s;
+.ui-modal .ui-modal__panel { opacity: 1; transform: none; transition: none; }
 ```
 
-### motion-v Config (New)
-```javascript
-// Calm tone (default)
-{
-  feedback: { type: 'spring', duration: 330, damping: 1.0, stiffness: 300 },
-  view: { type: 'spring', duration: 430, damping: 1.0, stiffness: 250 },
-  sheet: { type: 'spring', duration: 550, damping: 1.0, stiffness: 220 },
-  expand: { type: 'spring', duration: 430, damping: 1.0, stiffness: 250 },
-  exit: { type: 'spring', duration: 430, damping: 1.0, stiffness: 300 },
-  fade: { type: 'spring', duration: 300, damping: 1.0, stiffness: 350 }
-}
+### Pattern B — imperative geometry on real DOM nodes (morphWindow.motion.js)
 
-// Lively tone
-{
-  feedback: { type: 'spring', duration: 250, damping: 0.52, stiffness: 400 },
-  view: { type: 'spring', duration: 330, damping: 0.55, stiffness: 350 },
-  sheet: { type: 'spring', duration: 430, damping: 0.62, stiffness: 300 },
-  expand: { type: 'spring', duration: 350, damping: 0.62, stiffness: 350 },
-  exit: { type: 'spring', duration: 300, damping: 0.66, stiffness: 400 },
-  fade: { type: 'spring', duration: 250, damping: 0.78, stiffness: 450 }
-}
+State machine (placeholder, interrupt, finish-on-scroll) unchanged from the CSS version; only the engine changes:
+
+- `animate(node, { left, top, width, height }, getSpringConfig('expand'))` while the reactive `style.value` is set to the *final* box — WAAPI outranks inline styles during flight; sync `style.value` when the animation completes.
+- Keep animation handles and `stop()` them in `finishClose()`/interrupt paths — an un-stopped `fill` effect pins the element at its last position.
+- Compression phase uses the `feedback` scene; release uses `exit`; expand uses `expand`.
+
+### Pattern C — hybrid (UiSearchField.motion.vue)
+
+Single-property fades that are pure token territory (content blur/opacity swap) stay CSS; geometry (shell width, icon travel `x`) moves to motion springs. Same source value (`fieldWidth()`) drives both, so the icon keeps hugging the right border.
+
+### Pattern D — exit presence (AnimatePresence)
+
+`AnimatePresence` is TransitionGroup-based: put keyed motion children directly inside it (no wrapper element between), embed the exit transition inside the `:exit` target:
+
+```vue
+<AnimatePresence>
+  <motion.button v-for="item in items" :key="item"
+    :exit="{ opacity: 0, scale: 0.85, filter: 'blur(8px)', transition: getSpringConfig('exit') }"
+    :transition="getSpringConfig('feedback')" />
+</AnimatePresence>
 ```
 
-Note: motion-v uses `duration` in ms and `damping`/`stiffness` for spring configuration, which differs from the project's `response`/`damping` model. The `getSpringConfig()` function handles this conversion.
+### What NOT to migrate
 
-## Testing
+- Drag-release physics (`core/springPhysics.js`, UiSlider, swipe rows): motion's inertia differs from the tuned rubber-band behavior; keep until a dedicated evaluation.
+- Backdrop-filter scrims: blur radius must transition continuously and cannot sit inside an opacity-transitioning parent — the CSS `.ui-scrim` pattern stays.
+- Content-replacement language (`opacity→0 + blur`, tokens `--t-fade`/`--t-panel`): already tokenized, zero benefit.
 
-Visit `/motion` route to see the MotionDemo view with interactive examples of:
-- Spring animations with tone switching
-- useAnimate sequences
-- AnimatePresence staggered lists
-- InView entrance animations
-- Scroll progress animations
+## Status
 
-## Breaking Changes
+### Done
+- [x] motion-v installed (`dependencies`, pnpm)
+- [x] Bridge `useMotion.js` with verified parameter mapping (`bounce = 1 − ζ`, seconds, no stiffness mixing)
+- [x] Library re-exports via `src/lib/index.js`
+- [x] `MotionDemo.vue` at `/motion` (tone switch, interruptible spring, numeric spring, await-animate sequence, AnimatePresence list, whileInView, container-scoped useScroll progress, drag)
+- [x] `UiModal.motion.vue` (Pattern A + CSS neutralization)
+- [x] `UiSearchField.motion.vue` (Pattern C)
+- [x] `morphWindow.motion.js` (Pattern B)
+- [x] Production build passes (879 modules)
 
-None - the migration is additive. Existing CSS-based animations continue to work. New components can use motion-v while legacy components remain unchanged.
+### Next
+- [ ] Runtime pass of `/motion` in the browser (spring feel per tone, reduced-motion instant path)
+- [ ] `UiBottomSheet.motion.vue` (drag-handle tracking stays pointer-driven; release snapping → motion spring)
+- [ ] `ExpandableCard.motion.vue` evaluation — highest-value target, largest surface: fixed-position morph is driven by inline styles + CSS transitions today; Pattern B applies
+- [ ] Decide per component: swap `.motion` variant in, or keep CSS (write the decision into the status table)
 
-## Performance Notes
+## Verification performed
 
-- motion-v uses transform/opacity for GPU-accelerated animations
-- Layout animations (FLIP) available via `LayoutGroup` and `motion` components with `layout` prop
-- For complex choreography, `useAnimate` batches animations efficiently
-- Reduced motion preference automatically respected via `prefers-reduced-motion` media query
+- `vite build` — 879 modules transformed, no errors.
+- `vue/compiler-sfc` compile check of MotionDemo template — `<motion.div>` resolves to `$setup["motion"].div`.
+- motion-dom type definitions confirm `bounce` semantics and duration/bounce ↔ stiffness/damping exclusivity.
+- framer-motion/dom exports confirm `animate`, `scroll`, `inView`, `createScopedAnimate`.
 
-## Resources
+## References
 
-- [Motion for Vue Docs](https://motion.dev/docs/vue)
-- [useSpring Hook](https://motion.dev/docs/vue-use-spring)
-- [useAnimate Hook](https://motion.dev/docs/vue-use-animate)
+- [Motion for Vue docs](https://motion.dev/docs/vue)
+- [Spring transition options](https://motion.dev/docs/vue-transitions)
+- [useSpring](https://motion.dev/docs/vue-use-spring)
 - [AnimatePresence](https://motion.dev/docs/vue-animate-presence)
-- [Layout Animations](https://motion.dev/docs/vue-layout-animations)

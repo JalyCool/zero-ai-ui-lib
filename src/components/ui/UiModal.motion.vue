@@ -1,12 +1,26 @@
 <script setup>
-import { nextTick, onBeforeUnmount, ref, watch, computed } from 'vue'
-import { useProjectAnimate, getSpringConfig } from '../../composables/useMotion'
-import { useEdgeSwipeBack } from '../../core/edgeSwipeBack'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { getSpringConfig, motion } from '../../composables/useMotion'
+
+/* ============================================================
+   对话框（motion-v 评估版）
+   面板动画从「CSS transition + is-open/is-closing 类」迁移为
+   motion 组件的声明式目标切换：
+   · 挂载即从 HIDDEN 弹到 SHOWN（view 场景弹簧）
+   · 关闭弹向 EXIT（exit 场景弹簧），播完计时卸载
+   · 关闭途中再打开：motion 从当前位置续接回 SHOWN，天然可打断，
+     不再需要原来 paintedOpen 的双 rAF 手工编排
+   遮罩继续走全局 .ui-scrim 的 CSS 过渡（backdrop-filter 连续变化
+   不能待在 opacity 过渡的父级里，这条约束不变）。
+   全局 ui.css 给 .ui-modal__panel 的初始态/transition 已在下方
+   scoped 样式里抵消，避免与 JS 弹簧叠加。
+   ============================================================ */
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   title: { type: String, default: '' },
   maxWidth: { type: String, default: '420px' },
+  /* Esc 关闭：普通对话框默认开启；confirmDialog 显式关掉 */
   closeOnEsc: { type: Boolean, default: true }
 })
 
@@ -14,27 +28,23 @@ const emit = defineEmits(['update:modelValue', 'close'])
 
 const CLOSE_BUFFER = 80
 
+/* 面板的三个姿态（motion 目标）。 */
+const HIDDEN = { opacity: 0, y: 14, scale: 0.97 }
+const SHOWN = { opacity: 1, y: 0, scale: 1 }
+const EXIT = { opacity: 0, y: 12, scale: 0.98 }
+
 const panel = ref(null)
 const rendered = ref(false)
 const open = ref(false)
-const closing = ref(false)
 
 let scrollEl = null
 let prevOverflow = ''
 let closeTimer = null
 
-const [scope, animate] = useProjectAnimate()
-
-function reduceMotion() {
-  return typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function cancelAnimations() {
-  if (scope.current) {
-    scope.current.animations?.forEach(a => a.stop?.())
-  }
+function panelNode() {
+  /* motion 组件的 ref 是组件实例，取根元素要经 $el。 */
+  const node = panel.value
+  return node?.$el || node
 }
 
 function close() {
@@ -64,71 +74,29 @@ function unlockScroll() {
   scrollEl = null
 }
 
-async function beginOpen() {
-  cancelAnimations()
-  clearTimeout(closeTimer)
-  closeTimer = null
-
-  if (rendered.value && open.value && !closing.value) {
-    lockScroll()
-    return
-  }
-
-  rendered.value = true
-  closing.value = false
-  open.value = false
-  lockScroll()
-
-  nextTick(() => {
-    const el = panel.value
-    if (!props.modelValue || !el) return
-    el.focus({ preventScroll: true })
-    void el.offsetHeight
-
-    // Animate open using motion-v
-    const config = getSpringConfig('view')
-    animate(scope.current, {
-      opacity: [0, 1],
-      y: [14, 0],
-      scale: [0.97, 1]
-    }, config).then(() => {
-      open.value = true
-      paintedOpen.value = true
-    })
-  })
-}
-
-let paintedOpen = ref(false)
-
 function teardown() {
   rendered.value = false
   open.value = false
-  closing.value = false
-  paintedOpen.value = false
   unlockScroll()
 }
 
-async function beginClose() {
-  cancelAnimations()
+function beginOpen() {
   clearTimeout(closeTimer)
   closeTimer = null
+  rendered.value = true
+  open.value = true
+  lockScroll()
+  nextTick(() => panelNode()?.focus?.({ preventScroll: true }))
+}
 
-  if (!paintedOpen.value) {
-    teardown()
-    return
-  }
+function beginClose() {
+  clearTimeout(closeTimer)
+  closeTimer = null
+  if (!rendered.value) return
 
-  closing.value = true
   open.value = false
-
-  const config = getSpringConfig('exit')
-  await animate(scope.current, {
-    opacity: [1, 0],
-    y: [0, 12],
-    scale: [1, 0.98]
-  }, config)
-
-  const exitMs = reduceMotion() ? 0 : 650 // fallback, actual duration from config
+  /* 退出弹簧时长 + 缓冲后卸载；reduced-motion 时 getSpringConfig 已降到瞬时。 */
+  const exitMs = getSpringConfig('exit').duration * 1000
   closeTimer = setTimeout(() => {
     closeTimer = null
     teardown()
@@ -137,7 +105,7 @@ async function beginClose() {
 
 watch(() => props.modelValue, value => {
   if (value) beginOpen()
-  else if (rendered.value || paintedOpen.value) beginClose()
+  else if (rendered.value) beginClose()
 }, { immediate: true })
 
 document.addEventListener('keydown', onKeydown)
@@ -145,7 +113,6 @@ document.addEventListener('keydown', onKeydown)
 onBeforeUnmount(() => {
   clearTimeout(closeTimer)
   closeTimer = null
-  cancelAnimations()
   unlockScroll()
   document.removeEventListener('keydown', onKeydown)
 })
@@ -155,13 +122,16 @@ defineExpose({ close })
 
 <template>
   <Teleport to="body">
-    <div v-if="rendered" class="ui-modal" :class="{ 'is-open': open, 'is-closing': closing }">
+    <div v-if="rendered" class="ui-modal">
       <div class="ui-scrim" :class="{ 'is-open': open }" aria-hidden="true" @click="close"></div>
 
-      <div
+      <motion.div
         ref="panel"
         class="ui-modal__panel"
         :style="{ maxWidth }"
+        :initial="HIDDEN"
+        :animate="open ? SHOWN : EXIT"
+        :transition="getSpringConfig(open ? 'view' : 'exit')"
         role="dialog"
         aria-modal="true"
         :aria-label="title || '对话框'"
@@ -185,7 +155,17 @@ defineExpose({ close })
         <div v-if="$slots.footer" class="ui-modal__footer">
           <slot name="footer" :close="close" />
         </div>
-      </div>
+      </motion.div>
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+/* 全局 ui.css 给面板配了 opacity/transform 初始态与 CSS transition，
+   交由 motion 驱动后必须抵消：inline 样式管姿态，CSS 不再参与过渡。 */
+.ui-modal .ui-modal__panel {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+</style>
