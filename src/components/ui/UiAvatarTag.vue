@@ -176,6 +176,128 @@ function extractIconColor() {
   extractDominant('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg))
 }
 
+/* ---------- 背景自适应（对比度达标） ----------
+   药丸底色是 accent 的 10% 半透明，文字是 accent 压暗版 —— 这套组合
+   默认只保证「白/浅灰」背景下可读。放进橙色气泡、彩色卡片里时，
+   半透明底色会混上宿主背景，文字对比度直接崩。
+
+   做法：挂载后向上找宿主的**实际不透明背景色**（逐层合成 alpha），
+   然后按 WCAG 相对亮度验两端对比度：
+   · 药丸底（accent 10% 混背景）vs 宿主背景 —— 药丸「看得见」
+   · 文字色 vs 药丸底 —— 文字「读得清」
+   任一端 < 3:1 就换策略：文字改用黑 / 白里对比度更高的一端，
+   药丸底色提高 accent 占比（10% -> 22%），把半透明变成实色感。 */
+
+function hexToRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim())
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+
+function parseColor(str) {
+  const s = String(str).trim()
+  if (!s || s === 'transparent') return null
+  const hex = hexToRgb(s)
+  if (hex) return { ...hex, a: 1 }
+  const rgba = /^rgba?\(([^)]+)\)$/i.exec(s)
+  if (rgba) {
+    const parts = rgba[1].split(/[,\s/]+/).filter(Boolean).map(Number)
+    if (parts.length >= 3) return { r: parts[0], g: parts[1], b: parts[2], a: parts[3] ?? 1 }
+  }
+  return null
+}
+
+function lerp(a, b, t) { return a + (b - a) * t }
+
+function mix(c1, c2, t) {
+  return {
+    r: Math.round(lerp(c1.r, c2.r, t)),
+    g: Math.round(lerp(c1.g, c2.g, t)),
+    b: Math.round(lerp(c1.b, c2.b, t)),
+    a: 1
+  }
+}
+
+/* WCAG 相对亮度（sRGB 线性化） */
+function luminance({ r, g, b }) {
+  const lin = v => {
+    v /= 255
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+function contrast(a, b) {
+  const la = luminance(a), lb = luminance(b)
+  const [hi, lo] = la >= lb ? [la, lb] : [lb, la]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/* 向上找宿主背景：把每层半透明背景合成到最近的不透明层上 */
+function detectHostBackground(el) {
+  let node = el?.parentElement
+  let over = null /* 半透明层累积的混色底 */
+  while (node && node !== document.documentElement) {
+    const bg = parseColor(getComputedStyle(node).backgroundColor)
+    if (bg) {
+      if (bg.a >= 1) {
+        return over ? mix(bg, over, 0) && bg : bg
+      }
+      /* 半透明：先画这层颜色，再叠上更上层已累积的 over */
+      const base = over ? mix(bg, over, over.a) : { r: bg.r, g: bg.g, b: bg.b, a: 1 }
+      over = { ...base, a: bg.a + (over ? over.a * (1 - bg.a) : 0) }
+      if (over.a >= 0.99) return { r: over.r, g: over.g, b: over.b, a: 1 }
+    }
+    node = node.parentElement
+  }
+  /* 顶层都没找到：按白底处理 */
+  return { r: 255, g: 255, b: 255, a: 1 }
+}
+
+const hostBg = ref({ r: 255, g: 255, b: 255, a: 1 })
+const adapted = ref(false)
+
+function readapt() {
+  const el = rootEl.value?.$el || rootEl.value
+  if (!el) return
+  hostBg.value = detectHostBackground(el)
+  const accent = tagAccent.value ? parseColor(tagAccent.value) : null
+  if (!accent) { adapted.value = false; return }
+
+  /* 药丸底 = accent 10% 混宿主背景 */
+  const pillOnHost = mix(hostBg.value, accent, 0.1)
+  /* 文字 = accent 70% 混黑（与 CSS 的 70% on-surface 近似，
+     直接按黑算更保守；对比度不够再切黑白） */
+  const labelOnPill = mix(pillOnHost, { r: 0, g: 0, b: 0, a: 1 }, 0.3)
+
+  const pillVisible = contrast(pillOnHost, hostBg.value)
+  const textReadable = contrast(labelOnPill, pillOnHost)
+
+  adapted.value = pillVisible < 3 || textReadable < 3
+}
+
+/* 药丸底 / 文字色：自适应模式由 CSS 变量接管 */
+const pillStyle = computed(() => {
+  if (!adapted.value) return undefined
+  const accent = tagAccent.value
+  const acc = parseColor(accent)
+  if (!acc) return undefined
+  /* 提高不透明度的药丸底：accent 22% 混宿主背景（近实色） */
+  const pill = mix(hostBg.value, acc, 0.22)
+  /* 文字：黑 / 白里对比度更高的一端 */
+  const onBlack = contrast(pill, { r: 0, g: 0, b: 0, a: 1 })
+  const onWhite = contrast(pill, { r: 255, g: 255, b: 255, a: 1 })
+  const ink = onBlack >= onWhite ? '#111111' : '#ffffff'
+  return {
+    '--tag-accent': accent,
+    '--tag-pill-bg': `rgb(${pill.r}, ${pill.g}, ${pill.b})`,
+    '--tag-ink': ink
+  }
+})
+
+const rootEl = ref(null)
+
 /* 药丸底色：agent 跟随本体色；图片 / 图标 = 显式 accent 优先，否则取色结果 */
 const tagAccent = computed(() => {
   if (props.agent) return agentBodyColor.value
@@ -186,6 +308,11 @@ const tagAccent = computed(() => {
 onMounted(() => {
   if (props.src) extractDominant(props.src)
   else if (props.icon) extractIconColor()
+  /* 背景自适应：等布局稳定后探测宿主背景（keep-alive / 字体加载
+     会改变上层背景，所以 rAF 两帧后再量） */
+  if (props.accent || props.agentColor || props.agent) {
+    nextTick(() => requestAnimationFrame(() => requestAnimationFrame(readapt)))
+  }
 })
 watch(() => props.src, value => {
   pickedColor.value = ''
@@ -197,13 +324,18 @@ watch(() => [props.icon, props.iconViewBox], () => {
   pickedColor.value = ''
   extractIconColor()
 })
+/* accent / 本体色变化时重新评估对比度 */
+watch(() => [props.accent, props.agentColor, props.agent], () => {
+  nextTick(() => requestAnimationFrame(readapt))
+})
 </script>
 
 <template>
   <span
+    ref="rootEl"
     class="ui-avatar-tag"
-    :class="['ui-avatar-tag--' + size, { 'has-accent': !!tagAccent, 'is-reveal': reveal }]"
-    :style="tagAccent ? { '--tag-accent': tagAccent } : undefined"
+    :class="['ui-avatar-tag--' + size, { 'has-accent': !!tagAccent, 'is-reveal': reveal, 'is-adapted': adapted }]"
+    :style="pillStyle || (tagAccent ? { '--tag-accent': tagAccent } : undefined)"
   >
     <motion.span
       class="ui-avatar-tag__avatar"
@@ -369,6 +501,16 @@ watch(() => [props.icon, props.iconViewBox], () => {
 /* 品牌色：底色取 accent 的 10%，文字往 on-surface 方向压暗 / 提亮，深色主题也可读。 */
 .ui-avatar-tag.has-accent {
   color: color-mix(in oklab, var(--tag-accent) 70%, var(--on-surface));
+}
+/* 背景自适应（is-adapted，由 JS 对比度验算后开启）：
+   药丸底换成近实色的混色（--tag-pill-bg），文字用对比度更高的黑或白
+   （--tag-ink）。半透明底色混上彩色宿主背景后，原来的 10% 底 + 压暗
+   文字会双双崩掉 —— 这里接管两端的颜色。 */
+.ui-avatar-tag.has-accent.is-adapted {
+  color: var(--tag-ink, inherit);
+}
+.ui-avatar-tag.has-accent.is-adapted::before {
+  background: var(--tag-pill-bg, var(--tag-accent));
 }
 
 @media (prefers-reduced-motion: reduce) {

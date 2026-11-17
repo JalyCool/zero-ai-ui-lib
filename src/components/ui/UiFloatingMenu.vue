@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue'
+import { nextTick, useSlots, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue'
 import { usePress } from '../../core/pressFeedback'
 
 const props = defineProps({
@@ -7,6 +7,13 @@ const props = defineProps({
   label: { type: String, default: '排序' },
   title: { type: String, default: '排序方式' },
   size: { type: String, default: 'md' },
+  /* 触发器图标：24x24 viewBox 内的 SVG 标记；空串 = 关闭默认图标。
+     #icon 插槽优先于它。 */
+  icon: { type: String, default: '' },
+  /* 收起态触发器的三段都可以关：图标 / 文本 / 尾部箭头。 */
+  showIcon: { type: Boolean, default: true },
+  showLabel: { type: Boolean, default: true },
+  showChevron: { type: Boolean, default: true },
   items: {
     type: Array,
     default: () => [
@@ -18,6 +25,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'select'])
+const slots = useSlots()
 
 /* ============================================================
    浮动菜单
@@ -41,6 +49,7 @@ const viewBox = ref({})
 const MARGIN = 12
 
 let placeholder = null
+let floatingHome = null
 let closeTimer = null
 let closedRect = null
 let openedBox = null
@@ -96,6 +105,27 @@ function measurePanelHeight(width) {
   const height = content.offsetHeight
   layer.style.width = previous
   return Math.ceil(height)
+}
+
+/* ---------- 展开期间把根搬到 body 下 ----------
+   position: fixed 会被**带 transform 的祖先**劫持成相对定位
+   （SwipeRow 的滑动 surface 就是一层 translate3d），坐标全错、
+   还会被祖先的 overflow:hidden 裁掉 —— 列表行里展开就「看不到卡片」。
+   placeholder 已经占住布局位，DOM 搬走不影响文档流；
+   展开结束后放回原位。 */
+function reparentToBody() {
+  if (!root.value || root.value.dataset.floatingHost === '1') return
+  floatingHome = root.value.parentNode
+  document.body.appendChild(root.value)
+  root.value.dataset.floatingHost = '1'
+}
+
+function restoreParent() {
+  if (!root.value || root.value.dataset.floatingHost !== '1') return
+  delete root.value.dataset.floatingHost
+  if (floatingHome && floatingHome.parentNode) floatingHome.insertBefore(root.value, placeholder)
+  else if (placeholder && placeholder.parentNode) placeholder.parentNode.insertBefore(root.value, placeholder)
+  floatingHome = null
 }
 
 function mountPlaceholder() {
@@ -196,6 +226,7 @@ async function openMenu() {
   }
   floating.value = true
   pressed.value = false
+  reparentToBody()
 
   await nextTick()
   void el.offsetWidth
@@ -244,6 +275,7 @@ function interruptOpen() {
 }
 
 function finishClose() {
+  restoreParent()
   clearTimeout(closeTimer)
   closeTimer = null
   closing.value = false
@@ -391,12 +423,17 @@ onBeforeUnmount(() => {
         @click="onTriggerClick"
         @contextmenu.prevent
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 7h13M4 12h9M4 17h5" />
-          <path d="M18 15l3 3 3-3" transform="translate(-2 -2)" />
-        </svg>
-        <span>{{ label }}</span>
-        <span class="ui-floating-menu__chevron" aria-hidden="true">
+        <!-- 三段都可自定义：#icon 插槽 / icon prop / 默认插槽改文本 / #trailing。
+             showIcon / showLabel / showChevron 任意关闭，全关 = 纯圆点触发器。 -->
+        <slot v-if="showIcon" name="icon">
+          <svg v-if="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="icon"></svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h13M4 12h9M4 17h5" />
+            <path d="M18 15l3 3 3-3" transform="translate(-2 -2)" />
+          </svg>
+        </slot>
+        <span v-if="showLabel"><slot>{{ label }}</slot></span>
+        <span v-if="showChevron" class="ui-floating-menu__chevron" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 9l6 6 6-6" />
           </svg>
@@ -466,6 +503,10 @@ onBeforeUnmount(() => {
 .ui-floating-menu.is-floating {
   position: fixed;
   z-index: 280;
+  /* 展开态必须放开根的裁剪：面板是根的子元素，收起态的
+     overflow:hidden（裁圆角用）会把超出根盒子的面板部分全部裁掉 ——
+     塞在列表行这类受限容器里时，展开卡片就「看不到」。 */
+  overflow: visible;
 }
 .ui-floating-menu.is-closing {
   transition: left var(--t-exit), top var(--t-exit),

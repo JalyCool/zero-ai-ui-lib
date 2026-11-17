@@ -61,6 +61,33 @@ const props = defineProps({
 const hasBubble = computed(() => (props.bubble === null ? props.role !== 'assistant' : props.bubble))
 const tint = computed(() => props.color || 'var(--primary)')
 
+/* ---------- 气泡前景自适应（对比度达标） ----------
+   agent 气泡的底色就是 color prop（品牌色），前景原先写死 --on-primary
+   （白）。品牌色是浅色（黄 / 青 / 浅紫）时白字对比度不达标。
+   品牌色在这里多半是 hex（ChatView 传 #ff9838 这类），解析后按 WCAG
+   亮度选黑 / 白里对比度更高的一端；解析不了（var() 形式）保持白。 */
+function parseHex(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim())
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+function lum({ r, g, b }) {
+  const lin = v => {
+    v /= 255
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+const bubbleInk = computed(() => {
+  if (props.role !== 'agent') return ''
+  const rgb = parseHex(props.color)
+  if (!rgb) return ''
+  const onBlack = (lum(rgb) + 0.05) / 0.05
+  const onWhite = 1.05 / (lum(rgb) + 0.05)
+  return onBlack >= onWhite ? '#111111' : '#ffffff'
+})
+
 const rootStyle = computed(() => {
   const style = {
     '--chat-tint': tint.value,
@@ -69,6 +96,7 @@ const rootStyle = computed(() => {
       ? '1rem'
       : props.size === 'sm' ? 'var(--fs-small)' : 'var(--fs-body)'
   }
+  if (bubbleInk.value) style['--chat-bubble-ink'] = bubbleInk.value
   const cap = props.maxWidth || (props.role === 'agent' ? '290px' : props.role === 'user' ? '340px' : '100%')
   style['--chat-max-w'] = cap
   return style
@@ -192,13 +220,15 @@ const tagSize = computed(() => (props.size === 'lg' ? 'md' : 'sm'))
   --on-surface: var(--chat-user-on, #faf9fd);
   --on-surface-variant: color-mix(in oklab, var(--chat-user-on, #faf9fd) 74%, transparent);
 }
-/* agent：左上收窄 → 指向左侧头像 */
+/* agent：左上收窄 → 指向左侧头像。
+   前景色由 JS 按 WCAG 对比度选黑 / 白（--chat-bubble-ink），
+   浅色品牌色自动配黑字，深色配白字；未解析（var() 形式）保持白。 */
 .ui-chat-msg.is-agent.has-bubble .ui-chat-msg__bubble {
   border-top-left-radius: calc(var(--r-8) * var(--radius-scale));
   background: var(--chat-tint);
-  color: var(--on-primary);
-  --on-surface: var(--on-primary);
-  --on-surface-variant: color-mix(in oklab, var(--on-primary) 74%, transparent);
+  color: var(--chat-bubble-ink, var(--on-primary));
+  --on-surface: var(--chat-bubble-ink, var(--on-primary));
+  --on-surface-variant: color-mix(in oklab, var(--chat-bubble-ink, var(--on-primary)) 74%, transparent);
 }
 
 /* ---------- 气泡内的 Markdown ----------

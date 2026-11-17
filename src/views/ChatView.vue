@@ -1,9 +1,8 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import {
-  UiButton, UiChatMessage, UiChatSystemLine, UiChatThread,
-  UiChip, UiCodeImage, UiMorphPanel,
-  UiRotatingText, UiStatusMark, UiTextarea
+  UiButton, UiChatComposer, UiChatMessage, UiChatSystemLine, UiChatThread,
+  UiChip, UiCodeImage, UiRotatingText, UiStatusMark
 } from '../lib'
 
 /* ============================================================
@@ -81,11 +80,16 @@ onBeforeUnmount(stopStream)
 const draft = ref('')
 const threadRef = ref(null)
 
-function send() {
-  const text = draft.value.trim()
-  if (!text) return
-  messages.value.push({ id: 'u' + Date.now(), role: 'user', content: text })
+function send({ text, attachments }) {
+  const body = (text || '').trim()
+  if (!body && !(attachments && attachments.length)) return
+  /* 附件转成 Markdown 链接形式进消息正文（真实产品会随消息上传） */
+  const extra = (attachments || [])
+    .map(a => (a.kind === 'image' ? `![${a.name}](` : `[${a.name}](`) + (a.url || '') + ')')
+    .join('\n')
+  messages.value.push({ id: 'u' + Date.now(), role: 'user', content: (body + (extra ? '\n\n' + extra : '')).trim() })
   draft.value = ''
+  composerAttachments.value = []
   nextTick(() => threadRef.value?.scrollToBottom?.('smooth'))
   /* 回一句占位（真实产品这里是请求） */
   setTimeout(() => {
@@ -96,6 +100,7 @@ function send() {
     })
   }, 420)
 }
+const composerAttachments = ref([])
 
 const thinking = ref(false)
 const thinkingLabel = computed(() => (streaming.value ? '正在生成…' : '空闲'))
@@ -163,47 +168,40 @@ function usePrompt(text) { draft.value = text }
       </div>
     </UiChatThread>
 
-    <!-- 输入区：按钮 ⇄ 文本域的形变容器 -->
+    <!-- 输入区：UiChatComposer —— 输入框 + 附件（图/视频/文件，长文本粘贴转附件）
+         + 左下/右下插槽。附件入口面板由加号展开。 -->
     <div class="chat-view__composer">
       <div class="chat-view__quick">
         <UiChip
           v-for="p in quickPrompts"
           :key="p"
           variant="tonal"
-          @click="usePrompt(p)"
+          @select="usePrompt(p)"
         >{{ p }}</UiChip>
       </div>
 
-      <div class="chat-view__row">
-        <UiMorphPanel class="chat-view__morph">
-          <template #trigger>
-            <UiButton variant="tonal" block>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>
-              </svg>
-              写点什么
-            </UiButton>
-          </template>
-          <template #default="{ close }">
-            <UiTextarea
-              v-model="draft"
-              :rows="3"
-              placeholder="给 Zero 发消息…（⌘Enter 发送）"
-              autofocus
-              @keydown.meta.enter.prevent="send(); close()"
-              @keydown.ctrl.enter.prevent="send(); close()"
-            />
-            <div class="chat-view__send">
-              <UiButton variant="text" size="sm" @click="close()">收起</UiButton>
-              <UiButton variant="primary" size="sm" :disabled="!draft.trim()" @click="send(); close()">发送</UiButton>
-            </div>
-          </template>
-        </UiMorphPanel>
+      <UiChatComposer
+        v-model="draft"
+        v-model:attachments="composerAttachments"
+        placeholder="给 Zero 发消息…（⌘Enter 发送）"
+        @send="send"
+      >
+        <!-- 左下：演示功能开关（真实产品接深度思考 / 联网搜索） -->
+        <template #left-start>
+          <button type="button" class="chat-view__toggle">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"/><path d="M12 3a15 15 0 010 18M12 3a15 15 0 000 18M3 12h18"/>
+            </svg>
+            联网
+          </button>
+        </template>
+        <!-- 右下：流式回复演示按钮 -->
+        <template #right-start>
+          <UiButton variant="text" size="sm" :loading="thinking" @click="playStream">流式回复</UiButton>
+        </template>
+      </UiChatComposer>
 
-        <UiButton variant="tonal" size="sm" :loading="thinking" @click="playStream">流式回复</UiButton>
-      </div>
-
-      <p class="chat-view__hint">{{ thinkingLabel }} · 长按 ⌘K 可打开命令面板</p>
+      <p class="chat-view__hint">{{ thinkingLabel }} · ⌘K 打开命令面板</p>
     </div>
   </section>
 </template>
@@ -245,13 +243,24 @@ function usePrompt(text) { draft.value = text }
 
 .chat-view__quick { display: flex; gap: 6px; flex-wrap: wrap; }
 .chat-view__row { display: flex; align-items: flex-start; gap: 8px; }
-.chat-view__morph { flex: 1; min-width: 0; }
 
-.chat-view__send {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
+.chat-view__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: inherit;
+  font-size: var(--fs-tiny);
+  cursor: pointer;
+  transition: background var(--t-fade), color var(--t-fade);
+}
+.chat-view__toggle:active { transform: scale(var(--press-scale)); }
+@media (hover: hover) {
+  .chat-view__toggle:hover { background: var(--surface-container-high); color: var(--on-surface); }
 }
 
 .chat-view__hint {
