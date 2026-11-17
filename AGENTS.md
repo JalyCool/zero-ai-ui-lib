@@ -99,6 +99,19 @@ body {
 > `#scrollArea` 这个 id 有含义：`UiModal` / `UiBottomSheet` / `ExpandableCard` 打开时锁它的滚动，
 > 关闭时恢复；换名字这些组件就锁不住页面。滚动容器是它，不是 `body`。
 
+> **更省事的写法（推荐）**：上面那套外壳 CSS 可以整段不写，改用根组件 `ZeroApp`——
+> 它内建 `#scrollArea` + **页面上下边缘溢出时的渐进式模糊**（随滚动自动淡入淡出，不用逐页配置）
+> + TabBar 占位 + 居中限宽：
+>
+> ```vue
+> <ZeroApp :tabbar-space="72">
+>   <router-view />
+>   <template #tabbar><UiTabBar :items="tabs" v-model="tab" @change="onTab" /></template>
+> </ZeroApp>
+> ```
+>
+> 任意局部滚动区（弹层内、卡片内）用 `ZeroScroll`，同样自带「溢出即模糊」。
+
 ## 2. 组件清单
 
 ```js
@@ -118,6 +131,7 @@ import {
   UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots,
   UiSideNav, MarkdownView, normalizeIconName,
   UiChatThread, UiChatMessage, UiChatSystemLine, UiProgressiveBlur,
+  ZeroApp, ZeroScroll, useScrollEdges,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -196,6 +210,8 @@ import {
 | `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让；**进场高亮孔先铺满整屏再收拢到目标**（整体聚焦到一点），换步时孔在目标之间连续移动，退场再张回整屏 |
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
 | `UiProgressiveBlur` | **页面顶端 / 底部的渐进式模糊**：N 层 backdrop-filter + 软边 mask 叠加，模糊强度从贴边处线性衰减到 0（无硬边界）；`placement` top / bottom、`height`、`maxBlur`、`layers`（合成成本随层数线性增长）、`tint` + `tintStrength`（染色层，默认 surface 0.8 → 透明，与设计稿顶 / 底栏同源）、`position` absolute/relative/fixed；层全部 pointer-events: none，盖在可交互内容上不拦截；盖在滚动容器上做「内容滑出即糊化」的顶 / 底栏 |
+| `ZeroScroll` | **零配置滚动区（根组件）**：自带「溢出即模糊」——顶部还有被裁内容就淡入顶部渐进模糊、到顶淡出；底部同理；内容不足一屏两侧都不出现。内部用 `useScrollEdges` 判断，模糊层**常驻不销毁**（只切不透明度，backdrop-filter 反复重建会闪）。`fade`（带高，0 关闭）/ `fade-blur` / `fade-layers` / `fade-tint` / `padding` / `tag` / `id`（默认 `scrollArea`：弹层锁滚动靠它）；暴露 `scrollTo` / `scrollTop`。flex 父级与固定高度父级下都能撑满 |
+| `ZeroApp` | **应用外壳根组件（约定优于配置）**：新项目用它包一层，下面这些就**不需要再逐页配置**——`#scrollArea` 滚动容器、**页面上下边缘溢出时的渐进式模糊**（随滚动自动淡入淡出）、居中限宽（`max-width`）、`#tabbar` 槽位与底部占位（内容不会被压在 tab 下）。`<ZeroApp :tabbar-space="N"><router-view /><template #tabbar>…</template></ZeroApp>`；暴露 `scrollTo`。需要更细控制就退回 `ZeroScroll`，或直接用 `UiProgressiveBlur` 手搭 |
 | `UiChatThread` | 对话流容器：**自己就是滚动容器**（不是 body），`gap`（设计稿 18）+ `padding`（给顶 / 底模糊栏与输入条让位）；`align-bottom` 内容不足时 `margin-top:auto` 把消息推到底部；`auto-scroll` 新内容到达自动贴底，**用户上滑自动暂停、滚回底部附近恢复跟随**（与 UiTerminalOutput 的 follow 同语言）；暴露 `scrollToBottom()` |
 | `UiChatMessage` | 对话消息，**三种角色共用一套骨架**（外层行对齐 + 可选头像 + 气泡）：`assistant` 纯文本无气泡左对齐（AI 叙述不该被框住）、`user` 黑底白字气泡右对齐 **右上收窄 24/8/24/24**、`agent` 品牌色气泡（`color`）+ 左侧头像左对齐 **左上收窄 8/24/24/24** —— **收窄角指向说话人**，是唯一的形状语义。**正文一律走 `MarkdownView`**：传 `content`（Markdown 字符串）+ `mentions` + `mention-resolver`，`@名字` 由 MarkdownView 的提及机制渲染成 `UiAvatarTag`（**不在消息组件里另做一套 mention**）；也可用默认插槽放任意内容。**头像直接放标准 `UiAgentAvatar` / `UiAvatar` 本体**——不加圆形底、不做圆角裁切（设计稿里 agent 头像就是裸的）。另有 `bubble`（null = 按 role）、`name`、`avatar-shape/state/src/size`、`size` sm/md/lg（lg = 设计稿 1rem）、`max-width`（默认 agent 290 / user 340）、`time`、`#avatar` / `#footer` 插槽 |
 | `UiChatSystemLine` | 对话流里的非消息行，两类共用：**活动行**（`align="start"` + `icon` + "提取了 xx"，随消息流左对齐）与**状态行**（`align="center"` + `size="sm"`，"关闭了对话" / "已授权 xx 访问 xx"）；整行 `opacity` 默认 0.4（**永远不抢消息的注意力**）；`#trailing` 放行尾的补充内容 |

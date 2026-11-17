@@ -16,7 +16,11 @@ const props = defineProps({
   tintStrength: { type: Number, default: 0.8 },
   /* 定位：absolute 贴父容器边缘（页面顶/底覆盖在滚动内容上）；
      需要普通流内使用时改 relative */
-  position: { type: String, default: 'absolute', validator: v => ['absolute', 'relative', 'fixed'].includes(v) }
+  position: { type: String, default: 'absolute', validator: v => ['absolute', 'relative', 'fixed'].includes(v) },
+  /* 显隐：false 时只把不透明度收到 0，**不销毁**（层结构常驻，
+     避免重新挂载时 backdrop-filter 重建造成闪烁）。
+     由 useScrollEdges 驱动 —— 这一侧还有被裁内容时才露面。 */
+  visible: { type: Boolean, default: true }
 })
 
 /* ============================================================
@@ -34,7 +38,9 @@ const rootStyle = computed(() => ({
   height: props.height + 'px',
   position: props.position,
   '--pb-tint': props.tint,
-  '--pb-tint-strength': String(props.tintStrength)
+  '--pb-tint-strength': String(props.tintStrength),
+  /* 显隐只动不透明度：层与 backdrop-filter 常驻，切换时不会重建 */
+  opacity: props.visible ? '1' : '0'
 }))
 
 const toEdge = computed(() => (props.placement === 'top' ? 'to bottom' : 'to top'))
@@ -81,6 +87,7 @@ const layerStyles = computed(() => {
   right: 0;
   z-index: 50;
   pointer-events: none;
+  transition: opacity var(--t-fade);
 }
 .ui-progressive-blur.is-top { top: 0; }
 .ui-progressive-blur.is-bottom { bottom: 0; }

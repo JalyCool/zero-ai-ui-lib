@@ -6,6 +6,8 @@
 import './style.css'
 
 export * from '../components/ui/index.js'
+export * from '../components/layout/index.js'
+export { useScrollEdges } from '../composables/useScrollEdges.js'
 export { default as ExpandableCard } from '../components/ExpandableCard.vue'
 export { default as RouteExpandCard } from '../components/expand/RouteExpandCard.vue'
 /* 子路由占位组件：可展开卡片的子路由直接用它，不要再自己写一份。 */

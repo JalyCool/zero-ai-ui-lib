@@ -20,6 +20,7 @@ import {
   UiChatThread, UiChatMessage, UiChatSystemLine,
   UiTimeline, UiTour
 } from '../components/ui'
+import { ZeroScroll } from '../components/layout'
 import { confirmDialog, AGENT_SHAPES } from '../lib'
 import { useRouter } from 'vue-router'
 import supabaseSvg from '../assets/figma/supabase.svg?raw'
@@ -1088,39 +1089,74 @@ watch(activeSection, id => {
         </div>
 
         <div class="lib-cell">
-          <span class="lib-cell__label">对话消息 <small>ChatMessage / ChatThread / ChatSystemLine</small></span>
+          <span class="lib-cell__label">对话消息 <small>ChatMessage</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <div style="position: relative; height: 420px; width: 100%; overflow: hidden; border-radius: 12px; background: var(--surface); border: var(--border-w) solid var(--outline-variant);">
-              <UiChatThread :gap="18" padding="24px">
-                <UiChatMessage role="assistant" size="lg" :content="chatIntro" :mention-resolver="chatMention" />
-                <UiChatMessage role="user" size="lg" content="行，你看着办" />
-                <UiChatSystemLine :icon="ICON_PILL" size="md">提取了 领导技巧</UiChatSystemLine>
-                <UiChatMessage role="assistant" size="lg" :content="chatDispatch" :mention-resolver="chatMention" />
-                <UiChatMessage
-                  role="agent"
-                  name="Guide"
-                  color="#7438ff"
-                  avatar-shape="triangle"
-                  size="lg"
-                  :content="'我可以根据当前位置和半径列出所有餐馆，并用 **地图卡片** 直接回复你。'"
-                  :mention-resolver="chatMention"
-                />
-                <UiChatMessage
-                  role="agent"
-                  name="Gourmet"
-                  color="#ff9838"
-                  avatar-shape="circle"
-                  size="lg"
-                  :content="'我可以根据餐馆品牌、名称查找评分信息；在指定门店后可以帮 @Guide 预约或点外卖。'"
-                  :mention-resolver="chatMention"
-                />
-                <UiChatSystemLine :icon="ICON_SEND" size="md">私信了</UiChatSystemLine>
-                <UiChatSystemLine align="center" size="sm">关闭了对话</UiChatSystemLine>
+            <div style="position: relative; width: 100%; border-radius: 12px; background: var(--surface); border: var(--border-w) solid var(--outline-variant); padding: 20px 16px; display: flex; flex-direction: column; gap: 18px;">
+              <UiChatMessage role="assistant" size="lg" :content="chatIntro" :mention-resolver="chatMention" />
+              <UiChatMessage role="user" size="lg" content="行，你看着办" />
+              <UiChatMessage
+                role="agent"
+                name="Guide"
+                color="#7438ff"
+                avatar-shape="triangle"
+                size="lg"
+                content="我可以根据当前位置和半径列出所有餐馆，并用 **地图卡片** 直接回复你。"
+                :mention-resolver="chatMention"
+              />
+            </div>
+          </div>
+          <span class="lib-cell__note"><strong>三种角色</strong>：<code>assistant</code> 纯文本无气泡（AI 叙述不该被框住）、<code>user</code> 黑底气泡右上收窄（24/8/24/24）、<code>agent</code> 品牌色气泡 + 左侧头像左上收窄（8/24/24/24）——<strong>收窄角指向说话人</strong>，是唯一的形状语义。正文走 <code>MarkdownView</code>（<code>content</code> + <code>mention-resolver</code>）；头像直接放标准头像组件，<strong>无圆底、无裁切</strong>。</span>
+        </div>
+
+        <div class="lib-cell">
+          <span class="lib-cell__label">对话流 <small>ChatThread</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div style="position: relative; height: 240px; width: 100%; overflow: hidden; border-radius: 12px; background: var(--surface); border: var(--border-w) solid var(--outline-variant);">
+              <UiChatThread :gap="14" padding="16px">
+                <UiChatMessage role="assistant" :content="chatIntro" :mention-resolver="chatMention" />
+                <UiChatMessage role="user" content="行，你看着办" />
+                <UiChatMessage role="assistant" :content="chatDispatch" :mention-resolver="chatMention" />
+                <UiChatMessage role="agent" name="Gourmet" color="#ff9838" avatar-shape="circle" content="找馆子这事儿交给我。" />
+                <UiChatMessage role="user" content="对对对，差点忘了" />
+                <UiChatMessage role="assistant" content="那我先筛一轮评分，再把候选列给你。" />
               </UiChatThread>
             </div>
           </div>
-          <span class="lib-cell__note"><strong>三种角色</strong>：<code>assistant</code> 纯文本无气泡（AI 叙述不该被框住）、<code>user</code> 黑底气泡右上收窄（24/8/24/24）、<code>agent</code> 品牌色气泡左侧头像左上收窄（8/24/24/24）——收窄角指向说话人。<strong>正文一律走 MarkdownView</strong>（<code>content</code> + <code>mentions</code> + <code>mention-resolver</code>）：@提及 由它的 mentions 机制渲染成 <code>UiAvatarTag</code>，消息组件不另做 mention。头像直接放标准头像组件，<strong>不加圆形底、不做裁切</strong>。<strong>UiChatThread</strong> 自带滚动 + 贴底 + 跟随；<strong>UiChatSystemLine</strong> 整行 0.4 不透明度。</span>
+          <span class="lib-cell__note"><strong>自己就是滚动容器</strong>（不是 body）：<code>gap</code> 控制消息间距、<code>padding</code> 给顶 / 底模糊与输入条让位；<code>align-bottom</code> 内容不足时推到底部；<code>auto-scroll</code> 新内容自动贴底，<strong>用户上滑自动暂停、滚回底部附近恢复</strong>；暴露 <code>scrollToBottom()</code>。试试上下滚动这个框。</span>
         </div>
+
+        <div class="lib-cell">
+          <span class="lib-cell__label">对话系统行 <small>ChatSystemLine</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div style="width: 100%; padding: 16px; border-radius: 12px; background: var(--surface); border: var(--border-w) solid var(--outline-variant); display: flex; flex-direction: column; gap: 16px;">
+              <UiChatSystemLine :icon="ICON_PILL" size="md">提取了 领导技巧</UiChatSystemLine>
+              <UiChatSystemLine :icon="ICON_SEND" size="md">
+                私信了
+                <template #trailing>Gourmet · Guide</template>
+              </UiChatSystemLine>
+              <UiChatSystemLine align="center" size="sm">关闭了对话</UiChatSystemLine>
+              <UiChatSystemLine align="center" size="sm">已授权 Guide 访问 美食清单</UiChatSystemLine>
+            </div>
+          </div>
+          <span class="lib-cell__note">两类共用：<strong>活动行</strong>（<code>align="start"</code> + <code>icon</code>，随消息流左对齐）与<strong>状态行</strong>（<code>align="center"</code> + <code>size="sm"</code>）。整行 <code>opacity</code> 默认 <strong>0.4</strong>——它永远不该抢消息的注意力。<code>#trailing</code> 放行尾补充内容。</span>
+        </div>
+
+        <div class="lib-cell">
+          <span class="lib-cell__label">零配置滚动区 <small>ZeroScroll / ZeroApp</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div style="position: relative; height: 200px; width: 100%; border-radius: 12px; background: var(--surface); border: var(--border-w) solid var(--outline-variant); overflow: hidden;">
+              <ZeroScroll id="zeroScrollDemo" :fade="72" :fade-blur="8" padding="14px 16px">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <div v-for="n in 12" :key="n" style="padding: 10px 12px; border-radius: 10px; background: var(--surface-container-low); font-size: var(--fs-small);">
+                    第 {{ n }} 行 —— 上下滚动，靠边的一侧会自己糊起来，到顶 / 到底就淡出。
+                  </div>
+                </div>
+              </ZeroScroll>
+            </div>
+          </div>
+          <span class="lib-cell__note"><strong>约定优于配置</strong>：<code>ZeroScroll</code> 自带「溢出即模糊」——顶部还有被裁内容就淡入顶部模糊，到顶淡出；底部同理；内容不足一屏时两侧都不出现。<code>ZeroApp</code> 是应用外壳版本（<code>#scrollArea</code> + 自动模糊 + TabBar 占位 + 居中限宽），新项目用它包一层就<strong>不需要再逐页配模糊</strong>。模糊层常驻不销毁，只切不透明度。</span>
+        </div>
+
         <div class="lib-cell">
           <span class="lib-cell__label">链接 <small>UiLink</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
