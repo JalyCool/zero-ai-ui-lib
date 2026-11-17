@@ -29,6 +29,6 @@ const list = computed(() => {
 </template>
 <style scoped>
 .ui-kbd { display: inline-flex; align-items: center; gap: 3px; }
-.ui-kbd kbd { padding: 1px 5px; border: var(--border-w) solid var(--outline-variant); border-bottom-width: 1.5px; border-radius: 5px; background: var(--surface-container); color: var(--on-surface-variant); font-family: ui-monospace, monospace; font-size: var(--fs-micro); line-height: 1.5; }
+.ui-kbd kbd { padding: 1px 5px; border: var(--border-w) solid var(--outline-variant); border-bottom-width: 1.5px; border-radius: 5px; background: var(--surface-container); color: var(--on-surface-variant); font-family: var(--font-mono); font-size: var(--fs-micro); line-height: 1.5; }
 .ui-kbd--sm kbd { padding: 0 4px; font-size: calc(var(--fs-micro) * 0.92); }
 </style>

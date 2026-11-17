@@ -153,6 +153,7 @@ defineExpose({ scrollToValue })
   font: inherit;
   font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   cursor: pointer;
   transition: color var(--t-fade), background var(--t-fade), transform var(--t-feedback);
 }

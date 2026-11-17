@@ -236,7 +236,8 @@ defineExpose({ focus: () => rootEl.value && rootEl.value.focus() })
 }
 /* 越界：描边转成警示色，配合橡皮筋的视觉回拉。 */
 .ui-scrub-field__chip.is-over { border-color: var(--ui-warning, #c8862a); }
-.ui-scrub-field__value { display: inline-flex; align-items: baseline; gap: 2px; font-variant-numeric: tabular-nums; }
+.ui-scrub-field__value { display: inline-flex; align-items: baseline; gap: 2px; font-variant-numeric: tabular-nums;
+ font-feature-settings: var(--font-feat-tnum); }
 .ui-scrub-field__num { font-size: 1.02rem; font-weight: var(--w-heading); letter-spacing: -.01em; }
 .ui-scrub-field__unit { font-size: var(--fs-micro); color: var(--on-surface-variant); }
 .ui-scrub-field.is-editing .ui-scrub-field__chip { cursor: text; border-color: var(--primary); }
@@ -249,6 +250,7 @@ defineExpose({ focus: () => rootEl.value && rootEl.value.focus() })
   font-size: 1.02rem;
   font-weight: var(--w-heading);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   text-align: center;
   outline: none;
 }

@@ -141,7 +141,8 @@ async function copyProps() {
 }
 .lab__row { display: flex; flex-direction: column; gap: 10px; }
 .lab__sliders { display: flex; flex-direction: column; gap: 6px; }
-.lab__label { color: var(--on-surface-variant); font-size: var(--fs-micro); font-weight: var(--w-label); font-variant-numeric: tabular-nums; }
+.lab__label { color: var(--on-surface-variant); font-size: var(--fs-micro); font-weight: var(--w-label); font-variant-numeric: tabular-nums;
+ font-feature-settings: var(--font-feat-tnum); }
 .lab__copy { display: flex; flex-direction: column; gap: 8px; }
 .lab__out {
   min-height: 64px;
@@ -149,7 +150,7 @@ async function copyProps() {
   border-radius: calc(10px * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
-  font: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-micro);
   resize: none;
 }

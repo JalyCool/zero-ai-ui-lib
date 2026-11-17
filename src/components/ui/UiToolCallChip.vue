@@ -159,15 +159,16 @@ const words = computed(() => props.status === 'done' ? '已完成' : props.statu
 .ui-call-chip__glyph.is-check .g-check,
 .ui-call-chip__glyph.is-retry .g-retry { opacity: 1; transform: none; filter: blur(0); }
 .ui-call-chip__name { font-weight: var(--w-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ui-call-chip__detail { color: var(--on-surface-variant); font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-call-chip__detail { color: var(--on-surface-variant); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ui-call-chip__word { color: var(--on-surface-variant); font-size: var(--fs-micro); }
 .ui-call-chip__time {
   position: relative;
   z-index: 1;
   flex-shrink: 0;
   color: var(--on-surface-variant);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   font-size: var(--fs-micro);
 }
 

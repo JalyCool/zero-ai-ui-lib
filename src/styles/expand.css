@@ -215,7 +215,7 @@
 }
 .timeline-row:last-child { border-bottom: none; }
 .timeline-row .t {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-tiny);
   color: var(--on-surface-variant);
   min-width: 56px;
@@ -224,7 +224,7 @@
 .timeline-row .val {
   font-size: var(--fs-small);
   font-weight: var(--w-strong);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 .expand-chart {
   width: 100%;

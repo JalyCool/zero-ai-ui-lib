@@ -203,7 +203,8 @@ onBeforeUnmount(() => {
 .ui-tour.is-closing .ui-tour__bubble { opacity: 0; transform: translate3d(0, 6px, 0) scale(.98); transition: opacity var(--t-exit), transform var(--t-exit); transition-delay: 0s; pointer-events: none; }
 .ui-tour__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .ui-tour__head b { font-size: var(--fs-small); font-weight: var(--w-heading); }
-.ui-tour__head span { font-size: var(--fs-micro); color: var(--on-surface-variant); font-variant-numeric: tabular-nums; }
+.ui-tour__head span { font-size: var(--fs-micro); color: var(--on-surface-variant); font-variant-numeric: tabular-nums;
+ font-feature-settings: var(--font-feat-tnum); }
 .ui-tour__text { margin: 6px 0 10px; font-size: var(--fs-tiny); line-height: 1.55; color: var(--on-surface-variant); }
 .ui-tour__actions { display: flex; align-items: center; gap: 6px; }
 .ui-tour__spacer { flex: 1; }

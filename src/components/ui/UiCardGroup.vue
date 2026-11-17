@@ -1050,7 +1050,8 @@ watch(() => props.modelValue, value => {
   font-size: var(--fs-small);
 }
 .ui-card-group__pin-card small { color: var(--on-surface-variant); font-size: var(--fs-micro); }
-.ui-card-group__pin-index { position: absolute; right: 14px; top: 12px; color: var(--on-surface-variant); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
+.ui-card-group__pin-index { position: absolute; right: 14px; top: 12px; color: var(--on-surface-variant); font-size: var(--fs-micro); font-variant-numeric: tabular-nums;
+ font-feature-settings: var(--font-feat-tnum); }
 
 /* ---------- stack / swap ---------- */
 .ui-card-group__pile {

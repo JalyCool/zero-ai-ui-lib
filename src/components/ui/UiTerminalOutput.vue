@@ -104,7 +104,7 @@ async function copyAll() {
 }
 .ui-term__body pre {
   margin: 0;
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: .7rem;
   line-height: 1.6;
   white-space: pre-wrap;

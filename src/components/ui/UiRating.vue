@@ -73,9 +73,10 @@ function select(value) {
 }
 .ui-rating__value {
   color: var(--on-surface-variant);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 .ui-rating__stars {
   display: flex;

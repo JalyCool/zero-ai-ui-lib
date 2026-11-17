@@ -146,6 +146,7 @@ onBeforeUnmount(() => {
   font: inherit;
   color: inherit;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   line-height: 1.35;
   text-align: center;
   white-space: nowrap;

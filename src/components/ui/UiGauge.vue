@@ -105,6 +105,7 @@ const ARC_PATH = 'M 26.7 126.68 A 78 78 0 1 1 173.3 126.68'
   font-size: 2.6rem;
   font-weight: var(--w-heading);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   letter-spacing: -.012em;
   line-height: 1;
   white-space: nowrap;
@@ -139,5 +140,6 @@ const ARC_PATH = 'M 26.7 126.68 A 78 78 0 1 1 173.3 126.68'
   color: var(--on-surface-variant);
   font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 </style>

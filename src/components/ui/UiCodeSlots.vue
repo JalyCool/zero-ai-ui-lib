@@ -317,6 +317,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   font-size: 1.32rem;
   font-weight: var(--w-heading);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   transition: border-color var(--t-fade), background var(--t-fade), transform var(--t-feedback);
 }
 .ui-code-slots__slot.is-filled { border-color: color-mix(in oklab, var(--primary) 34%, var(--outline-variant)); }
@@ -398,7 +399,8 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   to { opacity: 0; filter: blur(4px); transform: translateY(.45em) scale(.9); }
 }
 
-.ui-code-slots__progress { align-self: flex-end; font-size: var(--fs-micro); color: var(--on-surface-variant); font-variant-numeric: tabular-nums; }
+.ui-code-slots__progress { align-self: flex-end; font-size: var(--fs-micro); color: var(--on-surface-variant); font-variant-numeric: tabular-nums;
+ font-feature-settings: var(--font-feat-tnum); }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-code-slots__digit { animation-duration: .01ms !important; }

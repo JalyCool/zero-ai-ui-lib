@@ -353,6 +353,8 @@ onBeforeUnmount(() => {
 }
 .ui-code-image__svg { max-width: 100%; height: auto; display: block; }
 .ui-code-image__error { margin: 6px 0 0; color: var(--error); font-size: var(--fs-micro); }
+/* 码面内的字符（版本号 / 内嵌文本）一律等宽数字，避免扫码区排版抖动 */
+.ui-code-image__stage { font-family: var(--font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: var(--font-feat-tnum); }
 .ui-code-image__switcher { width: 100%; display: flex; justify-content: center; }
 
 @media (prefers-reduced-motion: reduce) {

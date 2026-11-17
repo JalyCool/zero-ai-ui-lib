@@ -58,7 +58,8 @@ function jump(item, index) {
 </template>
 <style scoped>
 .ui-pagination { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
-.ui-pagination__page, .ui-pagination__arrow { display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 7px; border: 0; border-radius: 9px; background: transparent; color: var(--on-surface-variant); font: inherit; font-size: var(--fs-tiny); font-variant-numeric: tabular-nums; cursor: pointer; transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback); }
+.ui-pagination__page, .ui-pagination__arrow { display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 7px; border: 0; border-radius: 9px; background: transparent; color: var(--on-surface-variant); font: inherit; font-size: var(--fs-tiny); font-variant-numeric: tabular-nums;
+ font-feature-settings: var(--font-feat-tnum); cursor: pointer; transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback); }
 .ui-pagination__page:active, .ui-pagination__arrow:active { transform: scale(var(--press-scale)); }
 .ui-pagination__page:hover, .ui-pagination__arrow:hover:not(:disabled) { background: var(--surface-container); }
 .ui-pagination__page.is-on { background: var(--primary); color: var(--on-primary); font-weight: var(--w-label); }

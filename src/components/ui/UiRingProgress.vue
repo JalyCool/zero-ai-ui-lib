@@ -109,6 +109,7 @@ onMounted(() => {
   line-height: 1;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 .ui-ring__center span {
   margin-top: 4px;

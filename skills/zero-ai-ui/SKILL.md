@@ -39,7 +39,8 @@ createApp(App).mount('#app')
 13. **图标走 Iconify**：UiIcon 先查本地注册表（registerIcons），未命中按 Iconify 名渲染；`pack:icon` / `pack/icon` / `pack--icon` / `i-pack:icon` 等价。Markdown 里四种裸写法与 `::pack:icon::` 都能识别（显式优先），代码块内保持字面量。
 14. **流式内容**：MarkdownView / UiText 都支持 `streaming`——只给新增块 / 新增片段播进场，并预留高度防跳动；打字机无光标时默认 `reserve` 占位。
 15. **链接用 UiLink**（默认 primary 无下划线、悬停才出，外链自动 ↗ 角标），不要在 Markdown 或页面里手写裸 `<a>` 样式。
-16. **Markdown 用 MarkdownView**：需要 @ 提及时传 `mentions` + `mentionResolver`，返回 `{ username, showname, type: 'normal'|'agent', image, shape }`，自动渲染成 UiAvatarTag。
+16. **字体只引用变量**：`--font-sans` / `--font-mono` / `--font-numeric` 是唯一来源，别处不写死字体名；等宽数字永远两条一起给——`font-variant-numeric: tabular-nums` + `font-feature-settings: var(--font-feat-tnum)`（兼容老浏览器）。换字库只覆盖 `--font-sans-custom` / `--font-mono-custom`。
+17. **Markdown 用 MarkdownView**：需要 @ 提及时传 `mentions` + `mentionResolver`，返回 `{ username, showname, type: 'normal'|'agent', image, shape }`，自动渲染成 UiAvatarTag。
 
 ## 组件速查（完整 99 个见 AGENTS.md 第 2 节）
 

@@ -2,6 +2,27 @@
    设计变量
    ============================================================ */
 :root {
+  /* ---------- 字体族（全库唯一来源，各处只引用变量） ---------- */
+  /* 正文：中文优先阿里巴巴普惠体 3.0（需应用自行引入），再退到各平台原生中文字体，
+     最后是本项目打包的字库与系统 sans 栈。 */
+  --font-sans: var(--font-sans-custom, 'Alibaba PuHuiTi 3.0'), 'Alibaba PuHuiTi',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei',
+    'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', 'WenQuanYi Micro Hei',
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Ubuntu, Cantarell,
+    'Helvetica Neue', Arial, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+
+  /* 等宽：代码 / 终端 / 数字列。逐一覆盖三大平台 + 常见开源等宽，
+     最后一定要落到 monospace 关键字，避免某台机器上全部缺失时退成比例字体。 */
+  --font-mono: var(--font-mono-custom, ui-monospace), 'SFMono-Regular', 'SF Mono',
+    'Menlo', 'Monaco', 'Cascadia Mono', 'Cascadia Code', 'Consolas',
+    'Roboto Mono', 'DejaVu Sans Mono', 'Liberation Mono', 'Ubuntu Mono',
+    'Noto Sans Mono', 'Source Code Pro', 'Fira Code', 'JetBrains Mono',
+    'Courier New', monospace;
+
+  /* 表格数字专用（二维码 / 条码 / 读数）：等宽字体 + tnum 双保险 */
+  --font-numeric: var(--font-mono);
+  --font-feat-tnum: "tnum" 1, "lnum" 1;
+
   --radius-scale: 1;
   --r-card: 22px;
   --r-metric: 18px;

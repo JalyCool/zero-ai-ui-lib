@@ -266,12 +266,12 @@ const Root = () => {
   padding: 12px 14px;
   margin: .9em 0;
   overflow-x: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-small);
   line-height: 1.6;
 }
 .ui-md-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: .92em;
   background: var(--surface-container-high);
   border-radius: 5px;

@@ -345,6 +345,7 @@ watch(() => props.modelValue, value => {
   text-align: left;
   font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   line-height: 1.35;
 }
 /* 年 / 月日各自不折行：放不下时整段「月日」换到第二行。 */
@@ -444,6 +445,7 @@ watch(() => props.modelValue, value => {
   font: inherit;
   font-size: var(--fs-tiny);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   cursor: pointer;
   transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback);
 }

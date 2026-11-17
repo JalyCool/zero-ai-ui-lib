@@ -8,6 +8,7 @@
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 圆角分档」，不用阴影；**描边只出现在功能处**——输入框 / 开关、复选框类控件 / `variant="outline"` 变体 / 行分隔线 / 浮层边界，**能没有描边的地方就不要有描边**（卡片、告警、折叠面板、模态、表格外形、卡片组等一律无描边）。**阴影全库只有一处：TabBar**（移动端向上 / 桌面端向右投一层淡分离影），其他组件一律不投影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
 - **交付形态**：99 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **字体**：三组变量是**唯一来源**，别处不许写死字体名——`--font-sans`（中文优先阿里巴巴普惠体 3.0 → PingFang SC / 微软雅黑 / Noto Sans CJK → 系统 sans）、`--font-mono`（代码 / 终端：ui-monospace → SFMono → Cascadia → Consolas → DejaVu / Liberation / Ubuntu Mono → Noto Sans Mono → Source Code Pro / Fira Code / JetBrains Mono → monospace，逐平台回退）、`--font-numeric`（读数 / 二维码条码等数字列，等同 mono）。等宽数字**双保险**：`font-variant-numeric: tabular-nums` + `font-feature-settings: var(--font-feat-tnum)`（`"tnum" 1, "lnum" 1`，兼容不认前者的老浏览器）。应用想换字库只要覆盖 `--font-sans-custom` / `--font-mono-custom`。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -325,6 +326,9 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
   --outline-variant: #c7c5d0;
   --radius-scale: 1;
   --press-scale: 0.97;
+  /* 换字库：只覆盖这两个变量，别改组件里的 font-family */
+  --font-sans-custom: 'YourSans';
+  --font-mono-custom: 'YourMono';
 }
 ```
 

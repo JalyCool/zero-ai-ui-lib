@@ -411,7 +411,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: flex-end;
   gap: 4px;
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-tiny);
   font-weight: var(--w-strong);
   color: var(--on-surface);

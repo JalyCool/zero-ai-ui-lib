@@ -308,6 +308,7 @@ watch(() => props.modelValue, value => {
   text-align: left;
   font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   line-height: 1.35;
 }
 .ui-wheel-date__year,
@@ -356,9 +357,10 @@ watch(() => props.modelValue, value => {
 }
 .ui-wheel-date__head strong {
   color: var(--on-surface);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-body);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 
 .ui-wheel-date__actions {

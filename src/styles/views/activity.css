@@ -18,7 +18,7 @@
 .list-body { flex: 1; min-width: 0; }
 .list-body b { font-size: var(--fs-body); font-weight: var(--w-strong); display: block; }
 .list-body span { font-size: var(--fs-tiny); color: var(--on-surface-variant); }
-.list-meta { font-size: var(--fs-tiny); font-weight: var(--w-strong); color: var(--on-surface-variant); font-family: ui-monospace, monospace; }
+.list-meta { font-size: var(--fs-tiny); font-weight: var(--w-strong); color: var(--on-surface-variant); font-family: var(--font-mono); }
 
 .view-head {
   display: flex;

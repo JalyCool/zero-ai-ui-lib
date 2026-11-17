@@ -353,6 +353,7 @@ onBeforeUnmount(() => { /* 无常驻动画 */ })
   letter-spacing: -.02em;
   color: var(--on-surface);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   white-space: nowrap;
 }
 .ui-ring-slider__center small {

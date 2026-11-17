@@ -189,6 +189,7 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
   font-size: var(--fs-micro);
   font-weight: var(--w-strong);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade), transform var(--t-feedback);
 }
 .ui-stepflow__dot svg { width: 13px; height: 13px; }

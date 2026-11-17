@@ -158,17 +158,18 @@ watch(() => props.modelValue, value => {
 }
 .ui-range-time__approx {
   color: var(--on-surface-variant);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-micro);
   font-weight: var(--w-strong);
   margin-right: 1px;
 }
 .ui-range-time__duration-value {
   color: var(--on-surface-variant);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-micro);
   font-weight: var(--w-strong);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   letter-spacing: .02em;
   line-height: 1.1;
 }

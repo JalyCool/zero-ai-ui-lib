@@ -31,7 +31,8 @@ const props = defineProps({
 .ui-timeline__body { flex: 1; min-width: 0; padding-bottom: 16px; }
 .ui-timeline__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .ui-timeline__head b { font-size: var(--fs-small); font-weight: var(--w-label); }
-.ui-timeline__head time { color: var(--on-surface-variant); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
+.ui-timeline__head time { color: var(--on-surface-variant); font-size: var(--fs-micro); font-variant-numeric: tabular-nums;
+ font-feature-settings: var(--font-feat-tnum); }
 .ui-timeline__body p { margin: 3px 0 0; color: var(--on-surface-variant); font-size: var(--fs-tiny); line-height: 1.55; }
 .ui-timeline__item.is-success .ui-timeline__dot { background: var(--ui-success, #15803d); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ui-success, #15803d) 18%, transparent); }
 .ui-timeline__item.is-warning .ui-timeline__dot { background: var(--ui-warning, #b45309); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ui-warning, #b45309) 18%, transparent); }

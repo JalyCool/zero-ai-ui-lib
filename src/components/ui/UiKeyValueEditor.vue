@@ -67,7 +67,7 @@ function removeRow(index) {
   outline: 0;
   transition: border-color var(--t-fade);
 }
-.ui-kv__key { flex: 1 1 100px; min-width: 0; font-family: ui-monospace, monospace; }
+.ui-kv__key { flex: 1 1 100px; min-width: 0; font-family: var(--font-mono); }
 .ui-kv__key:focus, .ui-kv__value:focus { border-color: var(--primary); background: var(--surface); }
 .ui-kv__eq { color: var(--on-surface-variant); font-size: var(--fs-tiny); flex-shrink: 0; }
 .ui-kv__remove {

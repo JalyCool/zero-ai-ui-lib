@@ -325,7 +325,7 @@ onBeforeUnmount(stopDrag)
   color: var(--on-surface);
   font: inherit;
   font-size: var(--fs-small);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   text-transform: uppercase;
   outline: none;
   transition: border-color var(--t-fade);

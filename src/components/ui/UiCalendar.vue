@@ -90,7 +90,8 @@ function pick(cell) {
 .ui-calendar__week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; color: var(--on-surface-variant); font-size: var(--fs-micro); text-align: center; }
 .ui-calendar__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .ui-calendar__grid.is-week { grid-template-rows: 1fr; }
-.ui-calendar__day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; min-height: 44px; padding: 5px 2px; border: 0; border-radius: 9px; background: transparent; color: var(--on-surface); font: inherit; font-size: var(--fs-tiny); font-variant-numeric: tabular-nums; cursor: pointer; transition: background var(--t-fade); }
+.ui-calendar__day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; min-height: 44px; padding: 5px 2px; border: 0; border-radius: 9px; background: transparent; color: var(--on-surface); font: inherit; font-size: var(--fs-tiny); font-variant-numeric: tabular-nums;
+ font-feature-settings: var(--font-feat-tnum); cursor: pointer; transition: background var(--t-fade); }
 .ui-calendar__day:hover { background: var(--surface-container); }
 .ui-calendar__day.is-out { color: var(--on-surface-variant); opacity: .42; }
 .ui-calendar__day.is-today .ui-calendar__num { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: var(--on-primary); }

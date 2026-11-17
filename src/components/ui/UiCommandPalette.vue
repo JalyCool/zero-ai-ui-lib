@@ -91,7 +91,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onGlobalKey))
 .ui-palette__search { display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-bottom: var(--border-w) solid var(--outline-variant); }
 .ui-palette__search svg { width: 17px; height: 17px; color: var(--on-surface-variant); }
 .ui-palette__search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--on-surface); font: inherit; font-size: var(--fs-small); outline: none; }
-.ui-palette__search kbd { padding: 2px 6px; border-radius: 6px; background: var(--surface-container-high); color: var(--on-surface-variant); font-size: var(--fs-micro); font-family: ui-monospace, monospace; }
+.ui-palette__search kbd { padding: 2px 6px; border-radius: 6px; background: var(--surface-container-high); color: var(--on-surface-variant); font-size: var(--fs-micro); font-family: var(--font-mono); }
 .ui-palette__list { overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
 .ui-palette__list button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--on-surface); font: inherit; font-size: var(--fs-small); text-align: left; cursor: pointer; }
 .ui-palette__list button.is-active { background: var(--surface-container); }

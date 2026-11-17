@@ -274,7 +274,7 @@ button {
 .ui-slider { display: flex; flex-direction: column; gap: 9px; }
 .ui-slider__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ui-slider__label { font-size: var(--fs-tiny); font-weight: var(--w-label); color: var(--on-surface-variant); }
-.ui-slider__value { display: inline-flex; align-items: flex-end; font-family: ui-monospace, monospace; font-size: var(--fs-tiny); font-weight: var(--w-strong); color: var(--on-surface); }
+.ui-slider__value { display: inline-flex; align-items: flex-end; font-family: var(--font-mono); font-size: var(--fs-tiny); font-weight: var(--w-strong); color: var(--on-surface); }
 .ui-slider__num { line-height: 1.2; }
 .ui-slider__track {
   position: relative;

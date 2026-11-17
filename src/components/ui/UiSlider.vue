@@ -448,6 +448,7 @@ onBeforeUnmount(() => {
   font-size: var(--fs-micro);
   font-weight: var(--w-label);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
@@ -528,6 +529,7 @@ onBeforeUnmount(() => {
   color: var(--on-surface-variant);
   font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   white-space: nowrap;
   line-height: 1.2;
 }

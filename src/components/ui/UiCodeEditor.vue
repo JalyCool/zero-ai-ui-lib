@@ -138,10 +138,11 @@ watch(() => props.modelValue, syncScroll)
 .ui-code__ln {
   display: block;
   padding: 0 8px 0 10px;
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: .72rem;
   line-height: 1.55;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 .ui-code__stage { position: relative; flex: 1; min-width: 0; }
 .ui-code__hl,
@@ -150,7 +151,7 @@ watch(() => props.modelValue, syncScroll)
   inset: 0;
   margin: 0;
   padding: 8px 10px;
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: .72rem;
   line-height: 1.55;
   white-space: pre;

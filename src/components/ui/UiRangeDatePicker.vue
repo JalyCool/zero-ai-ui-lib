@@ -453,6 +453,7 @@ watch(() => props.modelValue, () => {
   text-align: left;
   font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   line-height: 1.35;
 }
 .ui-range-date__value.is-empty { color: var(--on-surface-variant); }
@@ -570,6 +571,7 @@ watch(() => props.modelValue, () => {
   color: var(--on-surface-variant);
   font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   white-space: nowrap;
   transition: background var(--t-fade), color var(--t-fade), border-color var(--t-fade);
 }
@@ -616,6 +618,7 @@ watch(() => props.modelValue, () => {
   font: inherit;
   font-size: var(--fs-tiny);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   cursor: pointer;
   transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback);
 }

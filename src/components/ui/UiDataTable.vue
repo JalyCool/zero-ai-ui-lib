@@ -334,6 +334,7 @@ tbody td {
   color: var(--on-surface);
   border-bottom: var(--border-w) solid color-mix(in oklab, var(--outline-variant) 45%, transparent);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr.is-selected { background: color-mix(in oklab, var(--primary) 10%, transparent); }
@@ -366,6 +367,7 @@ tbody tr.is-clickable:hover { background: var(--surface-container); }
   color: var(--on-surface-variant);
   font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 .ui-table__pager-spacer { flex: 1; }
 .ui-table__pager button {

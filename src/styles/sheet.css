@@ -194,7 +194,7 @@
 }
 .custom-row input[type=color]:active { transform: scale(var(--press-scale)); }
 .custom-row .hint { font-size: var(--fs-tiny); color: var(--on-surface-variant); }
-.custom-row .hex { font-family: ui-monospace, monospace; font-size: var(--fs-small); font-weight: var(--w-strong); }
+.custom-row .hex { font-family: var(--font-mono); font-size: var(--fs-small); font-weight: var(--w-strong); }
 
 .dlg-preview {
   margin-top: 20px;

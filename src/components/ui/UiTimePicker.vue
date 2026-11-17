@@ -336,6 +336,7 @@ watch(() => props.precision, () => {
   text-align: left;
   font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   letter-spacing: .03em;
 }
 .ui-time__chevron {
@@ -380,9 +381,10 @@ watch(() => props.precision, () => {
 }
 .ui-time__head strong {
   color: var(--on-surface);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-body);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 
 .ui-time__presets {

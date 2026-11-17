@@ -350,6 +350,7 @@ watch(() => props.modelValue, value => {
   font-size: 2.6rem;
   font-weight: var(--w-heading);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
   letter-spacing: -.012em;
   line-height: 1;
   white-space: nowrap;
@@ -380,6 +381,7 @@ watch(() => props.modelValue, value => {
   color: var(--on-surface-variant);
   font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
 }
 
 @media (prefers-reduced-motion: reduce) {
