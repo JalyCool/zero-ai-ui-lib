@@ -269,6 +269,9 @@ function withStreaming(tree) {
   })
 }
 
+/* 每包一段新文字取一个全局递增 key：保证是全新 DOM 节点，animation 必然重播。 */
+let freshSeq = 0
+
 /* 递归地把「末尾 n 个字符」包进 rise。
    坑：新增文本可能跨越节点边界（普通文本 + <strong> 里各一部分），
    span 必须插在被替换文本的**原位置**，不能 append 到数组末尾 ——
@@ -287,9 +290,40 @@ function markTail(children, fresh) {
       const take = Math.min(chars.length, need)
       const head = chars.slice(0, chars.length - take).join("")
       const tail = chars.slice(chars.length - take).join("")
-      /* span 插回这个文本节点原来的位置 */
-      out.splice(i, 1, head, h("span", { class: "ui-md-fresh-text is-rise", key: "fresh-" + i }, tail))
+      /* span 插回这个文本节点原来的位置。
+         key 必须带内容而不是索引：每帧新增段不同 → key 不同 → Vue 判定是新节点
+         → DOM 真正重新插入 → CSS animation 才会重新播。用索引 key 时节点被复用，
+         动画只在第一次插入播一遍，之后就「直接闪现、一点动画都没有」。 */
+      out.splice(i, 1, head, h("span", { class: "ui-md-fresh-text is-rise", key: "fresh-" + (freshSeq += 1) }, tail))
       need -= take
+      continue
+    }
+    /* h('code', {}, '文本') / h('strong', {}, '文本')：children 是字符串的 vnode。
+       之前这种节点会被整段跳过（既不是 string 也不是数组 children），
+       行内代码在段落末尾时新字完全没有动画。这里当文本处理但包回原标签。 */
+    if (node && typeof node.children === "string" && node.children.length) {
+      const chars = Array.from(node.children)
+      const take = Math.min(chars.length, need)
+      const head = chars.slice(0, chars.length - take).join("")
+      const tail = chars.slice(chars.length - take).join("")
+      const wrap = inner => h(node.type, { ...node.props }, inner)
+      out.splice(i, 1,
+        head ? wrap(head) : null,
+        wrap(h("span", { class: "ui-md-fresh-text is-rise", key: "s-" + (freshSeq += 1) }, tail)))
+      need -= take
+      continue
+    }
+    /* renderInline 的产物是「数组的数组」：段落末尾的 child 本身就是数组。
+       之前只认 string 和 VNode，数组直接被跳过 —— 这就是「新字没有任何动画」的根因。 */
+    if (Array.isArray(node)) {
+      const flatLen = Array.from(flatText(node)).length
+      if (flatLen === 0) continue
+      if (flatLen >= need) {
+        out.splice(i, 1, markTail(node, fresh))
+        return out
+      }
+      out.splice(i, 1, markAll(node))
+      need -= flatLen
       continue
     }
     if (node && Array.isArray(node.children)) {
@@ -312,9 +346,10 @@ function markAll(children) {
   if (!Array.isArray(children)) return children
   return children.map((node, i) => {
     if (typeof node === "string" && node.trim()) {
-      return h("span", { class: "ui-md-fresh-text is-rise", key: "all-" + i }, node)
+      return h("span", { class: "ui-md-fresh-text is-rise", key: "all-" + (freshSeq += 1) }, node)
     }
     if (typeof node === "string") return node
+    if (Array.isArray(node)) return markAll(node)
     if (node && Array.isArray(node.children)) {
       return h(node.type, { ...node.props, key: node.key }, markAll(node.children))
     }
@@ -326,7 +361,14 @@ function flatText(children) {
   if (!Array.isArray(children)) return ""
   return children.map(c => {
     if (typeof c === "string" || typeof c === "number") return String(c)
+    if (Array.isArray(c)) return flatText(c)
+    /* h('code', {}, '文本') 这类 vnode 的 children 是字符串，不是数组：
+       漏算它会让 markTail 的新增长度错位，把不该动的内容也包上动画。 */
+    if (c && typeof c.children === "string") return c.children
+    if (c && typeof c.children === "number") return String(c.children)
     if (c && Array.isArray(c.children)) return flatText(c.children)
+    /* children 是单个 VNode（wrap 出来的 span）也要能算进去 */
+    if (c && c.children && typeof c.children === "object" && c.children.type) return flatText([c.children])
     return ""
   }).join("")
 }
@@ -413,8 +455,10 @@ const Root = () => {
 /* 块内文本：更短的上浮 + 模糊，和块本身错开一点 */
 /* 流式新增的那一段文字：上浮 + 模糊渐现（这是「新字浮上来」的核心，
    与整块进场分开 —— 同一块里的文字增长只播这一层，不重播整块）。 */
-.ui-md-fresh-text { display: inline; }
-.ui-md-fresh-text.is-rise { animation: uiMdTextRise 380ms cubic-bezier(.34, 1.4, .64, 1) both; }
+/* inline-block：行内元素的 transform 会被浏览器忽略，上浮根本不生效 */
+.ui-md-fresh-text { display: inline-block; }
+/* 出字 ~70ms/8 字，动画 220ms：尾字持续翻新、前面的字早已落定 */
+.ui-md-fresh-text.is-rise { animation: uiMdTextRise 220ms cubic-bezier(.34, 1.4, .64, 1) both; }
 /* 块级也新增时（整块第一次出现），块内文字同样叠一层，但错开一点 */
 .ui-md-fresh .ui-md-fresh-text { animation: uiMdTextRise 380ms cubic-bezier(.34, 1.4, .64, 1) both; }
 @keyframes uiMdTextRise {

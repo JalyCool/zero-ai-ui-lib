@@ -80,6 +80,7 @@ const checkCloud = ref(true)
 const checkInsight = ref(false)
 const waterCups = ref(5)
 const rating = ref(4)
+const ratingHalf = ref(3.5)
 const chipOptions = ['全部', '步行', '跑步', '睡眠']
 const activeChip = ref('步行')
 const plan = ref('pro')
@@ -102,6 +103,23 @@ const panelRange = ref([18, 30])
 /* ---------- 表单 ---------- */
 const nickname = ref('Alex')
 const email = ref('alex@')
+const dpPrecision = ref('day')
+const dpPrecisionOptions = [
+  { label: '日', value: 'day' },
+  { label: '月', value: 'month' },
+  { label: '年', value: 'year' }
+]
+/* min / max 用相对今天算出来的固定串，避免演示过期 */
+const dpMin = (() => { const d = new Date(); d.setDate(d.getDate() - 60); return d.toISOString().slice(0, 10) })()
+const dpMax = (() => { const d = new Date(); d.setDate(d.getDate() + 90); return d.toISOString().slice(0, 10) })()
+const visitDate2 = ref('')
+const workTime = ref('09:30')
+const phone = ref('13800138')
+const hexColor = ref('#4f6')
+const swLeft = ref(true)
+const swRight = ref(false)
+const swEnd = ref(true)
+const swOff = ref(true)
 const note = ref('')
 const sport = ref('walk')
 /* 超长列表：验证面板封顶 + 自动滚到选中项 */
@@ -555,6 +573,13 @@ const iconTopOptions = [
   { label: '野生', value: 'bird', icon: ICON_BIRD }
 ]
 const iconSelectOptions = iconTopOptions
+/* 极限情况演示：10 个带长标签的选项，图标在上时必然多行，用 max-rows 截到 2 行滚动 */
+const segManyOptions = Array.from({ length: 10 }, (_, i) => ({
+  label: '分类 ' + (i + 1) + ' · ' + ['报表', '日程', '联系人', '任务', '文件', '书签', '标签', '群组', '设备', '日志'][i],
+  value: 'cat' + i,
+  icon: iconTopOptions[i % iconTopOptions.length].icon
+}))
+const segMaxRowPick = ref('cat0')
 const iconSegPick = ref('qr')
 const iconTopPick = ref('all')
 const iconOnlyPick = ref('all')
@@ -616,6 +641,15 @@ async function askDemo() {
 onMounted(() => {
   showToast('info')
   playStatus()
+})
+
+/* 进入「工程」分区（MarkdownView 在这里）时自动播一次流式演示：
+   不点按钮就永远只看到全文闪现，新字的上浮 + 模糊动画等于没展示。 */
+let mdAutoPlayed = false
+watch(activeSection, id => {
+  if (id !== 'sec-dev' || mdAutoPlayed) return
+  mdAutoPlayed = true
+  toggleMdFeed()
 })
 </script>
 
@@ -783,6 +817,7 @@ onMounted(() => {
             <UiSegmented v-model="frequency" :options="frequencyOptions" layout="one-line" label="提醒频率" />
             <UiStepper v-model="waterCups" label="喝水" unit="杯" :min="0" :max="12" />
             <UiRating v-model="rating" />
+            <UiRating v-model="ratingHalf" :max="5" half label="半星评分（点亮逐颗错峰弹跳）" />
           </div>
           <span class="lib-cell__note">数字变化统一走滚动动效，越界带碰壁回弹。</span>
         </div>
@@ -791,6 +826,7 @@ onMounted(() => {
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiSegmented v-model="iconSegPick" layout="one-line" label="图标在前" :options="iconSegOptions" />
             <UiSegmented v-model="iconTopPick" label="图标在上（6 项自动多行）" icon-placement="top" :options="iconTopOptions" />
+            <UiSegmented v-model="segMaxRowPick" label="图标在上 · 限 2 行内部滚动（max-rows=2）" icon-placement="top" :options="segManyOptions" :max-rows="2" />
             <UiSegmented v-model="iconOnlyPick" label="仅图标" :options="iconTopOptions.slice(0, 2)" :show-labels="false" icon-placement="top" />
             <UiSelect v-model="iconSelPick" label="下拉 · 图标在前" :options="iconSelectOptions" />
             <UiSelect v-model="iconSelTopPick" label="下拉 · 图标在上" :options="iconSelectOptions" icon-placement="top" />
@@ -807,6 +843,16 @@ onMounted(() => {
           <span class="lib-cell__note">按钮原地长成面板；收起途中可打断。</span>
         </div>
         <div class="lib-cell">
+          <span class="lib-cell__label">开关文案位置 <small>labelPlacement / alignEnd</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <UiSwitch v-model="swLeft" label="文案在左（默认）" />
+            <UiSwitch v-model="swRight" label="文案在右" label-placement="right" />
+            <UiSwitch v-model="swEnd" label="文案在右 · 右对齐到行尾" label-placement="right" align-end />
+            <UiSwitch v-model="swOff" label="禁用开关" :disabled="true" />
+          </div>
+          <span class="lib-cell__note">说明文本统一在控件同一行；align-end 时整行撑满、文字吃剩余宽度，开关贴到行尾。</span>
+        </div>
+        <div class="lib-cell">
           <span class="lib-cell__label">芯片 / 徽标 / 开关 / 复选</span>
           <div class="lib-cell__stage">
             <UiChip v-for="c in chipOptions" :key="c" :selected="activeChip === c" @click="activeChip = c">{{ c }}</UiChip>
@@ -814,7 +860,7 @@ onMounted(() => {
             <UiBadge tone="warning">3 项待办</UiBadge>
             <UiSwitch v-model="notifyOn" label="通知" />
             <UiCheckbox v-model="checkCloud" label="云端同步" />
-            <UiCheckbox v-model="checkInsight" label="周报洞察" />
+            <UiCheckbox v-model="checkInsight" label="周报洞察" :disabled="true" />
           </div>
         </div>
       </div>
@@ -870,6 +916,8 @@ onMounted(() => {
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiInput v-model="nickname" label="昵称" hint="展示在个人主页" />
             <UiInput v-model="email" label="邮箱" type="email" :error="email.includes('@') ? '' : '缺少 @ 符号'" />
+            <UiInput v-model="phone" label="手机号（格式正则）" pattern="^1[3-9]\d{9}$" pattern-message="需要 11 位大陆手机号" hint="输入中不报错；首次匹配即绿勾，失焦仍不匹配才红叉" />
+            <UiInput v-model="hexColor" label="十六进制色值" pattern="^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$" pattern-message="格式是 #RGB 或 #RRGGBB" />
             <UiTextarea v-model="note" label="备注" placeholder="今天的感觉…" :rows="3" />
           </div>
         </div>
@@ -879,9 +927,9 @@ onMounted(() => {
             <UiSelect v-model="sport" label="运动类型" :options="sportOptions" />
             <UiSelect v-model="plan" label="含禁用项的方案" :options="planOptionsWithDisabled" />
             <UiSelect label="整体禁用" :options="sportOptions" model-value="walk" disabled />
-        <UiSelect v-model="longPick" label="超长列表（40 项）" :options="longOptions" />
-            <span class="lib-cell__note">订阅方案</span>
-            <UiRadioGroup v-model="plan" :options="planOptions" />
+            <UiSelect v-model="longPick" label="超长列表（40 项）" :options="longOptions" />
+            <span class="lib-cell__note">订阅方案（单选：含禁用项 + 整体禁用）</span>
+            <UiRadioGroup v-model="plan" :options="planOptionsWithDisabled" />
           </div>
           <span class="lib-cell__note">下拉展开时内容平移到选中项再被列表接手。</span>
         </div>
@@ -940,11 +988,14 @@ onMounted(() => {
         <div class="lib-cell">
           <span class="lib-cell__label">日历 / 时间滚轮</span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiDatePicker v-model="visitDate" label="回访日期" />
+            <UiSegmented v-model="dpPrecision" layout="one-line" label="选择精度" :options="dpPrecisionOptions" />
+            <UiDatePicker v-model="visitDate2" label="回访日期" :precision="dpPrecision" :min="dpMin" :max="dpMax" />
             <UiSegmented v-model="timePrecision" layout="one-line" label="时间精度" :options="timePrecisionOptions" />
             <UiTimePicker v-model="visitTime" label="回访时间" :precision="timePrecision" :presets="timePresets" />
+            <UiTimePicker v-model="workTime" label="上班打卡（限 09:00–18:00）" min="09:00" max="18:00" />
           </div>
-          <span class="lib-cell__note">±3 天显示称呼；滚轮高亮块固定在中间，移动的是数字层。</span>
+          <span class="lib-cell__note">±3 天显示称呼；滚轮高亮块固定在中间，移动的是数字层。
+            日期精度选「月 / 年」时必须选到该级才提交关闭；min / max 之外的日期直接禁用。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">范围日期 / 波轮日期</span>
@@ -1307,7 +1358,7 @@ onMounted(() => {
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiRotatingText :phrases="rotatingPhrases" transition="rotate" :interval="2400" />
             <UiRotatingText :phrases="rotatingPhrases" transition="flip" :interval="2600" />
-            <UiRotatingText :phrases="rotatingPhrases" transition="slide" :interval="2800" />
+            <UiRotatingText :phrases="rotatingPhrases" transition="slide" :interval="2800" background radius="999px" />
           </div>
           <span class="lib-cell__note">rotate 原地旋转 / flip 绕轴翻牌 / slide 纵向滑过；悬停暂停。</span>
         </div>
@@ -1425,8 +1476,9 @@ onMounted(() => {
         <div class="lib-cell">
           <span class="lib-cell__label">动作按钮 <small>Button · fuse / hold / slide</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiButton variant="fuse" :fuse-duration="4200" @click="buttonLog = 'fuse 点击'" @commit="buttonLog = 'fuse 已落定'" @undo="buttonLog = 'fuse 已撤销'">删除记录</UiButton>
-            <UiButton variant="hold" :hold-duration="1100" @confirm="buttonLog = 'hold 已确认'">按住确认</UiButton>
+            <UiButton variant="fuse" :undo-window="4200" @click="buttonLog = 'fuse 点击'" @commit="buttonLog = 'fuse 已落定'" @undo="buttonLog = 'fuse 已撤销'">删除记录</UiButton>
+            <UiButton variant="hold" :hold-time="1100" @confirm="buttonLog = 'hold 已确认'">按住确认</UiButton>
+            <UiButton variant="fuse" fuse-position="bottom" :undo-window="3600" @click="buttonLog = 'fuse 底部进度条'">保险丝 · 底部反向进度</UiButton>
             <UiButton variant="slide" :slide-threshold="56" :loading="slideLoading" @confirm="startSlide">滑动发布</UiButton>
             <span class="lib-muted">{{ buttonLog }}</span>
           </div>

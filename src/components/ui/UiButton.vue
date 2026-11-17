@@ -311,6 +311,7 @@ defineExpose({
       <span
         v-else
         class="ui-btn__fuse-line"
+        :class="fillDirection === 'up' ? 'is-up' : ''"
         aria-hidden="true"
         @transitionend="onFuseEnd"
       ></span>
@@ -324,8 +325,6 @@ defineExpose({
         :style="{ '--p': holdProgress }"
         aria-hidden="true"
       ></span>
-      <!-- 填充前缘的辉光：单独一层，位置按进度写 left，不会被 scaleX 拉变形 -->
-      <span class="ui-btn__hold-edge" :style="{ '--p': holdProgress }" aria-hidden="true"></span>
       <span class="ui-btn__label" :style="{ color: holdPhase === 'done' ? 'var(--on-primary)' : '' }">
         <slot>{{ holdPhase === 'done' ? doneLabel : holdLabel }}</slot>
       </span>
@@ -449,20 +448,23 @@ defineExpose({
 }
 /* 倒计时进度：与「按住确认」同一套语言（实心填充条），方向相反 ——
    从铺满缩回 0，表示撤销窗口正在关闭。 */
+/* 保险丝的倒计时进度条：与 hold 同一套实心填充，但方向相反 ——
+   hold 是「从 0 涨到满」，这里是「从满缩到 0」，都铺满整颗按钮的实心底。 */
 .ui-btn__fuse-line {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--ui-warning, #b45309);
+  inset: 0;
+  background: color-mix(in oklab, var(--ui-warning, #b45309) 32%, transparent);
   transform-origin: left center;
   transform: scaleX(1);
   pointer-events: none;
 }
+.ui-btn__fuse-line.is-up { transform-origin: bottom center; }
 .ui-btn--fuse.is-armed .ui-btn__fuse-line {
   transform: scaleX(0);
+  transition: transform var(--undo-window) linear;
+}
+.ui-btn--fuse.is-armed .ui-btn__fuse-line.is-up {
+  transform: scaleY(0);
   transition: transform var(--undo-window) linear;
 }
 
@@ -476,20 +478,7 @@ defineExpose({
 }
 .ui-btn__hold-fill.is-right { transform-origin: left center; transform: scaleX(var(--p, 0)); }
 .ui-btn__hold-fill.is-up { transform-origin: bottom center; transform: scaleY(var(--p, 0)); }
-/* 按住确认只用正向填充进度，不再向外扩一圈波纹（会溢出按钮圆角）。 */
-.ui-btn__hold-edge {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 34px;
-  left: calc(var(--p, 0) * 100% - 17px);
-  background: radial-gradient(closest-side,
-    color-mix(in oklab, var(--primary) 75%, transparent), transparent);
-  opacity: calc(var(--p, 0) * .95);
-  filter: blur(1px);
-  pointer-events: none;
-}
-.ui-btn__hold-fill.is-up + .ui-btn__hold-edge { display: none; }
+/* 按住确认只用一条干净的实心填充进度：没有前端圆球、没有光晕、没有渐变。 */
 .ui-btn--hold:not(.is-holding) .ui-btn__hold-fill { transition: transform var(--spring-exit-dur) var(--spring-exit); }
 .ui-btn--hold.is-holding .ui-btn__hold-fill { transition: none; }
 /* 完成：填充整颗、换成主色上的字色，再「弹」一下。 */
