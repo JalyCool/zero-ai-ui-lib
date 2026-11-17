@@ -1,10 +1,15 @@
-﻿<script setup>
+<script setup>
 import { computed, ref, watch } from 'vue'
 import { useMorphWindow } from '../../core/morphWindow'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
-  label: { type: String, default: '日期' }
+  label: { type: String, default: '日期' },
+  /* 最终精度：day / month / year。必须选到这一级才会提交并关闭。 */
+  precision: { type: String, default: 'day', validator: v => ['day', 'month', 'year'].includes(v) },
+  /* 可选范围（含端点）：'YYYY-MM-DD'；null = 不限制 */
+  min: { type: String, default: null },
+  max: { type: String, default: null }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -43,7 +48,11 @@ const weekdays = ['一', '二', '三', '四', '五', '六', '日']
 
 const selectedDate = computed(() => parseDate(current.value) || todayDate())
 const displayParts = computed(() => splitDisplay(selectedDate.value))
-const monthLabel = computed(() => `${viewDate.value.getFullYear()}年${viewDate.value.getMonth() + 1}月`)
+const monthLabel = computed(() => {
+  if (viewMode.value === 'years') return yearPageStart.value + ' - ' + (yearPageStart.value + 9)
+  if (viewMode.value === 'months') return viewDate.value.getFullYear() + '年'
+  return viewDate.value.getFullYear() + '年' + (viewDate.value.getMonth() + 1) + '月'
+})
 
 const calendarCells = computed(() => {
   const year = viewDate.value.getFullYear()
@@ -76,6 +85,100 @@ function parseDate(value) {
   if (!match) return null
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
   return Number.isNaN(date.getTime()) ? null : date
+}
+
+/* ---------------- 三级视图状态机：日 → 月 → 年 ---------------- */
+/* precision 决定「哪一级是终点」：
+   day   → 日网格里点某天即完成；
+   month → 月网格里点某月即完成（补 01 日）；
+   year  → 年网格里点某年即完成（补 01-01）。 */
+const viewMode = ref('days')
+const yearPage = ref(0)
+
+const minDate = computed(() => parseDate(props.min))
+const maxDate = computed(() => parseDate(props.max))
+
+/* 某天是否可选（两端都含） */
+function dayInRange(date) {
+  const t = date.getTime()
+  if (minDate.value && t < minDate.value.getTime()) return false
+  if (maxDate.value && t > maxDate.value.getTime()) return false
+  return true
+}
+
+/* 某月是否还有可选的日子 */
+function monthSelectable(year, month) {
+  const first = new Date(year, month, 1)
+  const last = new Date(year, month + 1, 0)
+  if (minDate.value && last.getTime() < minDate.value.getTime()) return false
+  if (maxDate.value && first.getTime() > maxDate.value.getTime()) return false
+  return true
+}
+
+/* 某年是否还有可选的月份 */
+function yearSelectable(year) {
+  return monthSelectable(year, 0) || monthSelectable(year, 11)
+    || (minDate.value && minDate.value.getFullYear() < year && (!maxDate.value || maxDate.value.getFullYear() > year))
+    || (maxDate.value && maxDate.value.getFullYear() > year && (!minDate.value || minDate.value.getFullYear() < year))
+    || (minDate.value && maxDate.value && minDate.value.getFullYear() <= year && year <= maxDate.value.getFullYear())
+}
+
+/* 年视图：以十年为一页（2000-2009 / 2010-2019…） */
+const yearPageStart = computed(() => yearPage.value * 10)
+const yearCells = computed(() => Array.from({ length: 10 }, (_, i) => yearPageStart.value + i))
+
+/* 月视图：当前 viewDate 所在年的 12 个月 */
+const monthCells = computed(() => Array.from({ length: 12 }, (_, i) => i))
+
+function enterMonths() {
+  viewMode.value = 'months'
+}
+function enterYears() {
+  yearPage.value = Math.floor(viewDate.value.getFullYear() / 10)
+  viewMode.value = 'years'
+}
+function backToDays() {
+  viewMode.value = 'days'
+}
+function backToMonths() {
+  viewMode.value = 'months'
+}
+
+/* 选月：precision=month 直接完成；否则进入该月的日视图 */
+function selectMonth(month) {
+  const year = viewDate.value.getFullYear()
+  const next = new Date(year, month, 1)
+  if (props.precision === 'month') {
+    viewDate.value = next
+    commitDate(next)
+    return
+  }
+  viewDate.value = next
+  viewMode.value = 'days'
+}
+
+/* 选年：precision=year 直接完成；否则进入月视图 */
+function selectYear(year) {
+  const next = new Date(year, viewDate.value.getMonth(), 1)
+  if (props.precision === 'year') {
+    viewDate.value = next
+    commitDate(next)
+    return
+  }
+  viewDate.value = next
+  viewMode.value = 'months'
+}
+
+/* 按精度把日期写成对应格式并提交 */
+function commitDate(date) {
+  const value = props.precision === 'year'
+    ? String(date.getFullYear())
+    : props.precision === 'month'
+      ? date.getFullYear() + '-' + pad(date.getMonth() + 1)
+      : formatInput(date)
+  current.value = value
+  emit('update:modelValue', value)
+  closeWindow()
 }
 
 function formatInput(date) {
@@ -119,6 +222,8 @@ function splitDisplay(date) {
 
 function openPicker() {
   viewDate.value = startOfMonth(selectedDate.value)
+  viewMode.value = props.precision === 'year' ? 'years' : props.precision === 'month' ? 'months' : 'days'
+  yearPage.value = Math.floor(viewDate.value.getFullYear() / 10)
   openWindow()
 }
 
@@ -140,19 +245,29 @@ function shiftMonth(amount) {
   viewDate.value = new Date(viewDate.value.getFullYear(), viewDate.value.getMonth() + amount, 1)
 }
 
+/* 左右箭头按当前视图走：日 -> 月，月 -> 年，年 -> 十年 */
+function stepBackward() {
+  if (viewMode.value === 'days') shiftMonth(-1)
+  else if (viewMode.value === 'months') viewDate.value = new Date(viewDate.value.getFullYear() - 1, viewDate.value.getMonth(), 1)
+  else yearPage.value -= 1
+}
+function stepForward() {
+  if (viewMode.value === 'days') shiftMonth(1)
+  else if (viewMode.value === 'months') viewDate.value = new Date(viewDate.value.getFullYear() + 1, viewDate.value.getMonth(), 1)
+  else yearPage.value += 1
+}
+
 function selectDay(day) {
   const date = new Date(viewDate.value.getFullYear(), viewDate.value.getMonth(), day)
-  current.value = formatInput(date)
-  emit('update:modelValue', current.value)
-  closeWindow()
+  if (!dayInRange(date)) return
+  commitDate(date)
 }
 
 function selectToday() {
   const date = todayDate()
+  if (!dayInRange(date)) return
   viewDate.value = startOfMonth(date)
-  current.value = formatInput(date)
-  emit('update:modelValue', current.value)
-  closeWindow()
+  commitDate(date)
 }
 
 watch(() => props.modelValue, value => {
@@ -212,34 +327,98 @@ watch(() => props.modelValue, value => {
       >
         <div ref="panelContentEl" class="ui-date__pop-inner">
           <div class="ui-date__head">
-            <button type="button" class="ui-date__nav" aria-label="上个月" @click="shiftMonth(-1)">
+            <button
+              type="button"
+              class="ui-date__nav"
+              :aria-label="viewMode === 'days' ? '上个月' : viewMode === 'months' ? '上一年' : '上一页'"
+              @click="stepBackward"
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
             </button>
-            <strong>{{ monthLabel }}</strong>
-            <button type="button" class="ui-date__nav" aria-label="下个月" @click="shiftMonth(1)">
+
+            <!-- 标题三段可点：日 -> 月 -> 年（由 precision 决定能不能再往上走） -->
+            <div class="ui-date__crumbs">
+              <button
+                type="button"
+                class="ui-date__crumb"
+                :class="{ 'is-current': viewMode === 'years' }"
+                @click="enterYears"
+              >{{ viewMode === 'years' ? yearPageStart + ' - ' + (yearPageStart + 9) : viewDate.getFullYear() + '年' }}</button>
+              <button
+                v-if="viewMode === 'days'"
+                type="button"
+                class="ui-date__crumb"
+                @click="enterMonths"
+              >{{ viewDate.getMonth() + 1 }}月</button>
+            </div>
+
+            <button
+              type="button"
+              class="ui-date__nav"
+              :aria-label="viewMode === 'days' ? '下个月' : viewMode === 'months' ? '下一年' : '下一页'"
+              @click="stepForward"
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </button>
           </div>
 
-          <div class="ui-date__weekdays" aria-hidden="true">
-            <span v-for="weekday in weekdays" :key="weekday">{{ weekday }}</span>
-          </div>
+          <!-- 三套网格叠在同一格：切换时旧视图模糊淡出、新视图从模糊浮入 -->
+          <div class="ui-date__stage">
+            <Transition name="date-view">
+              <!-- 日 -->
+              <div v-if="viewMode === 'days'" key="days" class="ui-date__pane">
+                <div class="ui-date__weekdays" aria-hidden="true">
+                  <span v-for="weekday in weekdays" :key="weekday">{{ weekday }}</span>
+                </div>
+                <div class="ui-date__grid">
+                  <span v-for="(day, index) in calendarCells" :key="`${monthLabel}-${index}`" class="ui-date__cell">
+                    <button
+                      v-if="day"
+                      type="button"
+                      :tabindex="open ? 0 : -1"
+                      :disabled="!dayInRange(new Date(viewDate.getFullYear(), viewDate.getMonth(), day))"
+                      :class="{
+                        'is-selected': isSameDay(new Date(viewDate.getFullYear(), viewDate.getMonth(), day), selectedDate),
+                        'is-today': isSameDay(new Date(viewDate.getFullYear(), viewDate.getMonth(), day), todayDate())
+                      }"
+                      @click="selectDay(day)"
+                    >
+                      {{ day }}
+                    </button>
+                  </span>
+                </div>
+              </div>
 
-          <div class="ui-date__grid">
-            <span v-for="(day, index) in calendarCells" :key="`${monthLabel}-${index}`" class="ui-date__cell">
-              <button
-                v-if="day"
-                type="button"
-                :tabindex="open ? 0 : -1"
-                :class="{
-                  'is-selected': isSameDay(new Date(viewDate.getFullYear(), viewDate.getMonth(), day), selectedDate),
-                  'is-today': isSameDay(new Date(viewDate.getFullYear(), viewDate.getMonth(), day), todayDate())
-                }"
-                @click="selectDay(day)"
-              >
-                {{ day }}
-              </button>
-            </span>
+              <!-- 月 -->
+              <div v-else-if="viewMode === 'months'" key="months" class="ui-date__pane">
+                <div class="ui-date__months">
+                  <button
+                    v-for="month in monthCells"
+                    :key="month"
+                    type="button"
+                    :tabindex="open ? 0 : -1"
+                    :disabled="!monthSelectable(viewDate.getFullYear(), month)"
+                    :class="{ 'is-selected': viewDate.getFullYear() === selectedDate.getFullYear() && month === selectedDate.getMonth() }"
+                    @click="selectMonth(month)"
+                  >{{ month + 1 }}月</button>
+                </div>
+              </div>
+
+              <!-- 年 -->
+              <div v-else key="years" class="ui-date__pane">
+                <div class="ui-date__months">
+                  <button
+                    v-for="year in yearCells"
+                    :key="year"
+                    type="button"
+                    :tabindex="open ? 0 : -1"
+                    :disabled="!yearSelectable(year)"
+                    :class="{ 'is-selected': year === selectedDate.getFullYear() }"
+                    @click="selectYear(year)"
+                  >{{ year }}</button>
+                </div>
+              </div>
+            </Transition>
           </div>
 
           <div class="ui-date__footer">
@@ -421,6 +600,58 @@ watch(() => props.modelValue, value => {
   font-size: var(--fs-micro);
   text-align: center;
 }
+/* 三套视图叠在同一格：切换时旧视图模糊淡出、新视图从模糊浮入 */
+.ui-date__stage { position: relative; min-height: 232px; }
+.ui-date__pane { display: flex; flex-direction: column; gap: 2px; }
+.date-view-enter-active, .date-view-leave-active {
+  transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
+}
+.date-view-enter-from { opacity: 0; transform: scale(.96); filter: blur(8px); }
+.date-view-leave-to { opacity: 0; transform: scale(1.03); filter: blur(8px); }
+.date-view-leave-active { position: absolute; inset: 0; }
+
+/* 顶部三段标题：年 / 月 可点，当前这一级高亮 */
+.ui-date__crumbs { display: flex; align-items: baseline; gap: 2px; flex: 1; justify-content: center; }
+.ui-date__crumb {
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: var(--on-surface);
+  font: inherit;
+  font-weight: var(--w-heading);
+  font-size: var(--fs-small);
+  cursor: pointer;
+  transition: background var(--t-fade), color var(--t-fade);
+}
+.ui-date__crumb:hover { background: var(--surface-container-high); }
+.ui-date__crumb.is-current { color: var(--primary); }
+
+/* 月 / 年网格：三列 */
+.ui-date__months {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 2px 0;
+}
+.ui-date__months button {
+  height: 44px;
+  border: 0;
+  border-radius: calc(11px * var(--radius-scale));
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--font-feat-tnum);
+  cursor: pointer;
+  transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback);
+}
+.ui-date__months button:hover { background: var(--surface-container-high); }
+.ui-date__months button:active { transform: scale(var(--press-scale)); }
+.ui-date__months button.is-selected { background: var(--primary); color: var(--on-primary); }
+.ui-date__months button:disabled { opacity: .34; cursor: not-allowed; }
+
 .ui-date__grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -449,6 +680,8 @@ watch(() => props.modelValue, value => {
   cursor: pointer;
   transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback);
 }
+.ui-date__cell button:disabled { opacity: .3; cursor: not-allowed; }
+.ui-date__cell button:disabled:hover { background: none; }
 .ui-date__cell button:hover { background: var(--surface-container); }
 .ui-date__cell button:active { transform: scale(.92); }
 .ui-date__cell button.is-today { color: var(--primary); font-weight: var(--w-strong); }

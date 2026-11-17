@@ -173,8 +173,16 @@ function onHexBlur(event) {
 }
 
 const canvasStyle = computed(() => ({ '--hue': hue.value + 'deg' }))
-const thumbStyle = computed(() => ({ left: sat.value + '%', top: (100 - bright.value) + '%' }))
-const hueThumbStyle = computed(() => ({ top: (hue.value / 360) * 100 + '%' }))
+/* 取色点填充「当前颜色」本身：白色描边 + 内侧实色，一眼看清选到的是什么色 */
+const thumbStyle = computed(() => ({
+  left: sat.value + '%',
+  top: (100 - bright.value) + '%',
+  background: hex.value
+}))
+const hueThumbStyle = computed(() => ({
+  top: (hue.value / 360) * 100 + '%',
+  background: 'hsl(' + hue.value + ' 100% 50%)'
+}))
 const trackThumbColor = computed(() => hsvToHex({ h: hue.value, s: 100, v: 100 }))
 
 onBeforeUnmount(stopDrag)
@@ -273,10 +281,11 @@ onBeforeUnmount(stopDrag)
   position: absolute;
   width: 16px;
   height: 16px;
+  box-sizing: border-box;
   margin: -8px 0 0 -8px;
   border-radius: 50%;
   border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 1px 3px rgba(0, 0, 0, .3);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .28);
   pointer-events: none;
   transition: transform var(--t-feedback);
 }

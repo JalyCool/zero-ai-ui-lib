@@ -36,8 +36,12 @@ const listEl = ref(null)
 const panelInput = ref(null)
 const fieldInput = ref(null)
 const active = ref(-1)
+/* 展开层里的「正在输入的词」。
+   不能直接拿 modelValue 过滤：选中之后字段里存的就是那个值，
+   再次展开会只剩一条候选。query 与已提交的值分离，展开时才重置。 */
+const query = ref('')
 const filtered = computed(() => {
-  const q = String(props.modelValue || '').trim().toLowerCase()
+  const q = String(query.value || '').trim().toLowerCase()
   const list = props.options.filter(o => !q || String(o.label).toLowerCase().includes(q) || String(o.value).toLowerCase().includes(q))
   return list.slice(0, props.max)
 })
@@ -121,6 +125,9 @@ async function openMenu(byKeyboard = false) {
   if (open.value || props.modelValue === undefined) return
   closing.value = false
   openingAt = performance.now()
+  /* 每次展开都从「空查询」开始：已提交的值不再当作过滤词，
+     否则选中一项后再展开，列表里就只剩刚选的那一条。 */
+  query.value = ''
 
   const el = surfaceEl.value
   if (!el) return
@@ -216,11 +223,14 @@ function choose(option) {
   close()
 }
 function onInput(event) {
+  /* 输入词进 query（只用于过滤），字段值仍同步出去 */
+  query.value = event.target.value
   emit('update:modelValue', event.target.value)
   active.value = 0
   if (!open.value && !closing.value) openMenu()
 }
 function clearValue() {
+  query.value = ''
   emit('update:modelValue', '')
   active.value = -1
   nextTick(() => panelInput.value && panelInput.value.focus({ preventScroll: true }))
@@ -358,7 +368,7 @@ onBeforeUnmount(() => {
             <input
               ref="panelInput"
               class="ui-auto__field"
-              :value="modelValue"
+              :value="query"
               :placeholder="placeholder"
               autocomplete="off"
               spellcheck="false"

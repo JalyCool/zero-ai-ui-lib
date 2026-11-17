@@ -27,6 +27,9 @@ const emit = defineEmits(['change'])
 
 const columnEls = ref([])
 const timers = []
+/* 列还没完成首次定位时不画景深：否则整列都在「离中心很远」的状态，
+   展开瞬间看起来就是一片糊。定位完成后 ready = true 才启用距离模糊。 */
+const ready = ref(false)
 
 function setColumnEl(el, index) {
   if (el) columnEls.value[index] = el
@@ -68,7 +71,7 @@ function centeredValue(index) {
    CSS 没法表达「第几行离中心多远」。 */
 let blurFrame = 0
 function paintBlur(index) {
-  if (!props.distanceBlur) return
+  if (!props.distanceBlur || !ready.value) return
   const column = columnEls.value[index]
   if (!column) return
   const center = column.scrollTop + column.clientHeight / 2
@@ -126,7 +129,16 @@ onBeforeUnmount(() => {
 })
 
 function scrollAll(behavior = 'smooth') {
+  ready.value = false
   props.columns.forEach((column, index) => scrollToValue(index, column.value, behavior))
+  /* 定位落地后再启用景深：两帧足够让 scrollTo 生效，
+     期间不画模糊，所以展开瞬间不会出现「整列糊住」。 */
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      ready.value = true
+      props.columns.forEach((_, index) => paintBlur(index))
+    })
+  })
 }
 defineExpose({ scrollAll, scrollToValue })
 </script>

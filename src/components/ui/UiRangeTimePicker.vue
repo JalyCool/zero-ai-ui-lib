@@ -63,17 +63,50 @@ function sanitize(value, fallback) {
   return typeof value === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(value) ? value : fallback
 }
 
+/* 精度对应的最小单位（秒）：时 → 3600，分 → 60，秒 → 1 */
+const unitSeconds = computed(() => (props.precision === 'h' ? 3600 : props.precision === 'm' ? 60 : 1))
+
+/* 秒 -> 与 precision 等宽的时钟字符串（09:00 / 09:00:00） */
+function toClock(total) {
+  const day = 86400
+  const t = ((total % day) + day) % day
+  const h = Math.floor(t / 3600)
+  const m = Math.floor((t % 3600) / 60)
+  const s = t % 60
+  const pad = n => String(n).padStart(2, '0')
+  return props.precision === 'h' ? pad(h) + ':' + pad(m) : props.precision === 'm' ? pad(h) + ':' + pad(m) : pad(h) + ':' + pad(m) + ':' + pad(s)
+}
+
+/* 把秒数按精度向下取整（避免精度切换后出现 09:00:30 这种半格值） */
+function alignToPrecision(total) {
+  return Math.floor(total / unitSeconds.value) * unitSeconds.value
+}
+
 function commit() {
   emit('update:modelValue', { start: startValue.value, end: endValue.value })
 }
 
 function onStart(value) {
-  startValue.value = sanitize(value, startValue.value)
+  const next = sanitize(value, startValue.value)
+  const a = parseClockTime(next)
+  const b = parseClockTime(endValue.value)
+  startValue.value = next
+  /* 开始时间不早于结束时间：把结束推到「开始 + 一个最小单位」 */
+  if (a !== null && b !== null && a >= b) {
+    endValue.value = toClock(alignToPrecision(a) + unitSeconds.value)
+  }
   commit()
 }
 
 function onEnd(value) {
-  endValue.value = sanitize(value, endValue.value)
+  const next = sanitize(value, endValue.value)
+  const a = parseClockTime(startValue.value)
+  const b = parseClockTime(next)
+  endValue.value = next
+  /* 结束时间不晚于开始时间：把开始拉到「结束 - 一个最小单位」 */
+  if (a !== null && b !== null && b <= a) {
+    startValue.value = toClock(alignToPrecision(b) - unitSeconds.value)
+  }
   commit()
 }
 

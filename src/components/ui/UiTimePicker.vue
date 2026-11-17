@@ -8,6 +8,9 @@ const props = defineProps({
   label: { type: String, default: '时间' },
   /* 精度：'h' 只有时；'m' 时分；'s' 时分秒。决定波轮字段数量。 */
   precision: { type: String, default: 'm', validator: v => ['h', 'm', 's'].includes(v) },
+  /* 可选范围（含端点）：'HH:mm' / 'HH:mm:ss'；null = 不限制 */
+  min: { type: String, default: null },
+  max: { type: String, default: null },
   presets: {
     type: Array,
     default: () => [
@@ -65,9 +68,43 @@ function normalizeTime(value) {
   const minute = Number(match[2])
   const second = Number(match[3] ?? 0)
   if (hour > 23 || minute > 59 || second > 59) return '09:00'
-  if (props.precision === 'h') return pad(hour)
-  if (props.precision === 'm') return pad(hour) + ':' + pad(minute)
-  return pad(hour) + ':' + pad(minute) + ':' + pad(second)
+  const composed = props.precision === 'h'
+    ? pad(hour)
+    : props.precision === 'm'
+      ? pad(hour) + ':' + pad(minute)
+      : pad(hour) + ':' + pad(minute) + ':' + pad(second)
+  return clampTime(composed)
+}
+
+/* 范围约束：min / max 都按秒比较，越界直接钳回边界 */
+const minSeconds = computed(() => toSeconds(props.min))
+const maxSeconds = computed(() => toSeconds(props.max))
+
+function toSeconds(value) {
+  if (typeof value !== 'string') return null
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value)
+  if (!m) return null
+  return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3] ?? 0)
+}
+
+function clampTime(value) {
+  const t = toSeconds(value)
+  if (t === null) return value
+  const lo = minSeconds.value
+  const hi = maxSeconds.value
+  if (lo !== null && t < lo) return fromSeconds(lo)
+  if (hi !== null && t > hi) return fromSeconds(hi)
+  return value
+}
+
+function fromSeconds(total) {
+  const t = Math.max(0, Math.min(86399, total))
+  const h = Math.floor(t / 3600)
+  const mi = Math.floor((t % 3600) / 60)
+  const s = t % 60
+  if (props.precision === 'h') return pad(h)
+  if (props.precision === 'm') return pad(h) + ':' + pad(mi)
+  return pad(h) + ':' + pad(mi) + ':' + pad(s)
 }
 
 const hourItems = Array.from({ length: 24 }, (_, i) => pad(i))
@@ -133,8 +170,9 @@ function usePreset(value) {
 }
 
 function confirm() {
-  current.value = draftValue.value
-  emit('update:modelValue', draftValue.value)
+  const next = clampTime(draftValue.value)
+  current.value = next
+  emit('update:modelValue', next)
   closeWindow()
 }
 
@@ -333,8 +371,11 @@ watch(() => props.precision, () => {
 .ui-time__icon svg { width: 17px; height: 17px; }
 .ui-time__value {
   flex: 1;
+  /* 预留最宽形态「00:00:00」的宽度：precision 在 h/m/s 之间切换时输入框不抖动 */
+  min-width: 8.2ch;
   text-align: left;
   font-size: var(--fs-small);
+  font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
   font-feature-settings: var(--font-feat-tnum);
   letter-spacing: .03em;

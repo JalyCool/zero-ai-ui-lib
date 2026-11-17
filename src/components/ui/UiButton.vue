@@ -447,14 +447,16 @@ defineExpose({
   stroke-dashoffset: -1;
   transition: stroke-dashoffset var(--undo-window) linear;
 }
-/* bottom 位置：一条底部引线，宽度从 100% 烧到 0。 */
+/* 倒计时进度：与「按住确认」同一套语言（实心填充条），方向相反 ——
+   从铺满缩回 0，表示撤销窗口正在关闭。 */
 .ui-btn__fuse-line {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--ui-warning, #b45309), var(--error));
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ui-warning, #b45309);
   transform-origin: left center;
   transform: scaleX(1);
   pointer-events: none;
@@ -469,29 +471,12 @@ defineExpose({
 .ui-btn__hold-fill {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg,
-    color-mix(in oklab, var(--primary) 26%, transparent),
-    color-mix(in oklab, var(--primary) 46%, transparent) 72%,
-    color-mix(in oklab, var(--primary) 62%, transparent));
+  background: color-mix(in oklab, var(--primary) 40%, transparent);
   pointer-events: none;
 }
 .ui-btn__hold-fill.is-right { transform-origin: left center; transform: scaleX(var(--p, 0)); }
 .ui-btn__hold-fill.is-up { transform-origin: bottom center; transform: scaleY(var(--p, 0)); }
-/* 按住时的「波纹」：从中心荡开一圈，提醒还在持续按压。 */
-.ui-btn--hold.is-holding::before {
-  content: '';
-  position: absolute;
-  inset: -40%;
-  border-radius: 50%;
-  background: radial-gradient(closest-side,
-    color-mix(in oklab, var(--primary) 26%, transparent), transparent 70%);
-  animation: uiHoldWave 1.1s ease-out infinite;
-  pointer-events: none;
-}
-@keyframes uiHoldWave {
-  from { transform: scale(.35); opacity: .9; }
-  to { transform: scale(1.1); opacity: 0; }
-}
+/* 按住确认只用正向填充进度，不再向外扩一圈波纹（会溢出按钮圆角）。 */
 .ui-btn__hold-edge {
   position: absolute;
   top: 0;
