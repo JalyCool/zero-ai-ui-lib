@@ -98,9 +98,13 @@ onBeforeUnmount(() => { clearTimeout(timer); document.removeEventListener('keydo
   flex-direction: column;
   max-width: 100%;
   background: var(--surface);
-  will-change: transform;
-  transition: transform var(--t-sheet);
+  will-change: transform, border-radius;
+  /* 收起时是圆角卡片，展开落定后过渡到「贴边容器」的直角（贴边那一侧归零） */
+  border-radius: calc(22px * var(--radius-scale));
+  transition: transform var(--t-sheet), border-radius var(--t-sheet);
 }
+.ui-slideover.is-open .ui-slideover__panel.is-left { border-radius: 0 calc(22px * var(--radius-scale)) calc(22px * var(--radius-scale)) 0; }
+.ui-slideover.is-open .ui-slideover__panel.is-right { border-radius: calc(22px * var(--radius-scale)) 0 0 calc(22px * var(--radius-scale)); }
 .ui-slideover.is-closing .ui-slideover__panel { transition: transform var(--t-exit); }
 .ui-slideover.is-right .ui-slideover__panel {
   right: 0;

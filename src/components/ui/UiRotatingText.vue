@@ -11,7 +11,13 @@ const props = defineProps({
   /* 悬停 / 聚焦时暂停轮播 */
   pauseOnHover: { type: Boolean, default: true },
   /* 外部暂停 */
-  paused: { type: Boolean, default: false }
+  paused: { type: Boolean, default: false },
+  /* 是否需要给文字垫一层背景（浅色底，方便叠在图片 / 深色上） */
+  background: { type: Boolean, default: false },
+  /* 背景圆角，CSS 长度；padding 小时给小圆角更自然 */
+  radius: { type: String, default: '8px' },
+  /* 背景色（默认取表面容器） */
+  backgroundTone: { type: String, default: 'var(--surface-container)' }
 })
 
 const emit = defineEmits(['change'])
@@ -63,7 +69,8 @@ defineExpose({ next: () => step(1), prev: () => step(-1), go: value => { index.v
 <template>
   <span
     class="ui-rotating-text"
-    :class="[`is-${transition}`, direction < 0 ? 'is-backward' : 'is-forward']"
+    :class="[`is-${transition}`, direction < 0 ? 'is-backward' : 'is-forward', { 'has-background': background }]"
+    :style="background ? { '--rt-bg': backgroundTone, '--rt-radius': radius } : undefined"
     @mouseenter="hovering = true"
     @mouseleave="hovering = false"
   >
@@ -84,6 +91,15 @@ defineExpose({ next: () => step(1), prev: () => step(-1), go: value => { index.v
   perspective: 620px;
 }
 .ui-rotating-text__item { display: inline-block; }
+
+/* 可选背景：垫一层浅底 + 圆角，随内容进出一起平滑过渡
+   （背景变化走 fade，圆角走 panel 弹簧，不会突然「跳」出一个方块） */
+.ui-rotating-text.has-background {
+  padding: 2px 8px;
+  border-radius: var(--rt-radius, 8px);
+  background: var(--rt-bg, var(--surface-container));
+  transition: background var(--t-fade), border-radius var(--t-panel);
+}
 .ui-rotating-text.is-rotate { transform-style: preserve-3d; }
 
 /* 离场层脱离文档流，进场层接管占位，宽度不跳。 */
