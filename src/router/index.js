@@ -6,6 +6,7 @@ import TrendsView from '../views/TrendsView.vue'
 import ComponentsView from '../views/ComponentsView.vue'
 import DeviceLabView from '../views/DeviceLabView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import MotionDemoView from '../views/MotionDemo.vue'
 import EmptyRoute from './EmptyRoute'
 
 function cardRoutes(parent, items) {
@@ -81,6 +82,12 @@ const routes = [
     name: 'profile',
     component: ProfileView,
     meta: { tab: 'profile', title: '我的', sub: '账户与设备设置' }
+  },
+  {
+    path: '/motion',
+    name: 'motion',
+    component: MotionDemoView,
+    meta: { tab: 'components', title: '动效演示', sub: 'Motion-v 与项目弹簧集成' }
   },
   { path: '/', redirect: '/home' },
   { path: '/:pathMatch(.*)*', redirect: '/home' }

@@ -28,6 +28,7 @@ const tabItems = [
   { value: 'activity', label: '活动', icon: '<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>' },
   { value: 'trends', label: '趋势', icon: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>' },
   { value: 'components', label: '组件', icon: '<rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/>' },
+  { value: 'motion', label: '动效', icon: '<path d="M12 2a10 10 0 1010 10A10 10 0 0012 2z"/><path d="M12 6v6l4 2"/>' },
   { value: 'profile', label: '我的', icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>' }
 ]
 

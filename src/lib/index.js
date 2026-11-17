@@ -38,6 +38,24 @@ export {
 
 /* 时长文本（00h00m00s 规则）与时刻解析。 */
 export { formatDuration, formatDurationBetween, parseClockTime } from '../core/duration'
+/* Motion composable - bridges motion-v with project spring tokens. */
+export {
+  useProjectSpring,
+  useSpringValue,
+  useProjectAnimate,
+  getSpringTokens,
+  getSpringConfig,
+  ProjectMotion,
+  AnimatePresence,
+  useExpandAnimation,
+  useModalAnimation,
+  useSheetAnimation,
+  useStaggeredAnimation,
+  useMotionConfig,
+  useScrollAnimation,
+  useEntranceAnimation,
+  useDragAnimation
+} from '../composables/useMotion'
 /* 库级确认对话框：await confirmDialog({ title, message }) -> boolean。 */
 export { confirmDialog, disposeConfirmDialog } from '../core/confirm'
 /* 高亮与 ANSI 解析（UiCodeEditor / UiTerminalOutput 的底层，按需自取）。 */
