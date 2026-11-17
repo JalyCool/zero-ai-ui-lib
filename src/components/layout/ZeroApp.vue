@@ -12,9 +12,9 @@ const props = defineProps({
   /* 底部给 TabBar 留的高度（px）；0 = 没有 TabBar */
   tabbarSpace: { type: Number, default: 0 },
   /* 顶 / 底淡出带高度（px）；0 = 关闭 */
-  fade: { type: Number, default: 96 },
-  fadeBlur: { type: Number, default: 8 },
-  fadeLayers: { type: Number, default: 5 },
+  fade: { type: Number, default: 132 },
+  fadeBlur: { type: Number, default: 9 },
+  fadeLayers: { type: Number, default: 12 },
   fadeTint: { type: String, default: 'var(--surface)' },
   fadeTintStrength: { type: Number, default: 0.8 }
 })

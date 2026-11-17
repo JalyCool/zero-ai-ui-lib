@@ -10,11 +10,11 @@ const props = defineProps({
   /* 滚动元素用什么标签：外层外壳用 main / div，卡片内用 div */
   tag: { type: String, default: 'div' },
   /* 淡出带高度（px）；0 = 关闭（不渲染模糊层，省一层合成） */
-  fade: { type: Number, default: 96 },
+  fade: { type: Number, default: 132 },
   /* 贴边处最大模糊（px） */
-  fadeBlur: { type: Number, default: 8 },
+  fadeBlur: { type: Number, default: 9 },
   /* 层数：4~6 足够平滑，越多合成成本越高 */
-  fadeLayers: { type: Number, default: 5 },
+  fadeLayers: { type: Number, default: 12 },
   /* 染色：默认 surface，向内渐隐到透明 */
   fadeTint: { type: String, default: 'var(--surface)' },
   fadeTintStrength: { type: Number, default: 0.8 },

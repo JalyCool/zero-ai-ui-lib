@@ -154,8 +154,8 @@ function usePrompt(text) { draft.value = text }
     </UiChatThread>
 
     <!-- 顶 / 底渐进模糊：盖在滚动内容上，越靠边越糊 -->
-    <UiProgressiveBlur placement="top" :height="72" :max-blur="7" :layers="5" />
-    <UiProgressiveBlur placement="bottom" :height="96" :max-blur="8" :layers="5" />
+    <UiProgressiveBlur placement="top" :height="88" :max-blur="8" :layers="12" />
+    <UiProgressiveBlur placement="bottom" :height="104" :max-blur="9" :layers="12" />
 
     <!-- 输入区：按钮 ⇄ 文本域的形变容器 -->
     <div class="chat-view__composer">

@@ -42,7 +42,7 @@ createApp(App).mount('#app')
 16. **字体只引用变量**：`--font-sans` / `--font-mono` / `--font-numeric` 是唯一来源，别处不写死字体名；等宽数字永远两条一起给——`font-variant-numeric: tabular-nums` + `font-feature-settings: var(--font-feat-tnum)`（兼容老浏览器）。换字库只覆盖 `--font-sans-custom` / `--font-mono-custom`。
 17. **Tailwind（应用侧，可选）**：v4 CSS-first，`@theme` 已把库令牌映射成工具类（`bg-primary` / `rounded-card` / `rounded-13` / `text-tiny` / `font-heading`…），随主题自动切换；无 preflight、utilities 进 layer（组件样式天然优先，工具类只用于新布局）；组件内部仍写令牌 CSS；`--density` 联动的间距工具类表达不了，用令牌。
 18. **对话流用 Chat 组件族**：`UiChatThread`（自带滚动 + 贴底 + 跟随）+ `UiChatMessage`（assistant 无气泡 / user 右上收窄 / agent 左上收窄，收窄角指向说话人）+ `UiChatSystemLine`（0.4 不透明度的活动行 / 状态行）。**正文走 MarkdownView**（`content` + `mention-resolver`），`@名字` 由它渲染成 `UiAvatarTag`（`reveal` 入场：头像弹出 + 标签左→右展开）——不要另写 mention 组件，也不要给消息头像加圆形底或裁切。
-19. **页面顶 / 底渐变模糊用 `UiProgressiveBlur`**：N 层 backdrop-filter + 软边 mask，模糊向内线性衰减；全部 pointer-events:none，不会挡住滚动内容。
+19. **页面顶 / 底渐变模糊用 `UiProgressiveBlur`**：N 层 backdrop-filter + **光滑**遮罩（分段遮罩会出横纹：要让总强度连续就得所有半径相等，渐变就没了）；遮罩用共享升余弦曲线 P、各层取 P^i，幂次压在 1~2.4（直接用 P^i 会把过渡区压成几像素），半径按 1/i^0.7 递减并归一化到 Σr²=maxBlur²；默认 `precision="soft"`（过渡区最宽、可见台阶最少）；全部 pointer-events:none，不会挡住滚动内容。
 20. **不要手写应用外壳**：`ZeroApp` 已经内建 `#scrollArea` + 顶底溢出模糊 + TabBar 占位 + 居中限宽；局部滚动区用 `ZeroScroll`。这两个是「约定优于配置」的入口——新项目包一层就有正确的滚动与边缘模糊，不要逐页再配 `UiProgressiveBlur`，也不要自己写 `overflow-y:auto` 容器。
 21. **改完跑审计脚本**：`node audit-imports.cjs`（模板组件未导入 = 白屏，Vue 只告警）、`node audit-props.cjs`（prop 类型不符 = 一条容易被刷过去的警告）、`node audit-scene.cjs`（还有哪些组件没进真实场景）。演示应用按业务分屏（home / chat / activity / trends / profile / lab），不是组件清单页。
 17. **Markdown 用 MarkdownView**：需要 @ 提及时传 `mentions` + `mentionResolver`，返回 `{ username, showname, type: 'normal'|'agent', image, shape }`，自动渲染成 UiAvatarTag。
