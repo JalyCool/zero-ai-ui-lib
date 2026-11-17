@@ -117,6 +117,7 @@ import {
   UiRotatingText, UiText, UiStatusMark, UiCodeSlots, UiScrubField,
   UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots,
   UiSideNav, MarkdownView, normalizeIconName,
+  UiChatThread, UiChatMessage, UiChatSystemLine, UiChatMention, UiProgressiveBlur,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -195,6 +196,10 @@ import {
 | `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让；**进场高亮孔先铺满整屏再收拢到目标**（整体聚焦到一点），换步时孔在目标之间连续移动，退场再张回整屏 |
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
 | `UiProgressiveBlur` | **页面顶端 / 底部的渐进式模糊**：N 层 backdrop-filter + 软边 mask 叠加，模糊强度从贴边处线性衰减到 0（无硬边界）；`placement` top / bottom、`height`、`maxBlur`、`layers`（合成成本随层数线性增长）、`tint` + `tintStrength`（染色层，默认 surface 0.8 → 透明，与设计稿顶 / 底栏同源）、`position` absolute/relative/fixed；层全部 pointer-events: none，盖在可交互内容上不拦截；盖在滚动容器上做「内容滑出即糊化」的顶 / 底栏 |
+| `UiChatThread` | 对话流容器：**自己就是滚动容器**（不是 body），`gap`（设计稿 18）+ `padding`（给顶 / 底模糊栏与输入条让位）；`align-bottom` 内容不足时 `margin-top:auto` 把消息推到底部；`auto-scroll` 新内容到达自动贴底，**用户上滑自动暂停、滚回底部附近恢复跟随**（与 UiTerminalOutput 的 follow 同语言）；暴露 `scrollToBottom()` |
+| `UiChatMessage` | 对话消息，**三种角色共用一套骨架**（外层行对齐 + 可选头像 + 气泡）：`assistant` 纯文本无气泡左对齐（AI 叙述不该被框住）、`user` 黑底白字气泡右对齐 **右上收窄 24/8/24/24**、`agent` 品牌色气泡（`color`）+ 左侧头像左对齐 **左上收窄 8/24/24/24** —— **收窄角指向说话人**，是唯一的形状语义；`bubble` 可强制覆盖（null = 按 role）、`name` 气泡上方小字、`avatar-shape/state/src/size` 头像配置（`animated=false` 静态）、`size` sm/md/lg（lg = 设计稿 1rem）、`max-width`（默认 agent 290 / user 340）、`time`、`#avatar` / `#footer` 插槽 |
+| `UiChatSystemLine` | 对话流里的非消息行，两类共用：**活动行**（`align="start"` + `icon` + "提取了 xx"，随消息流左对齐）与**状态行**（`align="center"` + `size="sm"`，"关闭了对话" / "已授权 xx 访问 xx"）；整行 `opacity` 默认 0.4（**永远不抢消息的注意力**）；`#trailing` 放行尾的补充内容 |
+| `UiChatMention` | 对话正文内联的智能体药丸（设计稿 NameTag）：**双层文字**——上层品牌色压暗版（`color-mix(品牌 68%, #000)`，实测对应设计稿 #7438ff→#452299 等三色）、下层同字形黑 20% **下移 4px 的重影**（aria-hidden，不参与读屏与选中）；药丸底 = 品牌色 40% 混 surface（等价设计稿「品牌色 + 白 60%」叠加）；头像 18px **上下各探出药丸 1px**（与 UiAvatarTag 同骨相）；`name` / `color` / `shape` / `state` / `src` / `icon` / `size`，头像恒 `animated=false`（消息列表里跑 rAF 会拖垮滚动） |
 | `UiKbd` | `keys` 字符串或数组，`size` sm / md |
 | `UiIcon` | `name` **先查库内 ICONS 注册表，未命中则按 Iconify 名字渲染**（`pack:icon` / `pack/icon` / `pack--icon` / `i-pack:icon` 都自动归一化成 `pack:icon`），`size`（像素或 `1em` 内联用）`filled` `stroke-width` `label` |
 | `UiCalendar` | `v-model` 日期 + `events`（按 ISO 日期给数组）；`view` **month / week / year / agenda** 四种视图（`switchable` 显示切换器）：年视图 12 个月总览点月**下钻**、日程视图按日期列事件；切换 = 精细度改变的 **ZoomTo**（下钻推近 scale .72 到 1、拉远反向，配模糊） |
