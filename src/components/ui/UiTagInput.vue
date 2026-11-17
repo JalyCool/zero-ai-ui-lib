@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import UiChip from './UiChip.vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -68,15 +69,14 @@ function onBlur() {
   <label class="ui-tag-input" :class="{ 'is-focused': focused }" @click="inputEl && inputEl.focus()">
     <span v-if="label" class="ui-tag-input__label">{{ label }}</span>
     <span class="ui-tag-input__box">
-      <span v-for="(tag, index) in modelValue" :key="tag" class="ui-tag-input__chip">
-        {{ tag }}
-        <span
-          class="ui-tag-input__close"
-          role="button"
-          aria-label="移除标签"
-          @click.stop="removeAt(index)"
-        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></span>
-      </span>
+      <!-- 标签一律用库里的标准 UiChip，不自绘一颗 -->
+      <UiChip
+        v-for="(tag, index) in modelValue"
+        :key="tag"
+        class="ui-tag-input__chip"
+        removable
+        @remove="removeAt(index)"
+      >{{ tag }}</UiChip>
       <input
         ref="inputEl"
         class="ui-tag-input__input"
