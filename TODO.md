@@ -3,7 +3,22 @@
 > 说明：会话级的 todo 工具在下一轮会清空，所以**真正的待办写在这里**。
 > 每完成一项就改这一份，不依赖会话记忆。
 
-## 0. 最新一段（0.5.0）
+## 00. 最新一段（0.9.0，16 条反馈）
+
+- 流式闪现根因：数组 children 被跳过 / inline transform 无效 / 索引 key 复用节点，已改滑动窗口逐字（key 全局递增）。
+- 划开行重写：leftActions 双侧 + 两侧划到底 + commit 事件签名修正（演示之前用了不存在的 once / 解构错）。
+- 保险丝：只留反向进度条版本，rim 死代码清除，idle 不显示、点击后淡入。
+- 日期精度：回传 YYYY / YYYY-MM 可解析（原「精度改变后无法选择」根因）；非终点格子 = 下钻，再点已高亮 = 选中本层；ZoomTo 推近/拉远。
+- 波轮：列级 min/max 级联界（boundsFor），越界行禁用 + 滚动钉边。
+- MorphPanel 塌 0 修复；日历四视图 ZoomTo；Segmented 中位数 + 6 等分密度下限；分隔条吸附弹簧；下拉 glide 对齐 6px 内间距；自动完成展开定位已选项 + 勾标；TooltipGroup 气泡 left/top 过渡；轮播克隆瞬移改接 transitionend；时间线时间在竖线左侧。
+- 删除 UiToolCallChip（组件 / 导出 / d.ts / 演示 / README）。
+
+遗留（下轮）：
+- 11. 悬停提示「合并」：UiTooltip 与 UiTooltipGroup 仍是两个组件，动画语言已统一，但没合并成一个入口。
+- 划到底的「落定块跟随手指从端头长出」在左侧方向视觉待打磨；双侧 fullSwipe 同时开启的极端组合未验证。
+- Firefox scroll-linked 警告仍未定位。
+- 全部 16 条的实机验收（尤其流式逐字、ZoomTo 手感、划开双侧）需在 5173 页面确认。
+## 0. 上一段（0.5.0）
 
 - **MarkdownView**（第 98 个组件）：marked 解析 → DOM → Vue 元素（不 v-html，防注入）；
   标题 / 强调 / 列表 / 引用 / 表格 / 代码全部走库令牌；代码块与行内代码是字面量。
@@ -165,3 +180,4 @@
 - `b581a85` StepFlow 指示器、MediaViewer 关闭、StatusMark 底槽、保险丝初始隐藏与尺寸、slide 圆角、删除线擦除方向、TooltipGroup 图标按钮
 - `4760d75` 打字机逐字 blur 进场 + 验证码按 react-bits CodeSlots 重做
 - `f1178c2` 动作按钮三修 + Playground 收编 + CardGroup 真弹簧
+
