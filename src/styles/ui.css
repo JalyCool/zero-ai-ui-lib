@@ -376,24 +376,15 @@ button {
 .ui-segmented button.is-disabled:active { transform: none; }
 
 /* ---------- 图标：leading 在前端 / top 在文字上方 ---------- */
-/* 图标统一容器：leading 与 top 都进这个圆角底，
-   底色随选中态平滑过渡，SVG 不再裸露在按钮里 */
+/* 图标不套容器：SVG 直接坐在按钮里，尺寸与颜色随选中态过渡即可 */
 .ui-segmented__icon {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  background: color-mix(in oklab, var(--on-surface) 6%, transparent);
   color: inherit;
-  transition: background var(--t-fade), color var(--t-fade), transform var(--t-pop);
+  transition: color var(--t-fade);
 }
-.ui-segmented__icon svg { width: 17px; height: 17px; }
-.ui-segmented button.is-active .ui-segmented__icon {
-  background: color-mix(in oklab, var(--on-primary) 18%, transparent);
-}
-.ui-segmented.is-icon-top .ui-segmented__icon { width: 30px; height: 30px; border-radius: 9px; }
+.ui-segmented__icon svg { width: 18px; height: 18px; transition: color var(--t-fade); }
 .ui-segmented__text { overflow: hidden; text-overflow: ellipsis; }
 
 /* 图标在文字上方：改成纵向卡片，图标成为视觉主体。 */
