@@ -7,7 +7,11 @@ const props = defineProps({
   min: { type: Number, default: 0.15 },
   max: { type: Number, default: 0.85 },
   /* 分隔条宽度（px） */
-  handle: { type: Number, default: 10 }
+  handle: { type: Number, default: 10 },
+  /* 分段吸附：snapCount=4 时松手弹到 1/4、2/4、3/4…；0 = 不吸附 */
+  snapCount: { type: Number, default: 0 },
+  /* 或给具体吸附点（0~1 数组），优先级高于 snapCount */
+  stops: { type: Array, default: null }
 })
 const emit = defineEmits(['update:modelValue'])
 const rootEl = ref(null)
@@ -51,7 +55,39 @@ function onMove(event) {
   if (Math.abs(bounded - ratio.value) < 0.0005) return
   emit('update:modelValue', bounded)
 }
-function onUp() { pointerId = null; rect = null; dragging.value = false }
+/* 吸附点：显式 stops 优先，否则按 snapCount 等分 */
+const snapPoints = computed(() => {
+  if (Array.isArray(props.stops) && props.stops.length) {
+    return props.stops.map(v => fraction(v, 0.5)).filter(v => v >= minRatio.value && v <= maxRatio.value).sort((a, b) => a - b)
+  }
+  const n = Math.max(0, Math.round(props.snapCount))
+  if (!n) return []
+  return Array.from({ length: n + 1 }, (_, i) => fraction(i / n, 0.5))
+    .filter(v => v >= minRatio.value - 1e-6 && v <= maxRatio.value + 1e-6)
+})
+
+function nearestSnap(value) {
+  const list = snapPoints.value
+  if (!list.length) return value
+  let best = list[0]
+  let bestDistance = Math.abs(value - best)
+  for (let i = 1; i < list.length; i += 1) {
+    const distance = Math.abs(value - list[i])
+    if (distance < bestDistance) { bestDistance = distance; best = list[i] }
+  }
+  return best
+}
+
+function onUp() {
+  pointerId = null
+  rect = null
+  dragging.value = false
+  /* 松手吸附：跟滑轨一个语言 —— 停在最近的分段值上，不悬在半路 */
+  if (snapPoints.value.length) {
+    const next = nearestSnap(ratio.value)
+    if (Math.abs(next - ratio.value) > 1e-4) emit('update:modelValue', next)
+  }
+}
 onBeforeUnmount(() => { pointerId = null; dragging.value = false })
 </script>
 <template>

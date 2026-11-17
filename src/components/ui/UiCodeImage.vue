@@ -160,10 +160,21 @@ async function renderLayer(format) {
         displayValue: opts.showText !== false,
         background: 'transparent',
         lineColor: color,
-        margin: 10,
+        /* 文字用统一的等宽字体变量：条码下方数字必须等宽，否则会宽度跳变 */
+        font: 'var(--font-numeric)',
+        fontSize: 15,
+        textMargin: 2,
+        /* EAN-13 第一个数字孤立在左侧时，把它和右侧两组数字靠拢：
+           margin 给足左右留白 + textAlign 居中，避免「码距过大、整体偏左」 */
+        margin: 6,
+        textAlign: 'center',
         width: 2,
         height: size - 40
       })
+      /* JsBarcode 不认 CSS 变量，渲染后把 font-family 补到 svg 上 */
+      svg.style.fontFamily = 'var(--font-numeric, ui-monospace, monospace)'
+      svg.style.fontVariantNumeric = 'tabular-nums'
+      svg.style.fontFeatureSettings = 'var(--font-feat-tnum)'
       /* 一维码的宽度由内容长度决定，长内容会直接把 svg 撑出画布：
          把它的固有尺寸转成 viewBox，宽高交给 CSS 自适应。 */
       /* JsBarcode 写的是 "310px" 这类带单位的值，必须 parseFloat。 */
@@ -179,6 +190,9 @@ async function renderLayer(format) {
         svg.style.maxWidth = '100%'
         svg.style.height = 'auto'
         svg.style.display = 'block'
+        /* 一维码以「码本身」的视觉重心居中：EAN-13 前导数字在左，纯居中会显得偏左，
+           给 svg 一点左内边距补偿 */
+        svg.style.marginLeft = '2px'
       }
     }
   } catch (error) {

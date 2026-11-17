@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import UiAvatar from './UiAvatar.vue'
 import UiAgentAvatar from './UiAgentAvatar.vue'
 
@@ -38,13 +38,83 @@ const props = defineProps({
 const headSize = computed(() => (props.size === 'md' ? 24 : props.size === 'lg' ? 30 : 18))
 
 const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCase())
+
+/* ---------- 头像主色 -> 药丸底色（默认开启，不可关闭） ----------
+   做法：把图片缩到 24×24 画到 canvas，按饱和度 / 亮度过滤掉近白近黑的像素，
+   剩下的按「谁更鲜艳」加权求平均色。跨域图片污染 canvas 时静默失败，
+   退回 accent / 默认表面色。 */
+const pickedColor = ref('')
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255
+  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  if (max === min) return { h: 0, s: 0, l }
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6
+  else if (max === g) h = ((b - r) / d + 2) / 6
+  else h = ((r - g) / d + 4) / 6
+  return { h, s, l }
+}
+
+function extractDominant(src) {
+  if (!src || typeof document === 'undefined') return
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.decoding = 'async'
+  img.onload = () => {
+    try {
+      const size = 24
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) return
+      ctx.drawImage(img, 0, 0, size, size)
+      const { data } = ctx.getImageData(0, 0, size, size)
+      let r = 0, g = 0, b = 0, weight = 0
+      for (let i = 0; i < data.length; i += 4) {
+        const a = data[i + 3]
+        if (a < 128) continue
+        const pr = data[i], pg = data[i + 1], pb = data[i + 2]
+        const { s, l } = rgbToHsl(pr, pg, pb)
+        /* 跳过近白 / 近黑 / 灰阶：它们不代表「品牌色」 */
+        if (s < 0.18 || l < 0.12 || l > 0.94) continue
+        const w = s * (1 - Math.abs(l - 0.5))
+        r += pr * w
+        g += pg * w
+        b += pb * w
+        weight += w
+      }
+      if (!weight) { pickedColor.value = ''; return }
+      const toHex = v => Math.round(v / weight).toString(16).padStart(2, '0')
+      pickedColor.value = '#' + toHex(r) + toHex(g) + toHex(b)
+    } catch (error) {
+      /* 跨域污染 / 无 CORS：放弃取色，保持 accent 或默认底色 */
+      pickedColor.value = ''
+    }
+  }
+  img.onerror = () => { pickedColor.value = '' }
+  img.src = src
+}
+
+/* 药丸底色：优先用显式 accent，其次用图片主色 */
+const tagAccent = computed(() => props.accent || pickedColor.value || '')
+
+onMounted(() => { if (props.src) extractDominant(props.src) })
+watch(() => props.src, value => {
+  pickedColor.value = ''
+  if (value) extractDominant(value)
+})
 </script>
 
 <template>
   <span
     class="ui-avatar-tag"
-    :class="['ui-avatar-tag--' + size, { 'has-accent': !!accent }]"
-    :style="accent ? { '--tag-accent': accent } : undefined"
+    :class="['ui-avatar-tag--' + size, { 'has-accent': !!tagAccent }]"
+    :style="tagAccent ? { '--tag-accent': tagAccent } : undefined"
   >
     <span
       class="ui-avatar-tag__avatar"

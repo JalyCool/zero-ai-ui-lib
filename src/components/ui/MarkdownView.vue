@@ -225,10 +225,18 @@ function withStreaming(tree) {
     if (child && child.type && child.props) {
       const key = blockKey(child.type, flatText(child.children))
       if (freshBlocks.value.has(key)) {
+        /* 新增块整体播进场；块内直接文本的再套一层 rise，做到「字也在浮上来」 */
+        const inner = Array.isArray(child.children)
+          ? child.children.map((node, i) => (
+            typeof node === 'string' && node.trim()
+              ? h('span', { class: 'ui-md-fresh-text', 'data-i': i, key: 'ft' + i }, node)
+              : node
+          ))
+          : child.children
         out.push(h(child.type, {
           ...child.props,
           class: [child.props.class, 'ui-md-fresh', 'is-fresh-' + props.streamEffect].filter(Boolean).join(' ')
-        }, child.children))
+        }, inner))
         continue
       }
     }
@@ -327,11 +335,20 @@ const Root = () => {
 .ui-md-hr { border: 0; border-top: var(--border-w) solid var(--outline-variant); margin: 1.4em 0; }
 
 /* ---------- streaming：新增块进场 ---------- */
+/* 块内文本：更短的上浮 + 模糊，和块本身错开一点 */
+.ui-md-fresh-text { display: inline; }
+.ui-md-fresh .ui-md-fresh-text { animation: uiMdTextRise 380ms cubic-bezier(.34, 1.4, .64, 1) both; }
+@keyframes uiMdTextRise {
+  from { opacity: 0; transform: translateY(.24em); filter: blur(.1em); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
 .ui-md-fresh.is-fresh-rise { animation: uiMdRise 460ms cubic-bezier(.34, 1.4, .64, 1) both; }
 .ui-md-fresh.is-fresh-blur { animation: uiMdBlur 500ms cubic-bezier(.22, 1, .36, 1) both; }
 .ui-md-fresh.is-fresh-fade { animation: uiMdFade 340ms cubic-bezier(.25, 1, .5, 1) both; }
+/* 流式新增的文字：上浮 + 模糊渐现（块级进场的同一语言，但位移更小，
+   因为文本是逐字长出来的，位移太大会像整段在飘）。 */
 @keyframes uiMdRise {
-  from { opacity: 0; transform: translateY(.42em); filter: blur(.1em); }
+  from { opacity: 0; transform: translateY(.34em); filter: blur(.12em); }
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 @keyframes uiMdBlur {

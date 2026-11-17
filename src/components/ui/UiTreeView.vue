@@ -110,9 +110,13 @@ function subtreeValues(node) {
 
 function checkState(row) {
   if (!props.multi) return isPicked(row) ? 'on' : 'off'
-  if (!props.cascade) return checkState.leaf || isPicked(row) ? 'on' : 'off'
-  const values = subtreeValues(row.node)
-  if (!values.length) return 'off'
+  if (!props.cascade) return isPicked(row) ? 'on' : 'off'
+  /* 级联模式：父级状态只看**后代**的勾选情况。
+     不能把父级自己的 value 算进去 —— 子项全取消后父级仍留在 picked 里，
+     一算就变成「部分选中」了（这就是父级一直半选的根因）。 */
+  const own = String(row.node.value ?? row.key)
+  const values = subtreeValues(row.node).filter(value => value !== own)
+  if (!values.length) return isPicked(row) ? 'on' : 'off'
   const hit = values.filter(value => shared.picked.value.has(value)).length
   if (!hit) return 'off'
   return hit === values.length ? 'on' : 'mixed'

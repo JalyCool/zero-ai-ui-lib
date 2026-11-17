@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 /* ============================================================
@@ -250,13 +250,24 @@ function select(item) {
   top: 0;
   bottom: 0;
   left: 0;
+  /* 宽度用 min()：小屏 84vw，大屏封顶 320px，永不超出视口 */
   width: min(320px, 84vw);
-  border-radius: 0 20px 20px 0;
+  max-width: 100vw;
+  border-radius: 0 calc(20px * var(--radius-scale)) calc(20px * var(--radius-scale)) 0;
   background: var(--surface);
+  box-shadow: 8px 0 32px color-mix(in oklab, var(--on-surface) 18%, transparent);
   transform: translateX(-103%);
   pointer-events: none;
+  /* 关闭时用 visibility 藏起来（不是 display:none），收起动画依然能播完 */
+  visibility: hidden;
+  transition: transform var(--t-sheet), visibility 0s linear var(--spring-sheet-dur);
 }
-.ui-sidenav.is-drawer.is-open { transform: translateX(0); pointer-events: auto; }
+.ui-sidenav.is-drawer.is-open {
+  transform: translateX(0);
+  pointer-events: auto;
+  visibility: visible;
+  transition: transform var(--t-sheet), visibility 0s;
+}
 .ui-sidenav.is-drawer.is-contained { position: absolute; }
 .ui-sidenav-scrim.is-contained { position: absolute; }
 .ui-sidenav.is-drawer .ui-sidenav__item { padding: 12px 14px; }
