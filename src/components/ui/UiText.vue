@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { graphemes, commonPrefixLength, splitStreamChange } from '../../core/streaming'
 
 const props = defineProps({
   /* type = 打字机；shiny = 掠光；gradient = 流动渐变 */
@@ -21,6 +22,13 @@ const props = defineProps({
   /* 打完后停顿（ms） */
   pause: { type: Number, default: 900 },
   startDelay: { type: Number, default: 0 },
+  /* 流式更新：内容变成「上一次的延长」时只给新增部分播进场，不重播整段。
+     关闭（默认）时行为与以前完全一致。 */
+  streaming: { type: Boolean, default: false },
+  /* 流式新增片段的进场方式：rise / blur / fade */
+  streamEffect: { type: String, default: 'rise' },
+  /* 打字机是否提前占位：auto = 没有光标时占位（有光标时高度变化更自然，不必占） */
+  reserve: { type: String, default: 'auto' },
   /* ---- shiny ---- */
   sheen: { type: String, default: 'soft' },
   sweep: { type: Number, default: 2200 },
@@ -42,6 +50,29 @@ const emit = defineEmits(['done', 'tick'])
    ============================================================ */
 
 const source = computed(() => props.text)
+
+/* ---------- streaming：只给增量播进场 ---------- */
+/* 记住上一段内容，算出这次的「稳定前缀」长度；前缀部分不重播动画。 */
+const stablePrefix = ref(0)
+let lastText = null
+watch(source, next => {
+  if (!props.streaming) { stablePrefix.value = 0; lastText = null; return }
+  const text = next || ''
+  stablePrefix.value = lastText === null ? 0 : commonPrefixLength(lastText, text)
+  lastText = text
+}, { immediate: true })
+
+/* 流式片段：前缀之后的文字按「段落 + 增量」切，增量整体播一次 rise */
+const streamParts = computed(() => {
+  if (!props.streaming) return null
+  const text = source.value || ''
+  const g = graphemes(text)
+  const cut = Math.min(stablePrefix.value, g.length)
+  return {
+    stable: g.slice(0, cut).join(''),
+    fresh: g.slice(cut).join('')
+  }
+})
 
 /* ---------- type：逐字符 ---------- */
 const count = ref(0)
@@ -104,6 +135,15 @@ const chars = computed(() => {
 })
 const showCursor = computed(() => props.variant === 'type' && props.cursor)
 
+/* 打字机占位：用一层不可见的「完整文本」把最终尺寸撑开，
+   逐字进场时容器高度不跳、下方内容不被顶得上下抖。 */
+const reserveSpace = computed(() => {
+  if (props.variant !== 'type') return false
+  if (props.reserve === 'on') return true
+  if (props.reserve === 'off') return false
+  return !props.cursor
+})
+
 onBeforeUnmount(() => {
   clearTimeout(timer)
   clearTimeout(pauseTimer)
@@ -146,23 +186,37 @@ const display = computed(() => (props.variant === 'type' ? '' : (source.value ||
     :style="variant === 'type' ? { '--caret-blink': cursorBlink + 'ms' } : styleVars"
   >
     <template v-if="variant === 'type'">
-      <!-- 每个字符是独立节点：新字符出现时 CSS 动画自动播放入场（透明度 + 模糊）。 -->
-      <span
-        v-for="(char, index) in chars"
-        :key="index"
-        class="ui-text__ch"
-      >{{ char === ' ' ? '\u00a0' : char }}</span>
-      <span
-        v-if="showCursor"
-        class="ui-text__caret"
-        :class="`is-${cursorStyle}`"
-        :style="{ animationDuration: cursorBlink * 2 + 'ms' }"
-        aria-hidden="true"
-      >{{ cursorStyle === 'character' ? '|' : '' }}</span>
+      <!-- 占位层：不可见的完整文本，提前把最终高度撑开（光标关掉时默认开启） -->
+      <span v-if="reserveSpace" class="ui-text__ghost" aria-hidden="true">{{ source }}</span>
+      <!-- 逐字层：占位模式下绝对定位盖在占位层上，不再影响布局尺寸 -->
+      <span class="ui-text__typed" :class="{ 'is-overlay': reserveSpace }">
+        <span
+          v-for="(char, index) in chars"
+          :key="index"
+          class="ui-text__ch"
+        >{{ char === ' ' ? '\u00a0' : char }}</span>
+        <span
+          v-if="showCursor"
+          class="ui-text__caret"
+          :class="`is-${cursorStyle}`"
+          :style="{ animationDuration: cursorBlink * 2 + 'ms' }"
+          aria-hidden="true"
+        >{{ cursorStyle === 'character' ? '|' : '' }}</span>
+      </span>
       <span class="ui-text__sr">{{ source }}</span>
     </template>
     <template v-else>
-      <slot>{{ display }}</slot>
+      <!-- streaming：稳定段原样输出，新增段单独播一次进场（rise / blur / fade） -->
+      <template v-if="streamParts">
+        <span class="ui-text__stable">{{ streamParts.stable }}</span
+        ><span
+          v-if="streamParts.fresh"
+          :key="streamParts.stable.length + ':' + streamParts.fresh"
+          class="ui-text__chunk"
+          :class="'is-chunk-' + streamEffect"
+        >{{ streamParts.fresh }}</span>
+      </template>
+      <slot v-else>{{ display }}</slot>
     </template>
   </span>
 </template>
@@ -171,10 +225,21 @@ const display = computed(() => (props.variant === 'type' ? '' : (source.value ||
 .ui-text { display: inline-block; max-width: 100%; }
 
 /* ---------- type ---------- */
-.ui-text.is-type { white-space: pre-wrap; }
+.ui-text.is-type { white-space: pre-wrap; position: relative; }
+/* 占位层：撑开最终尺寸但不显示、不响应 */
+.ui-text__ghost { visibility: hidden; pointer-events: none; user-select: none; }
+.ui-text__typed { display: inline; white-space: pre-wrap; }
+.ui-text__typed.is-overlay { position: absolute; left: 0; top: 0; right: 0; }
 .ui-text__ch { display: inline-block; white-space: pre-wrap; will-change: opacity, filter, transform; }
 
 /* 每个新字符进场：透明度 + 模糊渐变（默认）；另有 fade / rise 两档。 */
+/* ---------- streaming 增量段 ---------- */
+.ui-text__stable { white-space: pre-wrap; }
+.ui-text__chunk { display: inline; white-space: pre-wrap; will-change: opacity, filter, transform; }
+.ui-text__chunk.is-chunk-rise { animation: uiTextRise 480ms cubic-bezier(.34, 1.4, .64, 1) both; }
+.ui-text__chunk.is-chunk-blur { animation: uiTextBlur 520ms cubic-bezier(.22, 1, .36, 1) both; }
+.ui-text__chunk.is-chunk-fade { animation: uiTextFade 360ms cubic-bezier(.25, 1, .5, 1) both; }
+
 .ui-text.is-effect-blur .ui-text__ch { animation: uiTextBlur 520ms cubic-bezier(.22, 1, .36, 1) both; }
 .ui-text.is-effect-fade .ui-text__ch { animation: uiTextFade 360ms cubic-bezier(.25, 1, .5, 1) both; }
 .ui-text.is-effect-rise .ui-text__ch { animation: uiTextRise 480ms cubic-bezier(.34, 1.4, .64, 1) both; }

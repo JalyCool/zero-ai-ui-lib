@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 圆角分档」，不用阴影；**描边只出现在功能处**——输入框 / 开关、复选框类控件 / `variant="outline"` 变体 / 行分隔线 / 浮层边界，**能没有描边的地方就不要有描边**（卡片、告警、折叠面板、模态、表格外形、卡片组等一律无描边）。**阴影全库只有一处：TabBar**（移动端向上 / 桌面端向右投一层淡分离影），其他组件一律不投影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：98 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：99 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
 ## 1. 五分钟起步
@@ -135,7 +135,7 @@ import {
 | `UiDatePicker` / `UiTimePicker` | `v-model` 字符串（`YYYY-MM-DD` / `HH:mm[:ss]`）；贴着输入框展开，不压暗背景；`UiTimePicker` 有 `precision`（h/m/s）决定波轮字段数 |
 | `UiCodeImage` | 2~3 项用分段控件（跨族时图标在上、仅 2 项跨族时只留图标不显示文字）、4 项及以上一律用带图标的下拉框。切换动画的方向按「目标相对当前位置」动态决定（目标在后往正方向进、在前往反方向进），进场层先按新方向落位、下一帧再滑回原位；用下拉切换时轴改为纵向（上下滑入滑出），分段 / 图标切换保持横向；仅两个跨族（一维/二维）选项时图标模式不再显示文字标签（图标已说明族差别）。children 直接传文本：<`CodeImage type="qrcode">https://…</`CodeImage>；`type` 字符串或数组（数组 = 可切换码制组，<=3 用 Segmented、>3 用下拉；跨一维/二维用图标区分，同族用文字标签）；一维码渲染后把固有宽高转成 viewBox，长条码不会再撑出画布；`options` 按码制传参 `{ qrcode: { errorCorrectionLevel: 'H' }, ean13: { flat: true } }`，未传的走默认、未知键忽略不崩溃；内容不合规的选项可见但禁用、自动切到可用项；全部不可用走降级候选（二维码兜底），仍无解渲染空状态。校验 / 参数 / 降级规则全部集中在 `core/codeFormats`，组件内不硬编码码制规则 |
 | `UiRotatingText` | 循环短语：`phrases` + `transition="rotate|flip|slide"`；进场层从进入方向的偏转 + 位移 + 模糊里出现，离场层反向散去，方向随前后顺序切换；`pause-on-hover` 默认开 |
-| `UiText` | 文字动效包装器：`variant="type"` 打字机（`cps` 节奏、逐字符进场 `type-effect="blur|fade|rise"` —— 默认 blur 就是**透明度 + 模糊**渐变、光标四档 `bar|block|underscore|character`、`loop` 会先逐字删除再重打）、`shiny` 掠光（`sheen="soft|chrome"`）、`gradient` 流动渐变（`sweep|mesh|conic` + `colors`） |
+| `UiText` | 文字动效包装器：`variant="type"` 打字机（`cps` 节奏、逐字符进场 `type-effect="blur|fade|rise"`、**`reserve` 提前占位**——没有光标时默认开启，用不可见完整文本撑开最终高度，逐字进场不把下方内容顶得抖；`streaming` 开启后内容增长时只给新增片段播一次进场（`stream-effect`），不重播整段 —— 默认 blur 就是**透明度 + 模糊**渐变、光标四档 `bar|block|underscore|character`、`loop` 会先逐字删除再重打）、`shiny` 掠光（`sheen="soft|chrome"`）、`gradient` 流动渐变（`sweep|mesh|conic` + `colors`） |
 | `UiStatusMark` | 任务状态标记（仅受控），五个状态：`none`（只有底部一段空槽，上半部分什么都没有）/ `pending`（整圈虚线待命）/ `progress`（**分两种**：`progress` 是数字 → 弧长 = 实际进度、静止不转；`progress=null` → 一小段弧匀速转圈，表示没有实际进度）/ `done`（弧收满 + 勾抽笔）/ `failed`（弧淡出 + 叉抽笔）。全部由同一圈描边用 dasharray 连续过渡，任意两态互转不闪；圆环旋转原点只由 SVG `rotate(-90 12 12)` 提供，不要再写 CSS `transform-origin`（会被应用两次导致整体偏移） |
 | `UiToolCallChip` | 工具调用胶囊（仅受控）：`name` `detail` `status="running|success|error"` `expected`（秒）；运行中填充按耗时擦过、右侧计时器跳动，成功补满转绿、失败转红抖动 |
 | `UiCodeSlots` | 一次性验证码（按 react-bits CodeSlots 手法）：每个数字**独立落位**（透明度 + 模糊 + 上移 + 缩放，spring 曲线），粘贴按 `cascade`（默认 20ms）逐位错开；**当前输入位直接整格填充主色容器**（不再有独立光标线），空位 / 错误态时强调，成功后洗色时自动收起；`status="success"` 洗色从中间展开 + 数字下沉 + 勾升起，`status="error"` 从后往前逐位抽走再清空；键盘可完全操作（数字 / 退格删前一位 / Delete 删本位 / 方向键 / Home / End），原生 input 负责焦点与 `autocomplete="one-time-code"` |
@@ -201,7 +201,8 @@ import {
 | `UiCarousel` | `items` + `v-model` 索引；`autoplay` `interval` `loop` `height`，可拖拽翻页；轨道走 view 弹簧，非当前页缩小 / 变暗 / 轻模糊；翻页指示器引用独立的 `UiPagerDots` |
 | `UiPagerDots` | 独立翻页指示器：`total` + `v-model` 当前页，`clickable` `size="sm\|md"`；当前页是拉长的胶囊，轮播 / 卡片组 / 任何分页视图都能引用 |
 | `UiMarquee` | `text` `speed` `direction` `gap` `pause-on-hover` |
-| `MarkdownView` | Markdown 渲染器（marked 解析 → DOM 树 → Vue 元素，不用 v-html，天然防注入）：标题 / 强调 / 列表 / 引用 / 表格 / 代码全部走库令牌。**内联图标**（`icons` 默认开）支持 `pack:icon`、`pack/icon`、`pack--icon`、`i-pack:icon` 四种裸写法与 `::pack:icon::` 显式标记（显式优先）；**本地注册表（registerIcons）优先于 Iconify**；代码块与行内代码是字面量不解析。**@ 提及**（`mentions` 开启）渲染成 `UiAvatarTag` 药丸，`mentionResolver(username)` 返回 `{ username, showname, type: 'normal'\|'agent', image, shape }`；`tagSize` 控制药丸尺寸 |
+| `UiLink` | 文字链接（参照 Nuxt UI）：默认 primary 无下划线、悬停才出；`href` 外链自动带 ↗ 角标 + `target=_blank rel=noopener`；`tone` primary / muted / danger，`underline` 常显下划线，`disabled`；`to` 传应用内路由 |
+| `MarkdownView` | Markdown 渲染器（marked 解析 → DOM 树 → Vue 元素，不用 v-html，天然防注入）：标题 / 强调 / 列表 / 引用 / 表格 / 代码全部走库令牌。**内联图标**（`icons` 默认开）支持 `pack:icon`、`pack/icon`、`pack--icon`、`i-pack:icon` 四种裸写法与 `::pack:icon::` 显式标记（显式优先）；**本地注册表（registerIcons）优先于 Iconify**；代码块与行内代码是字面量不解析。**@ 提及**（`mentions` 开启）渲染成 `UiAvatarTag` 药丸，`mentionResolver(username)` 返回 `{ username, showname, type: 'normal'\|'agent', image, shape }`；`tagSize` 控制药丸尺寸。**流式更新**（`streaming`）：内容增长时只有新增 / 变化的**顶层块**播进场（`stream-effect` rise / blur / fade），已渲染块保持不动；同时缓存上次渲染高度作 `min-height` 预留，逐块长出来时下方内容不会被顶得上下跳。链接统一渲染成 `UiLink`，代码块带语言图标 + 语言名头部条 |
 
 通用约定：所有浮层都能点外部收起、按 Esc 收起；`items` 形如 `[{ value, label, description?, tone? }]`。
 

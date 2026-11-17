@@ -486,6 +486,7 @@ declare const UiContextMenu: DefineComponent<{ items?: { label: string; value?: 
 declare const UiCommandPalette: DefineComponent<{ modelValue?: boolean; items?: { label: string; value: string; hint?: string; icon?: string; keywords?: string }[]; placeholder?: string; shortcut?: string }, AnyProps, unknown>
 declare const UiTour: DefineComponent<{ modelValue?: boolean; steps?: { target: string; title: string; text: string; placement?: 'top' | 'bottom' }[]; startAt?: number }, AnyProps, unknown>
 declare const UiPopover: DefineComponent<{ modelValue?: boolean; placement?: 'top' | 'bottom' | 'left' | 'right'; trigger?: string; offset?: number; label?: string }, AnyProps, unknown>
+declare const UiLink: DefineComponent<{ href?: string; to?: string | object; tone?: 'primary' | 'muted' | 'danger'; external?: boolean; underline?: boolean; disabled?: boolean }, AnyProps, unknown>
 declare const UiKbd: DefineComponent<{ keys?: string | string[]; size?: 'sm' | 'md' }, AnyProps, unknown>
 declare const UiIcon: DefineComponent<{ name: string; size?: number | string; filled?: boolean; strokeWidth?: number | string; label?: string }, AnyProps, unknown>
 declare const UiCalendar: DefineComponent<{ modelValue?: string; events?: Record<string, { title: string; tone?: string }[]>; view?: 'month' | 'week' }, AnyProps, unknown>
@@ -495,7 +496,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 
 /* ---------- components ---------- */
 export {
-  UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
+  UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiLink, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
   UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBarChart, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiSideNav, MarkdownView, normalizeIconName,
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,

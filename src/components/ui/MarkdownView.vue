@@ -1,7 +1,8 @@
 <script setup>
-import { h } from 'vue'
+import { h, nextTick, ref, watch } from 'vue'
 import { marked } from 'marked'
 import UiIcon from './UiIcon.vue'
+import UiLink from './UiLink.vue'
 import UiAvatarTag from './UiAvatarTag.vue'
 import { normalizeIconName, ICON_EXPLICIT_RE, ICON_INLINE_RE, MENTION_RE } from '../../core/iconify'
 
@@ -21,7 +22,12 @@ const props = defineProps({
   mentions: { type: Boolean, default: false },
   mentionResolver: { type: Function, default: null },
   icons: { type: Boolean, default: true },
-  tagSize: { type: String, default: 'sm' }
+  tagSize: { type: String, default: 'sm' },
+  /* 流式更新：内容增长时只让「新增 / 变化的块」播进场，其余保持不动；
+     同时预留容器高度，逐块长出来时不把下面的内容顶得跳。 */
+  streaming: { type: Boolean, default: false },
+  /* 流式新增块的进场方式：rise / blur / fade */
+  streamEffect: { type: String, default: 'rise' }
 })
 
 marked.use({ gfm: true, breaks: true })
@@ -79,10 +85,22 @@ function renderInline(text) {
       return name ? h(UiIcon, { name, size: '1em', key, style: 'vertical-align:-0.15em' }) : String(part.name)
     }
     if (part.t === 'mention') {
-      return h(UiAvatarTag, { ...mentionProps(part.name), key, style: 'vertical-align:-0.35em; margin: 0 2px;' })
+      /* 药丸比正文行高高，包一层 inline-flex 让它和文字共用一条视觉中轴 */
+      return h('span', { class: 'ui-md-mention', key }, [h(UiAvatarTag, mentionProps(part.name))])
     }
     return part.v
   })
+}
+
+/* 代码块语言 -> Iconify 图标 */
+const LANG_ICONS = {
+  js: 'mdi:language-javascript', javascript: 'mdi:language-javascript',
+  ts: 'mdi:language-typescript', typescript: 'mdi:language-typescript',
+  json: 'mdi:code-json', html: 'mdi:language-html5', css: 'mdi:language-css3',
+  md: 'mdi:language-markdown', markdown: 'mdi:language-markdown',
+  vue: 'mdi:vuejs', python: 'mdi:language-python', py: 'mdi:language-python',
+  sh: 'mdi:console', bash: 'mdi:console', shell: 'mdi:console',
+  yaml: 'mdi:file-code-outline', yml: 'mdi:file-code-outline'
 }
 
 const SAFE_HREF = /^(https?:\/\/|mailto:|#|\/)/i
@@ -113,13 +131,27 @@ function renderNode(node) {
     case 'li': return h('li', null, kids())
     case 'blockquote': return h('blockquote', { class: 'ui-md-quote' }, kids())
     /* 代码块与行内代码是字面量：不解析图标 / 提及标记 */
-    case 'pre': return h('pre', { class: 'ui-md-pre' }, h('code', { class: 'ui-md-code' }, node.textContent))
+    case 'pre': {
+      /* 代码块：语言图标 + 语言名 + 代码。语言名取自 child 的 language-xxx 类。 */
+      const codeEl = node.querySelector('code')
+      const cls = codeEl ? (codeEl.getAttribute('class') || '') : ''
+      const m = cls.match(/language-([a-z0-9+#-]+)/i)
+      const lang = m ? m[1].toLowerCase() : ''
+      const icon = LANG_ICONS[lang] || (lang ? 'mdi:code-tags' : '')
+      return h('div', { class: 'ui-md-codeblock' }, [
+        h('div', { class: 'ui-md-codeblock__head' }, [
+          icon ? h(UiIcon, { name: icon, size: 14, key: 'i' }) : null,
+          h('span', { class: 'ui-md-codeblock__lang', key: 'l' }, lang || 'text')
+        ]),
+        h('pre', { class: 'ui-md-pre' }, h('code', { class: 'ui-md-code' }, node.textContent))
+      ])
+    }
     case 'code': return h('code', { class: 'ui-md-code' }, node.textContent)
     case 'a': {
       const href = node.getAttribute('href') || ''
       const inner = renderChildren(node)
       if (!SAFE_HREF.test(href)) return h('span', { class: 'ui-md-a' }, inner)
-      return h('a', { class: 'ui-md-a', href, target: '_blank', rel: 'noopener noreferrer nofollow' }, inner)
+      return h(UiLink, { href, external: /^https?:\/\//i.test(href) }, { default: () => inner })
     }
     case 'img': {
       const src = node.getAttribute('src') || ''
@@ -142,11 +174,66 @@ function renderNode(node) {
 }
 
 /* 整棵树：props 变化时随父组件重渲染 */
+/* ---------- streaming ---------- */
+/* 已渲染过的块文本，用来判断哪些块是这次新增的（只有它们播进场）。 */
+const seenBlocks = ref(new Set())
+/* 预留高度：上一次渲染完成时容器的高度，避免逐块长出来时页面上下跳。 */
+const reserveHeight = ref(0)
+const rootEl = ref(null)
+
+/* 预留高度：内容变化后把最终高度缓存下来，下次作为 min-height，
+   逐块长出来时页面不会被顶得上下跳（高度只增不减，不会抖）。 */
+watch(() => props.content, async () => {
+  if (!props.streaming) { reserveHeight.value = 0; return }
+  await nextTick()
+  const el = rootEl.value
+  if (el && el.offsetHeight > reserveHeight.value) reserveHeight.value = el.offsetHeight
+})
+
+function blockKey(el) {
+  const tag = el.tagName.toLowerCase()
+  return tag + '|' + (el.textContent || '').trim().slice(0, 400)
+}
+
+/* 包一层：给新块打 is-fresh，渲染完把高度记下来当预留 */
+function withStreaming(tree) {
+  if (!props.streaming) return tree
+  const fresh = new Set()
+  const nextSeen = new Set()
+  const walk = node => {
+    if (node && node.type && node.props && Array.isArray(node.children)) {
+      const key = node.type + '|' + String(node.children.map(c => (typeof c === 'string' ? c : '')).join('')).slice(0, 400)
+      if (!seenBlocks.value.has(key)) fresh.add(key)
+      nextSeen.add(key)
+    }
+  }
+  /* 只给顶层块打标（h1..h6 / p / ul / pre / blockquote / table），
+     内层不逐个播，否则一次流式会同时播十几个动画。 */
+  const children = []
+  for (const child of tree) {
+    if (child && child.type && child.props && Array.isArray(child.children)) {
+      const text = String(child.children.map(c => (typeof c === 'string' ? c : '')).join('')).slice(0, 400)
+      const key = child.type + '|' + text
+      nextSeen.add(key)
+      if (!seenBlocks.value.has(key)) {
+        children.push(h(child.type, { ...child.props, class: [child.props.class, 'ui-md-fresh', 'is-fresh-' + props.streamEffect].filter(Boolean).join(' ') }, child.children))
+        fresh.add(key)
+        continue
+      }
+    }
+    children.push(child)
+  }
+  seenBlocks.value = nextSeen
+  return children
+}
+
 const Root = () => {
   if (!props.content || !props.content.trim()) return null
   seq = 0
   const doc = new DOMParser().parseFromString(marked.parse(props.content), 'text/html')
-  return h('div', { class: 'ui-md' }, renderChildren(doc.body))
+  const children = withStreaming(renderChildren(doc.body))
+  const style = props.streaming && reserveHeight.value ? { minHeight: reserveHeight.value + 'px' } : undefined
+  return h('div', { class: 'ui-md', ref: rootEl, style }, children)
 }
 </script>
 
@@ -177,6 +264,7 @@ const Root = () => {
   background: var(--surface-container-low);
   border-radius: calc(12px * var(--radius-scale));
   padding: 12px 14px;
+  margin: .9em 0;
   overflow-x: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: var(--fs-small);
@@ -190,11 +278,51 @@ const Root = () => {
   padding: 1px 5px;
 }
 .ui-md-pre .ui-md-code { background: none; padding: 0; border-radius: 0; }
-.ui-md-a { color: var(--primary); text-decoration: none; }
-.ui-md-a:hover { text-decoration: underline; }
+/* 提及药丸：与正文同一视觉中轴（inline-flex + 基线对齐，不用负 margin 硬拉） */
+.ui-md-mention { display: inline-flex; align-items: center; vertical-align: middle; margin: 0 1px; }
+.ui-md-a { color: var(--primary); }
+
+/* 代码块：语言图标 + 名称的头部条 */
+.ui-md-codeblock {
+  margin: .9em 0;
+  border-radius: calc(12px * var(--radius-scale));
+  background: var(--surface-container-low);
+  overflow: hidden;
+}
+.ui-md-codeblock__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px 0;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-micro);
+  font-weight: var(--w-label);
+}
+.ui-md-codeblock__lang { text-transform: lowercase; letter-spacing: .02em; }
+.ui-md-codeblock .ui-md-pre { margin: 0; background: none; padding: 8px 14px 12px; }
 .ui-md-img { max-width: 100%; border-radius: calc(12px * var(--radius-scale)); }
 .ui-md-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
 .ui-md-table th, .ui-md-table td { padding: 7px 10px; text-align: left; }
 .ui-md-table tr + tr th, .ui-md-table tr + tr td { border-top: var(--border-w) solid var(--outline-variant); }
 .ui-md-hr { border: 0; border-top: var(--border-w) solid var(--outline-variant); margin: 1.4em 0; }
+
+/* ---------- streaming：新增块进场 ---------- */
+.ui-md-fresh.is-fresh-rise { animation: uiMdRise 460ms cubic-bezier(.34, 1.4, .64, 1) both; }
+.ui-md-fresh.is-fresh-blur { animation: uiMdBlur 500ms cubic-bezier(.22, 1, .36, 1) both; }
+.ui-md-fresh.is-fresh-fade { animation: uiMdFade 340ms cubic-bezier(.25, 1, .5, 1) both; }
+@keyframes uiMdRise {
+  from { opacity: 0; transform: translateY(.42em); filter: blur(.1em); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes uiMdBlur {
+  from { opacity: 0; filter: blur(.22em); }
+  to { opacity: 1; filter: blur(0); }
+}
+@keyframes uiMdFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-md-fresh.is-fresh-rise, .ui-md-fresh.is-fresh-blur, .ui-md-fresh.is-fresh-fade { animation-duration: .01ms !important; }
+}
 </style>

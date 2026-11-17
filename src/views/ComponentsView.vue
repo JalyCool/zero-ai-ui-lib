@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
   UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState, UiSideNav,
-  MarkdownView,
+  MarkdownView, UiLink,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
   UiText, UiToolCallChip, UiTooltipGroup,
@@ -357,6 +357,26 @@ const cardVariant = ref(new URLSearchParams(window.location.search).get('cg') ||
 
 /* Markdown 渲染器演示：标题 / 强调 / 内联图标（四种裸写法 + ::显式::）/ @提及 */
 const mdMentions = ref(true)
+const mdStreaming = ref(true)
+const mdStreamingLive = ref(false)
+const mdFeed = ref('')
+let mdTimer = 0
+function toggleMdFeed() {
+  if (mdStreamingLive.value) {
+    mdStreamingLive.value = false
+    clearInterval(mdTimer)
+    return
+  }
+  mdFeed.value = ''
+  mdStreamingLive.value = true
+  let i = 0
+  const full = mdDoc
+  mdTimer = setInterval(() => {
+    i = Math.min(full.length, i + 24)
+    mdFeed.value = full.slice(0, i)
+    if (i >= full.length) { mdStreamingLive.value = false; clearInterval(mdTimer) }
+  }, 90)
+}
 const MD_USERS = {
   nova: { username: 'nova', showname: 'Nova', type: 'agent', shape: 'triangle' },
   iris: { username: 'iris', showname: 'Iris', type: 'agent', shape: 'circle' },
@@ -390,6 +410,7 @@ const mdDoc = [
   '| mentions | 开启 @ 提及解析 |',
   '| mentionResolver | 返回 username / showname / type / image / shape |'
 ].join('\n')
+mdFeed.value = mdDoc
 const cardActive = ref(0)
 const cardVariants = [
   { label: '平铺', value: 'gallery' },
@@ -969,11 +990,28 @@ onMounted(() => {
           <span class="lib-cell__note">只接管滚动外观，不改变内容布局。</span>
         </div>
 
+        <div class="lib-cell">
+          <span class="lib-cell__label">链接 <small>UiLink</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div class="lib-demo-row">
+              <UiLink href="https://nuxt.com" external>外部链接</UiLink>
+              <UiLink href="/components">应用内链接</UiLink>
+              <UiLink href="#" tone="muted">弱化链接</UiLink>
+              <UiLink href="#" tone="danger" underline>危险链接</UiLink>
+            </div>
+          </div>
+          <span class="lib-cell__note">默认 primary 无下划线、悬停才出；外链自动带 ↗ 角标并 target=_blank；tone 三档 primary / muted / danger。</span>
+        </div>
+
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">Markdown 渲染器 <small>MarkdownView</small></span>
-          <UiSwitch v-model="mdMentions" label="@ 提及渲染为头像标签" />
+          <div class="lib-demo-row">
+            <UiSwitch v-model="mdMentions" label="@ 提及渲染为头像标签" />
+            <UiSwitch v-model="mdStreaming" label="流式增量进场" />
+            <UiButton size="sm" variant="tonal" @click="toggleMdFeed">{{ mdStreamingLive ? '停止' : '模拟流式输出' }}</UiButton>
+          </div>
           <div class="lib-md-demo">
-            <MarkdownView :content="mdDoc" :mentions="mdMentions" :mention-resolver="mdResolve" />
+            <MarkdownView :content="mdStreamingLive ? mdFeed : mdDoc" :mentions="mdMentions" :streaming="mdStreaming" :mention-resolver="mdResolve" />
           </div>
           <span class="lib-cell__note">标题 / 强调 / 列表 / 引用 / 表格全部走库令牌；内联图标支持 pack:icon、pack/icon、pack--icon、i-pack:icon 与 ::pack:icon:: 五种写法（本地注册表优先于 Iconify）；@用户名 在 mentions 开启时渲染为 UiAvatarTag。</span>
         </div>
