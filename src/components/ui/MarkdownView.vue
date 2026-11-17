@@ -175,56 +175,76 @@ function renderNode(node) {
 
 /* 整棵树：props 变化时随父组件重渲染 */
 /* ---------- streaming ---------- */
-/* 已渲染过的块文本，用来判断哪些块是这次新增的（只有它们播进场）。 */
-const seenBlocks = ref(new Set())
+/* seenBlocks / freshBlocks 都不能是响应式的：
+   render 里读它们、render 里写它们 = 自己触发自己（Maximum recursive updates）。 */
+const seenBlocks = new Set()
+const freshBlocks = ref(new Set())
 /* 预留高度：上一次渲染完成时容器的高度，避免逐块长出来时页面上下跳。 */
 const reserveHeight = ref(0)
 const rootEl = ref(null)
 
-/* 预留高度：内容变化后把最终高度缓存下来，下次作为 min-height，
-   逐块长出来时页面不会被顶得上下跳（高度只增不减，不会抖）。 */
-watch(() => props.content, async () => {
-  if (!props.streaming) { reserveHeight.value = 0; return }
+/* 顶层块的稳定标识：标签名 + 文本前 400 字（渲染前后一致） */
+function blockKey(type, text) {
+  return type + '|' + String(text || '').trim().slice(0, 400)
+}
+
+/* 在 watcher 里算「这一轮哪些块是新的」——不在 render 里改状态 */
+watch(() => props.content, () => {
+  if (!props.streaming) {
+    freshBlocks.value = new Set()
+    seenBlocks.clear()
+    reserveHeight.value = 0
+    return
+  }
+  const doc = new DOMParser().parseFromString(marked.parse(props.content || ''), 'text/html')
+  const keys = new Set()
+  const fresh = new Set()
+  Array.from(doc.body.children).forEach(el => {
+    const key = blockKey(el.tagName.toLowerCase(), el.textContent)
+    keys.add(key)
+    if (!seenBlocks.has(key)) fresh.add(key)
+  })
+  seenBlocks.clear()
+  keys.forEach(k => seenBlocks.add(k))
+  freshBlocks.value = fresh
+}, { immediate: true })
+
+/* 渲染完成后把最终高度缓存成 min-height（高度只增不减，不会抖） */
+watch(freshBlocks, async () => {
+  if (!props.streaming) return
   await nextTick()
   const el = rootEl.value
   if (el && el.offsetHeight > reserveHeight.value) reserveHeight.value = el.offsetHeight
 })
 
-function blockKey(el) {
-  const tag = el.tagName.toLowerCase()
-  return tag + '|' + (el.textContent || '').trim().slice(0, 400)
-}
-
-/* 包一层：给新块打 is-fresh，渲染完把高度记下来当预留 */
+/* 给新增的顶层块打 is-fresh（只读 freshBlocks，不写任何状态） */
 function withStreaming(tree) {
   if (!props.streaming) return tree
-  const fresh = new Set()
-  const nextSeen = new Set()
-  const walk = node => {
-    if (node && node.type && node.props && Array.isArray(node.children)) {
-      const key = node.type + '|' + String(node.children.map(c => (typeof c === 'string' ? c : '')).join('')).slice(0, 400)
-      if (!seenBlocks.value.has(key)) fresh.add(key)
-      nextSeen.add(key)
-    }
-  }
-  /* 只给顶层块打标（h1..h6 / p / ul / pre / blockquote / table），
-     内层不逐个播，否则一次流式会同时播十几个动画。 */
-  const children = []
+  const out = []
   for (const child of tree) {
-    if (child && child.type && child.props && Array.isArray(child.children)) {
-      const text = String(child.children.map(c => (typeof c === 'string' ? c : '')).join('')).slice(0, 400)
-      const key = child.type + '|' + text
-      nextSeen.add(key)
-      if (!seenBlocks.value.has(key)) {
-        children.push(h(child.type, { ...child.props, class: [child.props.class, 'ui-md-fresh', 'is-fresh-' + props.streamEffect].filter(Boolean).join(' ') }, child.children))
-        fresh.add(key)
+    if (child && child.type && child.props) {
+      const key = blockKey(child.type, flatText(child.children))
+      if (freshBlocks.value.has(key)) {
+        out.push(h(child.type, {
+          ...child.props,
+          class: [child.props.class, 'ui-md-fresh', 'is-fresh-' + props.streamEffect].filter(Boolean).join(' ')
+        }, child.children))
         continue
       }
     }
-    children.push(child)
+    out.push(child)
   }
-  seenBlocks.value = nextSeen
-  return children
+  return out
+}
+
+/* 把 VNode 子树拍平成文本，用于算块标识 */
+function flatText(children) {
+  if (!Array.isArray(children)) return ''
+  return children.map(c => {
+    if (typeof c === 'string' || typeof c === 'number') return String(c)
+    if (c && Array.isArray(c.children)) return flatText(c.children)
+    return ''
+  }).join('')
 }
 
 const Root = () => {

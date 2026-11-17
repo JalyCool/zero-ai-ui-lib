@@ -66,18 +66,25 @@ function onUp(event) {
   else if (dx > 40 || velocity > 0.3) prev()
 }
 
+/* 悬停暂停：只停计时器，不改变 autoplay 配置 */
+function pauseAuto() {
+  clearInterval(timer)
+  timer = 0
+}
+
 function startAuto() {
   clearInterval(timer)
+  timer = 0
   if (!props.autoplay) return
   timer = setInterval(() => { if (!dragging.value) next() }, Math.max(1200, props.interval))
 }
 onMounted(startAuto)
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => { clearInterval(timer); timer = 0 })
 watch(() => [props.autoplay, props.interval], startAuto)
 watch(() => props.modelValue, value => { if (value !== index.value) index.value = value })
 </script>
 <template>
-  <div class="ui-carousel" :class="{ 'is-dragging': dragging }" :style="{ '--h': height + 'px' }" @mouseenter="clearInterval(timer)" @mouseleave="startAuto">
+  <div class="ui-carousel" :class="{ 'is-dragging': dragging }" :style="{ '--h': height + 'px' }" @mouseenter="pauseAuto" @mouseleave="startAuto">
     <div class="ui-carousel__viewport">
       <div ref="trackEl" class="ui-carousel__track" :style="style"
         @pointerdown="onDown" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp">
