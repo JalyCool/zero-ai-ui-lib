@@ -192,10 +192,13 @@ const freshInfo = ref(new Map())  /* blockId -> { whole, stable } 本轮渲染�
 const reserveHeight = ref(0)
 const rootEl = ref(null)
 
-/* 各 effect 的初始态 / 落定态（模块级冻结，引用恒定）。 */
+/* 各 effect 的初始态 / 落定态（模块级冻结，引用恒定）。
+   位移量必须足够大才看得见：0.35em 在 14px 正文上只有 ~5px，弹簧前两帧
+   就吃掉大半，配上 6px 模糊就只剩「凭空显影」的观感。取 ~0.9em（≈12px）
+   让上浮成为可读的主体，模糊只作伴生。 */
 const TOKEN_STATES = {
   rise: {
-    initial: { opacity: 0, y: '0.35em', filter: 'blur(6px)' },
+    initial: { opacity: 0, y: '0.9em', filter: 'blur(6px)' },
     animate: { opacity: 1, y: '0em', filter: 'blur(0px)' }
   },
   blur: {
@@ -207,13 +210,16 @@ const TOKEN_STATES = {
     animate: { opacity: 1 }
   }
 }
+/* 词壳弹簧走 view 场景：比 feedback 柔和（calm 约 0.46s / 不过冲），
+   12px 的上浮能铺开成可读的位移；同时自动跟随动效气质与
+   prefers-reduced-motion（getSpringConfig 内部降级为瞬时）。 */
 const tokenTransitions = new Map()
 function tokenTransition(effect, batchIndex) {
   const step = Math.min(Math.max(batchIndex, 0), 24)
   const memoKey = effect + '|' + step
   let transition = tokenTransitions.get(memoKey)
   if (!transition) {
-    transition = { ...getSpringConfig('feedback'), delay: step * 0.018 }
+    transition = { ...getSpringConfig('view'), delay: step * 0.018 }
     tokenTransitions.set(memoKey, transition)
   }
   return transition
