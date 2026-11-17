@@ -337,13 +337,16 @@ function wrapAllTokens(children, tokens, stable, id) {
       if (tokChars.some((ch, k) => ch !== chars[k])) break
       const tokenKey = id + '.' + ti
       const state = TOKEN_STATES[props.streamEffect] || TOKEN_STATES.rise
+      /* motion.span 是组件：第三参数必须是 slot 函数，
+         裸字符串会被当成 slots 对象（Vue 会告警「Non-function value
+         encountered for default slot」，且每次都重建 vnode）。 */
       out.push(h(motion.span, {
         class: 'stream-word',
         key: tokenKey,
         initial: state.initial,
         animate: state.animate,
         transition: tokenTransition(props.streamEffect, ti - stable)
-      }, tokens[ti]))
+      }, { default: () => tokens[ti] }))
       chars = chars.slice(tokChars.length)
       ti += 1
     }

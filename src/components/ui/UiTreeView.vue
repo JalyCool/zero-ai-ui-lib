@@ -4,8 +4,8 @@ const ROOT_KEY = Symbol('ui-tree-root')
 </script>
 
 <script setup>
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
-import { animate, getSpringConfig, motion, prefersReducedMotion, useMotionValue } from '../../composables/useMotion'
+import { computed, inject, onBeforeUnmount, provide, reactive, ref } from 'vue'
+import { getSpringConfig, motion } from '../../composables/useMotion'
 
 const props = defineProps({
   /* [{ label, value?, children?, kind? }]；kind 决定图标 */
@@ -139,89 +139,83 @@ function pick(row) {
 }
 
 /* ---------------- 分组展开：motion 弹簧驱动高度 ----------------
-   分组 DOM 常驻不销毁，高度由每组的 MotionValue 弹簧驱动（view 场景），
-   行内容随 opacity/blur 的 CSS 过渡浮现 —— 替换掉原来的 grid 0fr↔1fr
-   直线过渡（生硬）。嵌套子树高度变化由 ResizeObserver 校正（直接
-   set 跳变，避免 RO -> 动画 -> RO 的反馈循环）。 */
-const groupEls = new Map()
-const groupMvs = new Map()
-const groupRoKeys = new Map()
+   分组 DOM 常驻不销毁，高度由 motion 的**声明式** :animate 驱动
+   （view 场景弹簧），行内容随 opacity/blur 的 CSS 过渡浮现 ——
+   替换掉原来生硬的 grid 0fr↔1fr 直线过渡。
+
+   为什么用声明式而非 animate(motionValue)：
+   · 声明式是 motion 组件自己的渲染通道（与流式词壳同一套），
+     低帧率环境下也能到终值；
+   · 命令式 animate(mv) 是纯 JS 逐帧，帧数不足时几乎不动
+     （实测 1.2s 只跑 3 帧时 MV 停在 0、DOM 高度恒为 0）。
+
+   自然高度由 clip 的 ResizeObserver 量出来（嵌套子树高度变化也覆盖），
+   作为 :animate 的目标值。clip 挂普通 div 的 ref —— motion 组件的 ref
+   给的是实例，取 $el 会踩雷（Vue 报 ref function 执行错误）。 */
+const naturalHeights = reactive({})  /* key -> 内容自然高度（px） */
+const groupClips = new Map()         /* key -> clip 元素 */
+const groupRoKeys = new WeakMap()    /* clip -> key */
 let groupRo = null
 
-function setGroupEl(key, el) {
-  if (el) {
-    groupEls.set(key, el)
-    const clip = el.querySelector('.ui-tree__group-clip')
-    if (clip && typeof ResizeObserver !== 'undefined') {
-      if (!groupRo) {
-        groupRo = new ResizeObserver(entries => {
-          entries.forEach(entry => {
-            const k = groupRoKeys.get(entry.target)
-            if (k === undefined || !isOpen(k)) return
-            const natural = entry.target.scrollHeight
-            const mv = groupHeight(k)
-            if (Math.abs(natural - mv.get()) > 1) mv.set(natural)
-          })
-        })
-      }
-      groupRo.observe(clip)
-      groupRoKeys.set(clip, key)
-    }
-  } else {
-    groupEls.delete(key)
-  }
-}
-
-function groupHeight(key) {
-  if (!groupMvs.has(key)) groupMvs.set(key, useMotionValue(0))
-  return groupMvs.get(key)
-}
-
-function naturalGroupHeight(key) {
-  const clip = groupEls.get(key)?.querySelector('.ui-tree__group-clip')
-  return clip ? clip.scrollHeight : 0
-}
-
-function syncGroupHeight(key, open, animateIt = true) {
-  const mv = groupHeight(key)
-  const natural = naturalGroupHeight(key)
-  if (!open) {
-    if (animateIt && !prefersReducedMotion() && mv.get() > 0) animate(mv, 0, getSpringConfig('view'))
-    else mv.set(0)
-    return
-  }
-  if (Math.abs(natural - mv.get()) < 1) { mv.set(natural); return }
-  if (animateIt && !prefersReducedMotion()) animate(mv, natural, getSpringConfig('view'))
-  else mv.set(natural)
-}
-
-onMounted(() => {
-  /* 初始态直接落位：defaultOpen / 过滤展开的分组不播动画 */
-  nextTick(() => {
-    rows.value.forEach(row => {
-      if (!row.hasChildren) return
-      syncGroupHeight(row.key, isOpen(row.key), false)
+function ensureGroupRo() {
+  if (groupRo || typeof ResizeObserver === 'undefined') return groupRo
+  groupRo = new ResizeObserver(entries => {
+    entries.forEach(entry => {
+      const k = groupRoKeys.get(entry.target)
+      if (k === undefined) return
+      const h = entry.target.scrollHeight
+      if (h > 0 && naturalHeights[k] !== h) naturalHeights[k] = h
     })
   })
-})
+  return groupRo
+}
+
+function unbindClip(key) {
+  const clip = groupClips.get(key)
+  if (!clip) return
+  if (groupRo) groupRo.unobserve(clip)
+  groupRoKeys.delete(clip)
+  groupClips.delete(key)
+}
+
+/* clip 的 ref 回调会调用两次：首次子组件尚未渲染完，scrollHeight 是 0；
+   下一帧才有真实高度。所以「元素相同就整个跳过」是错的 —— 那样高度会
+   永远停在 0（树明明展开了、分组却零高）。这里只跳过重绑，高度每次都重读，
+   且只在值真的变化时写，避免「读 scrollHeight -> 写响应式 -> 重渲染」的循环。 */
+function setClipEl(key, el) {
+  if (!el) { unbindClip(key); return }
+  if (groupClips.get(key) !== el) {
+    unbindClip(key)
+    groupClips.set(key, el)
+    const ro = ensureGroupRo()
+    if (ro) {
+      groupRoKeys.set(el, key)
+      ro.observe(el)
+    }
+  }
+  const h = el.scrollHeight
+  if (h > 0 && naturalHeights[key] !== h) naturalHeights[key] = h
+}
+
+/* 分组当前应占的高度：收起 = 0，展开 = 内容自然高度。
+   返回**稳定的对象引用**（下面 animateTargets 缓存），只在数值变化时改属性 ——
+   每帧新建对象字面量会让 motion 反复收到新引用，diff 不稳定。 */
+const animateTargets = reactive({})
+function groupAnimate(key) {
+  let box = animateTargets[key]
+  if (!box) {
+    box = animateTargets[key] = { height: 0 }
+  }
+  const target = isOpen(key) ? (naturalHeights[key] || 0) : 0
+  if (box.height !== target) box.height = target
+  return box
+}
 
 onBeforeUnmount(() => {
   if (groupRo) groupRo.disconnect()
+  groupRo = null
+  groupClips.clear()
 })
-
-/* 本层展开切换 / 过滤变化：驱动本层各组弹簧 */
-watch(
-  () => rows.value.map(row => ({ key: row.key, has: row.hasChildren, open: row.hasChildren && isOpen(row.key) })),
-  (list, prev) => {
-    list.forEach(item => {
-      if (!item.has) return
-      const before = prev?.find(o => o.key === item.key)
-      if (before && before.open === item.open) return
-      syncGroupHeight(item.key, item.open)
-    })
-  },
-  { flush: 'post' }
-)
 
 /* ---------- 拖拽换父 ---------- */
 function onDragStart(row, event) {
@@ -326,15 +320,18 @@ defineExpose(isRoot ? {
       </button>
 
       <!-- 子级分组：DOM 常驻不销毁，高度由 motion 弹簧驱动（view 场景），
-           行内容随 opacity/blur 浮现；is-open 只管箭头旋转与淡入。 -->
+           行内容随 opacity/blur 浮现；is-open 只管箭头旋转与淡入。
+           高度走响应式像素值（MV 的 change 写入），由 Vue 渲染 —— 不把
+           MotionValue 直接给 motion 的 :style（非 transform 属性会被跳过）。
+           clip 挂普通 div 的 ref（量高度用它，避免解析 motion 实例）。 -->
       <motion.div
         v-if="row.hasChildren"
-        :ref="el => setGroupEl(row.key, el)"
         class="ui-tree__group"
         :class="{ 'is-open': isOpen(row.key) }"
-        :style="{ height: groupHeight(row.key) }"
+        :animate="groupAnimate(row.key)"
+        :transition="getSpringConfig('view')"
       >
-        <div class="ui-tree__group-clip">
+        <div :ref="el => setClipEl(row.key, el)" class="ui-tree__group-clip">
         <UiTreeView
           :nodes="row.children"
           :depth="depth + 1"
