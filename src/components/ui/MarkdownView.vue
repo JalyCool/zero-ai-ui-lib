@@ -183,7 +183,7 @@ function renderNode(node) {
 /* ---------- streaming：词壳 = motion.span（上浮 + 模糊，逐 token 蹦出来） ----------
    方案：流式文本按空格拆成词（无空白的 CJK 每 3 字一组），每个词一个
    <motion.span class="stream-word">。词表按块缓存，帧间只比「词的前缀」：
-   · 词壳 key 稳定（blockId + '.' + ti）-> Vue 节点复用，motion 组件实例
+   · 词壳 key 稳定（块 id + 文本段序号 + 段内词序）-> Vue 节点复用，motion 组件实例
      不重建 -> 已入场词不重播（每个词只在挂载时播一次 initial -> animate）；
    · 新词挂载即从 initial（透明 + 上浮 + 模糊）弹向落定态，transition 走
      feedback 场景弹簧，同一批新增词按批次序号级联延迟，逐个蹦出来；
@@ -191,8 +191,6 @@ function renderNode(node) {
      动画绝不会被「下一帧结构变化」打断 —— 这就是不再闪现的关键。
    initial/animate 在模块级冻结（引用恒定），重渲染传新对象也不会让
    motion 重播；transition 按（effect, 级联步进）记忆化，同理。 */
-const shownTokens = new Map()   /* blockId -> 上一帧的词表 */
-const freshInfo = ref(new Map())  /* blockId -> { whole, stable } 本轮渲染所需 */
 /* 预留高度：上一次渲染完成时容器的高度，避免逐块长出来时页面上下跳。 */
 const reserveHeight = ref(0)
 const rootEl = ref(null)
@@ -230,11 +228,6 @@ function tokenTransition(effect, batchIndex) {
   return transition
 }
 
-/* 块在文档里的稳定身份：标签名 + 同类序号（不含文本） */
-function blockId(el, indexInType) {
-  return el.tagName.toLowerCase() + '#' + indexInType
-}
-
 /* 分词：空格切开（空白本身也是 token，保证 join === 原文）；
    无空白的长段（中文整句）每 3 字一组，让 CJK 也有逐词节奏 */
 function tokenize(text) {
@@ -251,131 +244,86 @@ function tokenize(text) {
   return out
 }
 
-/* 两词表的最长公共前缀（token 级） */
-function commonTokenPrefix(a, b) {
-  const limit = Math.min(a.length, b.length)
-  let i = 0
-  while (i < limit && a[i] === b[i]) i += 1
-  return i
-}
-
-watch(() => props.content, () => {
-  if (!props.streaming) {
-    shownTokens.clear()
-    freshInfo.value = new Map()
-    reserveHeight.value = 0
-    return
-  }
-  const doc = new DOMParser().parseFromString(marked.parse(props.content || ''), 'text/html')
-  const next = new Map()
-  const fresh = new Map()
-  const typeCount = new Map()
-  Array.from(doc.body.children).forEach(el => {
-    const type = el.tagName.toLowerCase()
-    const seq = typeCount.get(type) || 0
-    typeCount.set(type, seq + 1)
-    const id = blockId(el, seq)
-    const tokens = tokenize(el.textContent || '')
-    const prev = shownTokens.get(id)
-    if (prev === undefined) {
-      /* 整块第一次出现：整块都是新的，块级进场，内部不逐词 */
-      fresh.set(id, { whole: true, stable: 0 })
-    } else {
-      const stable = commonTokenPrefix(prev, tokens)
-      if (tokens.length > stable) fresh.set(id, { whole: false, stable })
-    }
-    next.set(id, tokens)
-  })
-  shownTokens.clear()
-  next.forEach((v, k) => shownTokens.set(k, v))
-  freshInfo.value = fresh
-}, { immediate: true })
-
-/* 渲染后：缓存高度做 min-height 预留（词壳入场由 motion 自驱，无须补类）。 */
-watch(freshInfo, async () => {
-  if (!props.streaming) return
+/* 内容变化：维护高度预留。逐块长出来时容器高度会一截一截跳，
+   用 min-height 把最终高度先占住；明显变短 = 新一轮流式从头开始，跟着缩。 */
+watch(() => props.content, async () => {
+  if (!props.streaming) { reserveHeight.value = 0; return }
   await nextTick()
   const el = rootEl.value
   if (!el) return
   const height = el.offsetHeight
-  if (height > reserveHeight.value) {
-    reserveHeight.value = height
-  } else if (height < reserveHeight.value * 0.6) {
-    /* 明显变短 = 新一轮流式从头开始：跟着缩，不占旧全文高度 */
-    reserveHeight.value = height
-  }
-})
+  if (height > reserveHeight.value) reserveHeight.value = height
+  else if (height < reserveHeight.value * 0.6) reserveHeight.value = height
+}, { flush: 'post' })
+
+/* 不做逐词的块：
+   · pre —— 词壳是 inline-block，会吃掉缩进与换行，代码块排版直接崩
+   · table —— 排版结构，单元格里逐词包裹只会打乱列宽 */
+const NO_TOKENIZE_TAGS = new Set(['pre', 'table'])
 
 function withStreaming(tree) {
   if (!props.streaming) return tree
   const typeCount = new Map()
   return tree.map(child => {
-    if (!child || !child.type || !child.props) return child
-    const type = typeof child.type === 'string' ? child.type : ''
-    if (!type) return child
+    if (!child || typeof child.type !== 'string') return child
+    const type = child.type
+    if (NO_TOKENIZE_TAGS.has(type)) return child
     const seq = typeCount.get(type) || 0
     typeCount.set(type, seq + 1)
-    const id = type + '#' + seq
-    const tokens = shownTokens.get(id)
-    if (!tokens || !tokens.length) return child
-    /* 没有增量也要重建词壳：让旧帧的 span 结构在这一帧保持一致。
-       整块第一次出现 = stable 0 = 全部词按批次级联蹦出。 */
-    const info = freshInfo.value.get(id)
-    const stable = info ? info.stable : tokens.length
-    return h(child.type, { ...child.props }, wrapAllTokens(child.children, tokens, stable, id))
+    return h(type, { ...child.props }, wrapTokens(child.children, type + '#' + seq))
   })
 }
 
-/* 把块的 children 按词表整体 span 化：文本按 token 顺序消费，
-   每个词一个 motion.span；批次序号 = ti - stable（稳定前缀内为 0，
-   新增词按出现次序级联延迟）。递归进嵌套结构（strong / 链接 / 数组 children）。 */
-function wrapAllTokens(children, tokens, stable, id) {
-  let ti = 0
-  function consume(text) {
-    const out = []
-    let chars = Array.from(text)
-    while (ti < tokens.length) {
-      const tokChars = Array.from(tokens[ti])
-      if (chars.length < tokChars.length) break
-      if (tokChars.some((ch, k) => ch !== chars[k])) break
-      const tokenKey = id + '.' + ti
-      const state = TOKEN_STATES[props.streamEffect] || TOKEN_STATES.rise
-      /* motion.span 是组件：第三参数必须是 slot 函数，
-         裸字符串会被当成 slots 对象（Vue 会告警「Non-function value
-         encountered for default slot」，且每次都重建 vnode）。 */
-      out.push(h(motion.span, {
-        class: 'stream-word',
-        key: tokenKey,
-        initial: state.initial,
-        animate: state.animate,
-        transition: tokenTransition(props.streamEffect, ti - stable)
-      }, { default: () => tokens[ti] }))
-      chars = chars.slice(tokChars.length)
-      ti += 1
-    }
-    if (chars.length) out.push(chars.join(''))
-    return out
-  }
+/* 把块内**每个文本节点独立**分词并包成词壳。
+   ------------------------------------------------------------------
+   为什么不能跨文本节点共享一份词表：旧实现拿整块 textContent 分词，再按
+   文档顺序贪心消费。token 一旦跨过行内节点边界（`**首选高铁**，全程` 里的
+   「铁，全」横跨 strong 与后面的正文），消费就在边界处失配；而失配只 break
+   不推进 ti —— 后续多个词壳因此拿到同一个 key（块 id + ti），Vue 只能把
+   它们复用到错误的节点上：同一段文字重复出现，其它位置塌成空占位。
+   现在每个文本节点有自己的词表与 key 空间，天然不会撞。
+
+   级联延迟按段内序号：新一批词挂载时照样逐个蹦出来；已入场的词壳 key 稳定，
+   Vue 复用节点，motion 不会重播（initial/animate 是模块级冻结的引用）。 */
+function wrapTokens(children, id) {
+  if (!Array.isArray(children)) return children
+  let seg = 0
+  const state = TOKEN_STATES[props.streamEffect] || TOKEN_STATES.rise
+
   function walk(list) {
     const out = []
     for (const node of list) {
+      if (node == null || typeof node === 'boolean') continue
       if (typeof node === 'string' || typeof node === 'number') {
-        out.push(...consume(String(node)))
-      } else if (Array.isArray(node)) {
-        out.push(walk(node))
-      } else if (node && typeof node.children === 'string') {
-        out.push(h(node.type, { ...node.props }, consume(node.children)))
-      } else if (node && Array.isArray(node.children)) {
-        out.push(h(node.type, { ...node.props, key: node.key }, walk(node.children)))
-      } else {
-        out.push(node)
+        const text = String(node)
+        if (!text) continue
+        const segId = id + '/' + (seg++)
+        tokenize(text).forEach((tok, ti) => {
+          out.push(h(motion.span, {
+            class: 'stream-word',
+            key: segId + '.' + ti,
+            initial: state.initial,
+            animate: state.animate,
+            transition: tokenTransition(props.streamEffect, ti)
+          }, { default: () => tok }))
+        })
+        continue
       }
+      if (Array.isArray(node)) { out.push(walk(node)); continue }
+      /* 组件 vnode（UiLink 等）与 Fragment：整块保留，不进去拆词 */
+      if (typeof node.type !== 'string') { out.push(node); continue }
+      if (NO_TOKENIZE_TAGS.has(node.type)) { out.push(node); continue }
+      /* 注意变量名不能用 props —— 会遮蔽组件的 props，整个 walk 作用域内
+         它在声明前都处于 TDZ，上面的 props.streamEffect 会直接抛错 */
+      const vprops = { ...node.props }
+      if (node.key != null) vprops.key = node.key
+      out.push(h(node.type, vprops, walk(node.children || [])))
     }
     return out
   }
-  if (!Array.isArray(children)) return children
   return walk(children)
 }
+
 const Root = () => {
   if (!props.content || !props.content.trim()) return null
   seq = 0
@@ -456,14 +404,18 @@ const Root = () => {
 .ui-md-hr { border: 0; border-top: var(--border-w) solid var(--outline-variant); margin: 1.4em 0; }
 
 /* ---------- streaming：词壳（motion 驱动） ----------
-   每个词一个 inline-block motion.span：inline 元素 transform 无效，必须 inline-block。
-   透明度 / 位移 / 模糊全部由 motion 的 initial -> animate 驱动（feedback 弹簧 +
-   批次级联延迟），CSS 不再持有初始态与过渡，避免双重驱动。 */
-.stream-word {
+   每个词一个 inline-block motion.span：inline 元素 transform 无效，必须
+   inline-block，否则上浮与模糊全部看不见（只剩终态的 opacity）。
+   ⚠️ 必须用 :deep()：词壳是 motion 组件的根元素，scoped 选择器匹配不到子
+   组件内部，`.stream-word { display: inline-block }` 会静默失效、回落成
+   inline —— 那正是「动画看起来没生效」的原因。
+   透明度 / 位移 / 模糊全部由 motion 的 initial -> animate 驱动（view 弹簧 +
+   段内级联延迟），CSS 不再持有初始态与过渡，避免双重驱动。 */
+.ui-md :deep(.stream-word) {
   display: inline-block;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stream-word { transform: none; filter: none; }
+  .ui-md :deep(.stream-word) { transform: none; filter: none; }
 }
 </style>
