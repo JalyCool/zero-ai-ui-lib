@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import UiAvatar from './UiAvatar.vue'
 import UiAgentAvatar from './UiAgentAvatar.vue'
+import { getSpringConfig, motion } from '../../composables/useMotion'
 
 /* ============================================================
    AvatarTag（参考 Figma NameTag 5:52 / Frame 11）
@@ -32,7 +33,38 @@ const props = defineProps({
   agent: { type: Boolean, default: false },
   agentShape: { type: String, default: 'circle' },
   agentColor: { type: String, default: '' },
-  agentState: { type: String, default: 'idle' }
+  agentState: { type: String, default: 'idle' },
+  /* 入场动画：头像由小到大弹出，随后标签从左侧向右展开。
+     Markdown 正文里第一次出现的 inline tag 用（不是每次重渲染都播）。 */
+  reveal: { type: Boolean, default: false }
+})
+
+/* ---------- 入场：头像弹出 -> 标签左→右展开 ----------
+   标签宽度是**实测**的（测量时临时放开宽度），所以展开会真实推开后面的
+   文字；只做 clip-path 揭示的话占位不变，看起来会像「凭空出现」。
+   顺序按需求分开：头像先弹（feedback 弹簧，脆），标签随后展开（view 弹簧，
+   稍慢），延迟取头像行程的一小段，形成「先有头再吐字」的层次。 */
+const labelEl = ref(null)
+const labelWidth = ref(0)
+const labelOpen = ref(false)
+
+function measureLabel() {
+  /* motion 组件的 ref 给的是**组件实例**，没有 style —— 必须取 $el */
+  const el = labelEl.value?.$el || labelEl.value
+  if (!el?.style) return
+  const prev = el.style.maxWidth
+  el.style.maxWidth = 'none'
+  labelWidth.value = Math.ceil(el.scrollWidth)
+  el.style.maxWidth = prev
+}
+
+onMounted(() => {
+  if (!props.reveal) return
+  nextTick(() => {
+    measureLabel()
+    /* 头像弹到差不多满时再吐标签 */
+    setTimeout(() => { labelOpen.value = true }, 110)
+  })
 })
 
 const headSize = computed(() => (props.size === 'md' ? 24 : props.size === 'lg' ? 30 : 18))
@@ -143,12 +175,18 @@ watch(() => [props.icon, props.iconViewBox], () => {
 <template>
   <span
     class="ui-avatar-tag"
-    :class="['ui-avatar-tag--' + size, { 'has-accent': !!tagAccent }]"
+    :class="['ui-avatar-tag--' + size, { 'has-accent': !!tagAccent, 'is-reveal': reveal }]"
     :style="tagAccent ? { '--tag-accent': tagAccent } : undefined"
   >
-    <span
+    <motion.span
       class="ui-avatar-tag__avatar"
-      :class="['is-' + shape, { 'is-icon': !!icon && !agent, 'is-image': !!src, 'is-agent': agent }]"
+      :class="[
+        agent ? 'is-agent' : 'is-' + shape,
+        { 'is-icon': !!icon && !agent, 'is-image': !!src }
+      ]"
+      :initial="reveal ? { scale: 0 } : false"
+      :animate="{ scale: 1 }"
+      :transition="getSpringConfig('feedback')"
     >
       <slot name="avatar">
         <UiAgentAvatar
@@ -171,8 +209,16 @@ watch(() => [props.icon, props.iconViewBox], () => {
         <UiAvatar v-else-if="src" class="ui-avatar-tag__std" :src="src" :name="name" />
         <UiAvatar v-else class="ui-avatar-tag__std" :name="name || '?'" />
       </slot>
-    </span>
-    <span class="ui-avatar-tag__label"><slot>{{ name }}</slot></span>
+    </motion.span>
+    <motion.span
+      ref="labelEl"
+      class="ui-avatar-tag__label"
+      :initial="reveal ? { maxWidth: 0, opacity: 0 } : false"
+      :animate="reveal
+        ? { maxWidth: labelOpen ? labelWidth + 'px' : 0, opacity: labelOpen ? 1 : 0 }
+        : { maxWidth: 'none', opacity: 1 }"
+      :transition="getSpringConfig('view')"
+    ><slot>{{ name }}</slot></motion.span>
   </span>
 </template>
 
@@ -203,22 +249,35 @@ watch(() => [props.icon, props.iconViewBox], () => {
 .ui-avatar-tag--md { height: 24px; padding: 0 9px 0 26px; font-size: var(--fs-tiny); }
 .ui-avatar-tag--lg { height: 30px; padding: 0 11px 0 32px; font-size: var(--fs-small); }
 
-/* 头像：左缘比药丸再探出 1px；圆角环画在头像内侧，和设计稿一致。 */
+/* 头像：左缘比药丸再探出 1px；圆角环画在头像内侧，和设计稿一致。
+   垂直定位用 top 而**不是** translateY —— reveal 时 motion 要用 transform
+   做 scale，translateY 会被覆盖（头像会跳到底边）。
+   transform-origin 定在左中：弹出的圆心贴着药丸左缘。 */
 .ui-avatar-tag__avatar {
   position: absolute;
   left: -1px;
-  top: 50%;
+  top: -1px;
   z-index: 2;
   width: 18px;
   height: 18px;
-  transform: translateY(-50%);
+  transform-origin: left center;
   overflow: hidden;
   background: var(--surface-container-highest);
 }
 .ui-avatar-tag--md .ui-avatar-tag__avatar { width: 24px; height: 24px; }
 .ui-avatar-tag--lg .ui-avatar-tag__avatar { width: 30px; height: 30px; }
 
-.ui-avatar-tag__label { position: relative; z-index: 1; }
+/* 标签：reveal 用 max-width 展开（真实推开后续文字），非 reveal 不裁剪 */
+.ui-avatar-tag__label {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  vertical-align: middle;
+}
+.ui-avatar-tag.is-reveal .ui-avatar-tag__label {
+  overflow: hidden;
+  white-space: nowrap;
+}
 
 .ui-avatar-tag__avatar img,
 .ui-avatar-tag__glyph,
@@ -231,6 +290,14 @@ watch(() => [props.icon, props.iconViewBox], () => {
   color: var(--on-surface-variant);
   font-size: 10px;
   font-weight: var(--w-strong);
+}
+
+/* 智能体头像：剪影（三角 / 星形…）有自己的外形，**不能裁成圆形、也不垫底**，
+   否则头像会变成一颗圆底里的三角。只有图片模式才按 shape 裁切。 */
+.ui-avatar-tag__avatar.is-agent {
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
 }
 
 /* 图片：不同遮罩形状 */

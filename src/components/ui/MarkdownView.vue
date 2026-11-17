@@ -75,7 +75,10 @@ function mentionProps(username) {
     /* agent 主体色（可选）：药丸底色会自动跟随它（AvatarTag 的主体色跟随） */
     agentColor: agent ? (p.color || undefined) : undefined,
     shape: agent ? undefined : (p.shape || 'circle'),
-    size: props.tagSize
+    size: props.tagSize,
+    /* 文档内联 tag 的入场：头像弹出 + 标签左→右展开。
+       vnode key 稳定（'inN' 按出现序），重渲染不会重播。 */
+    reveal: true
   }
 }
 

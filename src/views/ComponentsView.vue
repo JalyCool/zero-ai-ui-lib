@@ -17,7 +17,7 @@ import {
   UiCommandPalette, UiContextMenu, UiForm, UiFormField,
   UiGrid, UiIcon, UiKbd, UiMarquee, UiNavigationMenu, UiPagination,
   UiPagerDots, UiPopover, UiProgressiveBlur, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter,
-  UiChatThread, UiChatMessage, UiChatSystemLine, UiChatMention,
+  UiChatThread, UiChatMessage, UiChatSystemLine,
   UiTimeline, UiTour
 } from '../components/ui'
 import { confirmDialog, AGENT_SHAPES } from '../lib'
@@ -26,6 +26,19 @@ import supabaseSvg from '../assets/figma/supabase.svg?raw'
 
 /* 产品授权卡（Figma 5:454）里的 ZERO 头像：黑底两只白眼睛的图标脸 */
 const zeroFace = '<rect width="24" height="24" rx="12" fill="#111"/><rect x="8.4" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/><rect x="13" y="8.2" width="2.6" height="7.6" rx="1.3" fill="#fff"/>'
+/* 对话演示数据：正文是 Markdown，@提及 交给 mentionResolver 解析成
+   UiAvatarTag（头像弹出 + 标签展开的入场动画在 AvatarTag 内部）。 */
+const chatIntro = '欢迎回来！昨天我们刚把暑假计划的「出行方式」和「住宿偏好」搞定了。你提过想深度体验当地美食，我整理了一份**美食清单**，要不要看看？'
+const chatDispatch = '好嘞！那我这就把这个活儿派下去。得让 @Gourmet 找找地道馆子，路线让 @Guide 决定，我来问问他俩需要什么信息……'
+const CHAT_AGENTS = {
+  Gourmet: { type: 'agent', shape: 'circle', color: '#ff9838' },
+  Guide: { type: 'agent', shape: 'triangle', color: '#7438ff' }
+}
+function chatMention(username) {
+  const hit = CHAT_AGENTS[username]
+  return { username, showname: username, ...(hit || {}) }
+}
+
 /* 对话系统行演示用的两个图标（24x24 viewBox 内的 SVG 标记） */
 const ICON_PILL = '<rect x="7" y="8" width="10" height="8" rx="4" fill="currentColor"/>'
 const ICON_SEND = '<path d="M4 12l16-8-6 16-3-6z" fill="currentColor"/>'
@@ -1075,24 +1088,38 @@ watch(activeSection, id => {
         </div>
 
         <div class="lib-cell">
-          <span class="lib-cell__label">对话消息 <small>ChatMessage / ChatThread / ChatSystemLine / ChatMention</small></span>
+          <span class="lib-cell__label">对话消息 <small>ChatMessage / ChatThread / ChatSystemLine</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <div style="position: relative; height: 420px; width: 100%; overflow: hidden; border-radius: 12px; background: var(--surface); border: var(--border-w) solid var(--outline-variant);">
               <UiChatThread :gap="18" padding="24px">
-                <UiChatMessage role="assistant" size="lg">欢迎回来！昨天我们刚把暑假计划的「出行方式」和「住宿偏好」搞定了。你提过想深度体验当地的美食，我整理了一份美食清单，要不要看看？</UiChatMessage>
-                <UiChatMessage role="user" size="lg">行，你看着办</UiChatMessage>
+                <UiChatMessage role="assistant" size="lg" :content="chatIntro" :mention-resolver="chatMention" />
+                <UiChatMessage role="user" size="lg" content="行，你看着办" />
                 <UiChatSystemLine :icon="ICON_PILL" size="md">提取了 领导技巧</UiChatSystemLine>
-                <UiChatMessage role="assistant" size="lg">
-                  好嘞！那我这就把这个活儿派下去。得让<UiChatMention name="Gourmet" color="#ff9838" shape="circle" />找找地道馆子，路线让<UiChatMention name="Guide" color="#7438ff" shape="triangle" />决定。
-                </UiChatMessage>
-                <UiChatMessage role="agent" name="Guide" color="#7438ff" avatar-shape="triangle" size="lg">我可以根据当前位置和半径列出所有餐馆。</UiChatMessage>
-                <UiChatMessage role="agent" name="Gourmet" color="#ff9838" avatar-shape="circle" size="lg">我可以根据餐馆品牌、名称查找评分信息，在指定门店后可以预约或点外卖。</UiChatMessage>
+                <UiChatMessage role="assistant" size="lg" :content="chatDispatch" :mention-resolver="chatMention" />
+                <UiChatMessage
+                  role="agent"
+                  name="Guide"
+                  color="#7438ff"
+                  avatar-shape="triangle"
+                  size="lg"
+                  :content="'我可以根据当前位置和半径列出所有餐馆，并用 **地图卡片** 直接回复你。'"
+                  :mention-resolver="chatMention"
+                />
+                <UiChatMessage
+                  role="agent"
+                  name="Gourmet"
+                  color="#ff9838"
+                  avatar-shape="circle"
+                  size="lg"
+                  :content="'我可以根据餐馆品牌、名称查找评分信息；在指定门店后可以帮 @Guide 预约或点外卖。'"
+                  :mention-resolver="chatMention"
+                />
                 <UiChatSystemLine :icon="ICON_SEND" size="md">私信了</UiChatSystemLine>
                 <UiChatSystemLine align="center" size="sm">关闭了对话</UiChatSystemLine>
               </UiChatThread>
             </div>
           </div>
-          <span class="lib-cell__note"><strong>三种角色</strong>：<code>assistant</code> 纯文本无气泡（AI 叙述不该被框住）、<code>user</code> 黑底气泡右上收窄（24/8/24/24）、<code>agent</code> 品牌色气泡左侧头像左上收窄（8/24/24/24）——收窄角指向说话人。<strong>UiChatThread</strong> 自带滚动 + 贴底 + 跟随（用户上滑暂停、回底恢复）；<strong>UiChatMention</strong> 是设计稿的双层文字药丸（上层品牌色压暗、下层黑 20% 重影下移 4px），头像 18px 探出药丸 1px 且 <code>animated=false</code> 不跑 rAF；<strong>UiChatSystemLine</strong> 整行 0.4 不透明度。</span>
+          <span class="lib-cell__note"><strong>三种角色</strong>：<code>assistant</code> 纯文本无气泡（AI 叙述不该被框住）、<code>user</code> 黑底气泡右上收窄（24/8/24/24）、<code>agent</code> 品牌色气泡左侧头像左上收窄（8/24/24/24）——收窄角指向说话人。<strong>正文一律走 MarkdownView</strong>（<code>content</code> + <code>mentions</code> + <code>mention-resolver</code>）：@提及 由它的 mentions 机制渲染成 <code>UiAvatarTag</code>，消息组件不另做 mention。头像直接放标准头像组件，<strong>不加圆形底、不做裁切</strong>。<strong>UiChatThread</strong> 自带滚动 + 贴底 + 跟随；<strong>UiChatSystemLine</strong> 整行 0.4 不透明度。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">链接 <small>UiLink</small></span>
