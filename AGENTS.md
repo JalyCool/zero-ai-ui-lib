@@ -194,6 +194,7 @@ import {
 | `UiCommandPalette` | `v-model` 开关 + `items`；输入过滤、上下键移动、Enter 执行，Esc 关闭 |
 | `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让；**进场高亮孔先铺满整屏再收拢到目标**（整体聚焦到一点），换步时孔在目标之间连续移动，退场再张回整屏 |
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
+| `UiProgressiveBlur` | **页面顶端 / 底部的渐进式模糊**：N 层 backdrop-filter + 软边 mask 叠加，模糊强度从贴边处线性衰减到 0（无硬边界）；`placement` top / bottom、`height`、`maxBlur`、`layers`（合成成本随层数线性增长）、`tint` + `tintStrength`（染色层，默认 surface 0.8 → 透明，与设计稿顶 / 底栏同源）、`position` absolute/relative/fixed；层全部 pointer-events: none，盖在可交互内容上不拦截；盖在滚动容器上做「内容滑出即糊化」的顶 / 底栏 |
 | `UiKbd` | `keys` 字符串或数组，`size` sm / md |
 | `UiIcon` | `name` **先查库内 ICONS 注册表，未命中则按 Iconify 名字渲染**（`pack:icon` / `pack/icon` / `pack--icon` / `i-pack:icon` 都自动归一化成 `pack:icon`），`size`（像素或 `1em` 内联用）`filled` `stroke-width` `label` |
 | `UiCalendar` | `v-model` 日期 + `events`（按 ISO 日期给数组）；`view` **month / week / year / agenda** 四种视图（`switchable` 显示切换器）：年视图 12 个月总览点月**下钻**、日程视图按日期列事件；切换 = 精细度改变的 **ZoomTo**（下钻推近 scale .72 到 1、拉远反向，配模糊） |

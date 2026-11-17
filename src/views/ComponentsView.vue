@@ -16,7 +16,7 @@ import {
   UiAutocomplete, UiBreadcrumb, UiCalendar, UiCarousel, UiCol, UiColorPicker,
   UiCommandPalette, UiContextMenu, UiForm, UiFormField,
   UiGrid, UiIcon, UiKbd, UiMarquee, UiNavigationMenu, UiPagination,
-  UiPagerDots, UiPopover, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter,
+  UiPagerDots, UiPopover, UiProgressiveBlur, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter,
   UiTimeline, UiTour
 } from '../components/ui'
 import { confirmDialog, AGENT_SHAPES } from '../lib'
@@ -1056,6 +1056,19 @@ watch(activeSection, id => {
           <span class="lib-cell__note">只接管滚动外观，不改变内容布局。</span>
         </div>
 
+        <div class="lib-cell">
+          <span class="lib-cell__label">渐进式模糊 <small>UiProgressiveBlur</small></span>
+          <div class="lib-cell__stage lib-cell__stage--col">
+            <div style="position: relative; height: 200px; overflow: hidden; border-radius: 12px; background: var(--surface-container-low);">
+              <div style="padding: 14px;">
+                <p v-for="n in 9" :key="n" style="margin: 0 0 8px; font-size: var(--fs-small); color: var(--on-surface-variant);">第 {{ n }} 行 —— 滚动内容被顶 / 底的渐进模糊盖住，越靠边越糊。</p>
+              </div>
+              <UiProgressiveBlur placement="top" :height="64" :max-blur="8" :layers="5" />
+              <UiProgressiveBlur placement="bottom" :height="64" :max-blur="10" :layers="5" />
+            </div>
+          </div>
+          <span class="lib-cell__note">N 层 backdrop-filter + 软边 mask 叠加，模糊强度向内线性衰减到 0；tint 染色层（surface → 透明）与设计稿顶 / 底栏同源；层全部 pointer-events: none，不拦截内容交互。</span>
+        </div>
         <div class="lib-cell">
           <span class="lib-cell__label">链接 <small>UiLink</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
