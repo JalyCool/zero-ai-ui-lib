@@ -5,7 +5,9 @@ import ZeroScroll from './ZeroScroll.vue'
 const props = defineProps({
   /* 内容最大宽度（px）；0 = 不限制。移动优先的应用设 480 就够。 */
   maxWidth: { type: Number, default: 480 },
-  /* 内容内边距；不传按 maxWidth 给一套稳妥值 */
+  /* 内容内边距；不传按 maxWidth / tabbarSpace 给一套稳妥值，
+     传 'none' 表示**不写内联 padding**，完全交给应用自己的外壳 CSS
+     （老项目已经有 #scrollArea 的响应式内边距时用这个，避免内联样式盖掉它） */
   padding: { type: String, default: '' },
   /* 底部给 TabBar 留的高度（px）；0 = 没有 TabBar */
   tabbarSpace: { type: Number, default: 0 },
@@ -40,6 +42,8 @@ const props = defineProps({
 const scrollRef = ref(null)
 
 const resolvedPadding = computed(() => {
+  /* 'none' = 内联不写，交给应用的 #scrollArea 规则（含 media query） */
+  if (props.padding === 'none') return ''
   if (props.padding) return props.padding
   const bottom = props.tabbarSpace > 0 ? props.tabbarSpace + 16 : 24
   return `20px clamp(16px, 4vw, 48px) ${bottom}px`

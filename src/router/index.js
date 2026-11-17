@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import ChatView from '../views/ChatView.vue'
 import ActivityView from '../views/ActivityView.vue'
 import AddRecordSheet from '../views/AddRecordSheet.vue'
 import TrendsView from '../views/TrendsView.vue'
@@ -33,6 +34,12 @@ const routes = [
       { path: 'stand', name: 'stand', key: 'stand' },
       { path: 'breath', name: 'breath', key: 'breath' }
     ])
+  },
+  {
+    path: '/chat',
+    name: 'chat',
+    component: ChatView,
+    meta: { tab: 'chat', title: '与 Zero 的对话', sub: '计划、清单与安排都在这里' }
   },
   {
     path: '/activity',

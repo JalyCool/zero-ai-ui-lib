@@ -19,6 +19,9 @@ const props = defineProps({
   /* 透传给 MarkdownView：是否解析 @提及 / 用户名解析器 */
   mentions: { type: Boolean, default: true },
   mentionResolver: { type: Function, default: null },
+  /* 流式增量进场：content 增长时新词逐个蹦出（透传给 MarkdownView） */
+  streaming: { type: Boolean, default: false },
+  streamEffect: { type: String, default: 'rise', validator: v => ['rise', 'blur', 'fade'].includes(v) },
   /* agent 气泡品牌色；默认跟随主题主色 */
   color: { type: String, default: '' },
   /* agent 名字（气泡上方一行小字，可省） */
@@ -105,6 +108,8 @@ const tagSize = computed(() => (props.size === 'lg' ? 'md' : 'sm'))
           :mentions="mentions"
           :mention-resolver="mentionResolver"
           :tag-size="tagSize"
+          :streaming="streaming"
+          :stream-effect="streamEffect"
         />
         <slot v-else />
       </div>
