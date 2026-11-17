@@ -36,9 +36,6 @@ const panelEl = ref(null)
 const panelContentEl = ref(null)
 const wheelEl = ref(null)
 
-const current = ref(normalizeTime(props.modelValue))
-const parts = ref(splitParts(current.value))
-
 const { open, closing, floating, compressed, style, viewStyle, openWindow, closeWindow, toggleWindow } = useMorphWindow({
   surface: () => surfaceEl.value,
   panel: () => panelEl.value,
@@ -106,6 +103,11 @@ function fromSeconds(total) {
   if (props.precision === 'm') return pad(h) + ':' + pad(mi)
   return pad(h) + ':' + pad(mi) + ':' + pad(s)
 }
+
+/* 初始值必须等 pad / splitParts / normalizeTime / clampTime / min·maxSeconds
+   全部声明完再算（否则命中 TDZ：can't access lexical declaration before initialization） */
+const current = ref(normalizeTime(props.modelValue))
+const parts = ref(splitParts(current.value))
 
 const hourItems = Array.from({ length: 24 }, (_, i) => pad(i))
 const minuteItems = Array.from({ length: 60 }, (_, i) => pad(i))
