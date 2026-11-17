@@ -114,7 +114,7 @@ onBeforeUnmount(() => { pointerId = null; dragging.value = false })
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
 }
 .ui-splitter.is-vertical { flex-direction: column; }
 

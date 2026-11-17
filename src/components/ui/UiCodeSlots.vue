@@ -311,7 +311,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   max-width: 56px;
   overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   font-size: 1.32rem;
@@ -358,7 +358,7 @@ defineExpose({ focus: () => focusInput(), blur: () => inputEl.value && inputEl.v
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: color-mix(in oklab, var(--ui-success, #15803d) 16%, var(--surface-container-low));
   clip-path: inset(0 50% 0 50% round 14px);
   opacity: 0;

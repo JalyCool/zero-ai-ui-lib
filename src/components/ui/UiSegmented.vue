@@ -30,8 +30,9 @@ const emit = defineEmits(['update:modelValue'])
 /* ============================================================
    分段控件
    · 单行：胶囊轨道 + 滑动指示器（原有外观，一字不改）；
-   · 多行：宽度装不下时自动切成网格，指示器让位给「选中项自己填底色」——
-     一行里滑动的指示器在换行后会跨行乱跑，不如按卡片着色；
+   · 多行：宽度装不下时自动切成网格 —— 轨道仍是同一张底层卡片，
+     指示器由 JS 量出激活格实测矩形后 translate3d 连续滑动，
+     跨行换格也是同一段运动（不再是「选中项自己填底色」的瞬变）；
    · 图标两种放法：leading 在文字前端、top 在文字上方。
    ============================================================ */
 
@@ -42,6 +43,10 @@ const isMultiline = ref(false)
 const rowHeight = ref(0)
 const rowCount = ref(1)
 const scrollMaxHeight = ref(0)
+/* 多行指示器几何：激活格相对轨道 padding 盒的实测矩形。
+   offsetLeft/Top 与绝对定位子元素的包含块（padding 盒）同基准，
+   translate3d 直接对位，跨行换格也是连续过渡。 */
+const gridBox = ref(null)
 
 const activeIndex = computed(() => props.options.findIndex(option => option.value === props.modelValue))
 const hasIcons = computed(() => props.options.some(option => option.icon))
@@ -53,6 +58,16 @@ const indicatorStyle = computed(() => {
   return {
     width,
     transform: `translateX(calc(${activeIndex.value * 100}% + ${activeIndex.value * 3}px))`
+  }
+})
+
+const gridIndicatorStyle = computed(() => {
+  if (!isMultiline.value || activeIndex.value < 0 || !gridBox.value) return null
+  const box = gridBox.value
+  return {
+    transform: `translate3d(${box.x}px, ${box.y}px, 0)`,
+    width: box.w + 'px',
+    height: box.h + 'px'
   }
 })
 
@@ -101,6 +116,7 @@ function measure() {
     const forced = Math.max(1, Math.min(count, props.columns))
     columns.value = forced
     isMultiline.value = forced < count
+    nextTick(measureRows)
     return
   }
   if (!el || !props.autoMultiline) {
@@ -110,8 +126,11 @@ function measure() {
   }
   const available = el.clientWidth
   if (!available) { columns.value = count; isMultiline.value = false; return }
-  const gap = 3
-  const inner = Math.max(0, available - 6 - (count - 1) * gap)
+  /* 间距与内边距以 CSS 变量为准（--seg-gap / --seg-pad），JS 不再写死数字。 */
+  const cs = getComputedStyle(el)
+  const gap = parseFloat(cs.columnGap) || 0
+  const pad = parseFloat(cs.paddingLeft) || 0
+  const inner = Math.max(0, available - pad * 2 - (count - 1) * gap)
   /* 列数按「中位数宽度」而不是最宽标签算：
      一个超长标签会把整排挤成 2 列巨格（图标巨大、文字被截），
      中位数让多数格子保持第一行那种密度，个别长标签省略号截断。 */
@@ -130,7 +149,7 @@ function measure() {
   nextTick(measureRows)
 }
 
-/* 多行时量真实行高与行数：max-height 必须按实测算，' */
+/* 多行时量真实行高与行数：max-height 必须按实测算；顺带量出指示器矩形。 */
 function measureRows() {
   const el = rootEl.value
   if (!el) return
@@ -140,15 +159,37 @@ function measureRows() {
   rowHeight.value = first.offsetHeight
   const tops = new Set(buttons.map(b => b.offsetTop))
   rowCount.value = tops.size
-  const gap = 4
+  /* 行间距同样以 CSS 为准，不再写死。 */
+  const rowGap = parseFloat(getComputedStyle(el).rowGap) || 0
   const rows = Math.max(1, Math.round(props.maxRows))
   /* 只有真的超过 maxRows 才限高；否则不设上限，避免留白 */
   scrollMaxHeight.value = rowCount.value > rows
-    ? rows * first.offsetHeight + (rows - 1) * gap
+    ? rows * first.offsetHeight + (rows - 1) * rowGap
     : 0
   el.style.setProperty("--seg-max-h", scrollMaxHeight.value ? scrollMaxHeight.value + "px" : "none")
   el.style.setProperty("--seg-scroll", scrollMaxHeight.value ? "auto" : "hidden")
+  measureIndicator(buttons)
 }
+
+/* 多行指示器：量激活格相对轨道 padding 盒的矩形。
+   按钮是 relative，仍是 .ui-segmented（relative）的偏移基准；
+   offsetLeft/Top 与绝对定位指示器的包含块同源，直接对位。 */
+function measureIndicator(buttons) {
+  if (!isMultiline.value) { gridBox.value = null; return }
+  const list = buttons || Array.from(rootEl.value?.querySelectorAll(':scope > button') || [])
+  const active = list[activeIndex.value]
+  if (!active) { gridBox.value = null; return }
+  gridBox.value = {
+    x: active.offsetLeft,
+    y: active.offsetTop,
+    w: active.offsetWidth,
+    h: active.offsetHeight
+  }
+}
+
+watch(activeIndex, () => {
+  if (isMultiline.value) nextTick(() => measureIndicator())
+})
 
 let observer = null
 
@@ -193,9 +234,9 @@ function pick(option) {
       role="group"
     >
       <span
-        v-if="indicatorStyle"
+        v-if="indicatorStyle || gridIndicatorStyle"
         class="ui-segmented__indicator"
-        :style="indicatorStyle"
+        :style="isMultiline ? gridIndicatorStyle : indicatorStyle"
         aria-hidden="true"
       ></span>
       <button

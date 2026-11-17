@@ -104,7 +104,7 @@ function onBlur() {
   gap: 6px;
   padding: 7px 9px;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
   cursor: text;
   transition: border-color var(--t-fade), background var(--t-fade);

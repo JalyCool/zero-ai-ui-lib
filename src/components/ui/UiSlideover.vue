@@ -100,21 +100,21 @@ onBeforeUnmount(() => { clearTimeout(timer); document.removeEventListener('keydo
   background: var(--surface);
   will-change: transform, border-radius;
   /* 收起时是圆角卡片，展开落定后过渡到「贴边容器」的直角（贴边那一侧归零） */
-  border-radius: calc(22px * var(--radius-scale));
+  border-radius: calc(var(--r-22) * var(--radius-scale));
   transition: transform var(--t-sheet), border-radius var(--t-sheet);
 }
 /* 贴边那一侧的圆角归零：side 类挂在外层 .ui-slideover 上（不是面板本身） */
-.ui-slideover.is-open.is-left .ui-slideover__panel { border-radius: 0 calc(22px * var(--radius-scale)) calc(22px * var(--radius-scale)) 0; }
-.ui-slideover.is-open.is-right .ui-slideover__panel { border-radius: calc(22px * var(--radius-scale)) 0 0 calc(22px * var(--radius-scale)); }
+.ui-slideover.is-open.is-left .ui-slideover__panel { border-radius: 0 calc(var(--r-22) * var(--radius-scale)) calc(var(--r-22) * var(--radius-scale)) 0; }
+.ui-slideover.is-open.is-right .ui-slideover__panel { border-radius: calc(var(--r-22) * var(--radius-scale)) 0 0 calc(var(--r-22) * var(--radius-scale)); }
 .ui-slideover.is-closing .ui-slideover__panel { transition: transform var(--t-exit); }
 .ui-slideover.is-right .ui-slideover__panel {
   right: 0;
-  border-radius: calc(20px * var(--radius-scale)) 0 0 calc(20px * var(--radius-scale));
+  border-radius: calc(var(--r-20) * var(--radius-scale)) 0 0 calc(var(--r-20) * var(--radius-scale));
   transform: translate3d(100%, 0, 0);
 }
 .ui-slideover.is-left .ui-slideover__panel {
   left: 0;
-  border-radius: 0 calc(20px * var(--radius-scale)) calc(20px * var(--radius-scale)) 0;
+  border-radius: 0 calc(var(--r-20) * var(--radius-scale)) calc(var(--r-20) * var(--radius-scale)) 0;
   transform: translate3d(-100%, 0, 0);
 }
 .ui-slideover.is-open .ui-slideover__panel { transform: translate3d(0, 0, 0); }

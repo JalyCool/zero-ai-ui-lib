@@ -421,7 +421,7 @@ onBeforeUnmount(() => {
   min-width: 0;
   overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
   transition: left var(--t-panel), top var(--t-panel),
               width var(--t-panel), height var(--t-panel),
@@ -430,7 +430,7 @@ onBeforeUnmount(() => {
 }
 .ui-auto__surface.is-floating { position: fixed; z-index: 320; }
 .ui-auto__surface.is-open {
-  border-radius: calc(18px * var(--radius-scale));
+  border-radius: calc(var(--r-18) * var(--radius-scale));
   background: var(--surface);
   border-color: color-mix(in oklab, var(--primary) 28%, var(--outline-variant));
 }
@@ -585,7 +585,7 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 9px 10px;
   border: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface);
   font: inherit;

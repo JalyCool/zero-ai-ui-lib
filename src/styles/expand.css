@@ -110,7 +110,7 @@
 .expand-close {
   width: 40px;
   height: 40px;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   border: none;
   background: var(--surface-container);
   color: var(--on-surface-variant);

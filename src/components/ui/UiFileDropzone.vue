@@ -119,7 +119,7 @@ function onKey(event) {
   gap: 6px;
   padding: 22px 16px;
   border: 1.5px dashed var(--outline-variant);
-  border-radius: calc(16px * var(--radius-scale));
+  border-radius: calc(var(--r-16) * var(--radius-scale));
   background: var(--surface-container-low);
   cursor: pointer;
   outline: 0;

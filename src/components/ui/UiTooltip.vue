@@ -77,7 +77,7 @@ onBeforeUnmount(() => {
   z-index: 340;
   max-width: 240px;
   padding: 6px 10px;
-  border-radius: calc(9px * var(--radius-scale));
+  border-radius: calc(var(--r-9) * var(--radius-scale));
   background: var(--inverse-surface, #2f3033);
   color: var(--inverse-on-surface, #f2f1f6);
   font-size: var(--fs-micro);

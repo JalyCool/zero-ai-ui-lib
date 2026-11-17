@@ -25,7 +25,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 14px;
-  border-radius: calc(18px * var(--radius-scale));
+  border-radius: calc(var(--r-18) * var(--radius-scale));
   background: var(--surface-container-low);
 }
 

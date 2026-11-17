@@ -197,7 +197,7 @@ defineExpose({ open: () => setOpen(true), close, measure })
   position: relative;
   width: var(--mp-w, auto);
   height: var(--mp-h, auto);
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container);
   overflow: hidden;
   transition: width var(--t-view), height var(--t-view),
@@ -206,7 +206,7 @@ defineExpose({ open: () => setOpen(true), close, measure })
 }
 .ui-morph-panel.is-open {
   background: var(--surface-container-low);
-  border-radius: calc(16px * var(--radius-scale));
+  border-radius: calc(var(--r-16) * var(--radius-scale));
 }
 .ui-morph-panel.is-open:focus-within { border-color: var(--primary); }
 .ui-morph-panel.is-disabled { opacity: .42; }

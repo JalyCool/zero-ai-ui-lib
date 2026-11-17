@@ -152,7 +152,7 @@ watch(fontScale, value => document.documentElement.style.setProperty('--font-sca
   flex-wrap: wrap;
   padding: 12px;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: var(--surface-container-low);
 }
 </style>

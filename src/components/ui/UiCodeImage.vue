@@ -330,7 +330,7 @@ onBeforeUnmount(() => {
   min-height: 120px;
   width: 100%;
   padding: 14px;
-  border-radius: calc(16px * var(--radius-scale));
+  border-radius: calc(var(--r-16) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   /* 切换层是横向滑入的，会临时探出 24%：舞台裁掉它，

@@ -174,7 +174,7 @@ onBeforeUnmount(() => {
    孔本身的位置 / 尺寸走 view 弹簧，从整屏收到目标。 */
 .ui-tour__spot {
   position: fixed;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   /* 遮罩压暗用 color-mix 变量，透明度由 --tour-scrim 控制，便于渐入渐出 */
   box-shadow: 0 0 0 9999px rgb(0 0 0 / var(--tour-scrim, 0));
   pointer-events: none;

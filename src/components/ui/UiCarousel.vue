@@ -183,7 +183,7 @@ watch(() => props.modelValue, value => {
   flex: 0 0 100%;
   overflow: hidden;
   /* 圆角在卡片上：外层容器保持直角，卡片自己带圆角 */
-  border-radius: calc(16px * var(--radius-scale));
+  border-radius: calc(var(--r-16) * var(--radius-scale));
   background: var(--surface-container);
   opacity: .5;
   transform: scale(.93);

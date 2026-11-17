@@ -440,7 +440,7 @@ onBeforeUnmount(() => {
   max-width: 480px;
   background: var(--surface-container-high);
   border-bottom: 0;
-  border-radius: calc(28px * var(--radius-scale)) calc(28px * var(--radius-scale)) 0 0;
+  border-radius: calc(var(--r-28) * var(--radius-scale)) calc(var(--r-28) * var(--radius-scale)) 0 0;
   overflow: hidden;
   outline: none;
 }

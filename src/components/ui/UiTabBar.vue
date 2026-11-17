@@ -72,7 +72,7 @@ function pick(value) {
   font-size: var(--fs-micro);
   font-weight: 550;
   cursor: pointer;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   transition: color var(--t-fade), transform var(--t-feedback);
 }
 .ui-tabbar__tab:active { transform: scale(var(--press-scale)); }

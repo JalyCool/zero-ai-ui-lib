@@ -103,7 +103,7 @@ const showError = computed(() => touched.value && !!error.value)
   z-index: 30;
   max-width: 220px;
   padding: 7px 11px;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--inverse-surface, #2f3033);
   color: var(--inverse-on-surface, #f2f1f6);
   font-size: var(--fs-micro);
@@ -142,7 +142,7 @@ const showError = computed(() => touched.value && !!error.value)
 .ui-form-field.has-error :deep(textarea) { border-color: color-mix(in oklab, var(--error) 55%, var(--outline-variant)); }
 .ui-form-field.has-error :deep(.ui-field__control) {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--error) 16%, transparent);
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
 }
 .ui-form-field.has-error { animation: uiFieldNudge 420ms var(--spring-pop) both; }
 @keyframes uiFieldNudge {

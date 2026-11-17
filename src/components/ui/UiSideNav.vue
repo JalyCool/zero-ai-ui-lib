@@ -194,7 +194,7 @@ function select(item) {
   width: 100%;
   padding: 9px 12px;
   border: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: none;
   color: var(--on-surface-variant);
   font: inherit;
@@ -253,7 +253,7 @@ function select(item) {
   /* 宽度用 min()：小屏 84vw，大屏封顶 320px，永不超出视口 */
   width: min(320px, 84vw);
   max-width: 100vw;
-  border-radius: 0 calc(20px * var(--radius-scale)) calc(20px * var(--radius-scale)) 0;
+  border-radius: 0 calc(var(--r-20) * var(--radius-scale)) calc(var(--r-20) * var(--radius-scale)) 0;
   background: var(--surface);
   box-shadow: 8px 0 32px color-mix(in oklab, var(--on-surface) 18%, transparent);
   transform: translateX(-103%);

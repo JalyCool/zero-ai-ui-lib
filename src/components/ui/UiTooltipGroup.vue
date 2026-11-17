@@ -145,7 +145,7 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--surface-container-low);
   transition: background var(--t-fade), color var(--t-fade), transform var(--t-pop);
 }
@@ -162,7 +162,7 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   transform: translate(-50%, -100%);
   max-width: 240px;
   padding: 7px 10px;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--inverse-surface, #2f3033);
   color: var(--inverse-on-surface, #f2f1f6);
   font-size: var(--fs-micro);

@@ -172,7 +172,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   min-height: 42px;
   padding: 3px;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: var(--surface-container-low);
   transition: border-color var(--t-fade), background var(--t-fade),
               border-radius var(--t-panel);
@@ -189,7 +189,7 @@ onBeforeUnmount(() => {
   height: 34px;
   padding: 0;
   border: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--surface-container);
   color: var(--on-surface);
   cursor: pointer;
@@ -288,11 +288,11 @@ onBeforeUnmount(() => {
 }
 
 /* ---------- 尺寸 ---------- */
-.ui-stepper--sm .ui-stepper__control { min-height: 34px; padding: 2px; border-radius: calc(11px * var(--radius-scale)); }
+.ui-stepper--sm .ui-stepper__control { min-height: 34px; padding: 2px; border-radius: calc(var(--r-11) * var(--radius-scale)); }
 .ui-stepper--sm .ui-stepper__btn { width: 28px; height: 28px; border-radius: 8px; }
 .ui-stepper--sm .ui-stepper__btn svg { width: 13px; height: 13px; }
 
-.ui-stepper--lg .ui-stepper__control { min-height: 54px; padding: 5px; border-radius: calc(16px * var(--radius-scale)); }
+.ui-stepper--lg .ui-stepper__control { min-height: 54px; padding: 5px; border-radius: calc(var(--r-16) * var(--radius-scale)); }
 .ui-stepper--lg .ui-stepper__btn { width: 42px; height: 42px; border-radius: 12px; }
 .ui-stepper--lg .ui-stepper__btn svg { width: 20px; height: 20px; }
 
@@ -300,13 +300,13 @@ onBeforeUnmount(() => {
 .ui-stepper--xl .ui-stepper__control {
   min-height: 108px;
   padding: 16px 16px 12px;
-  border-radius: calc(22px * var(--radius-scale));
+  border-radius: calc(var(--r-22) * var(--radius-scale));
   gap: 10px;
 }
 .ui-stepper--xl .ui-stepper__btn {
   width: 56px;
   height: 42px;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
 }
 .ui-stepper--xl .ui-stepper__btn svg { width: 22px; height: 22px; }
 .ui-stepper--xl.ui-stepper--ctrl-bottom .ui-stepper__btn {

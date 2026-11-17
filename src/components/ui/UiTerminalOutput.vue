@@ -98,7 +98,7 @@ async function copyAll() {
 .ui-term__body {
   overflow: auto;
   padding: 10px 12px;
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
   scrollbar-width: thin;
 }

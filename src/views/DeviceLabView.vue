@@ -135,7 +135,7 @@ async function copyProps() {
   justify-content: center;
   align-items: center;
   height: 240px;
-  border-radius: calc(16px * var(--radius-scale));
+  border-radius: calc(var(--r-16) * var(--radius-scale));
   background: var(--surface-container-low);
   overflow: visible;
 }
@@ -147,7 +147,7 @@ async function copyProps() {
 .lab__out {
   min-height: 64px;
   padding: 10px;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   font-family: var(--font-mono);

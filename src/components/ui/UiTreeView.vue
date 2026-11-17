@@ -280,7 +280,7 @@ defineExpose(isRoot ? {
   gap: 7px;
   padding: 6px 8px;
   border: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface);
   font-size: var(--fs-small);

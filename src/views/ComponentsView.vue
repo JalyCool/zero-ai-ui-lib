@@ -1624,7 +1624,7 @@ watch(activeSection, id => {
   width: fit-content;
   max-width: 100%;
   overflow: hidden;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--surface-container-low);
 }
 .lib-sidebar-demo .ui-sidebar { height: 100%; }
@@ -1658,7 +1658,7 @@ watch(activeSection, id => {
   place-items: center;
   min-height: 52px;
   padding: 8px;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface-variant);
   font-size: var(--fs-micro);
@@ -1670,7 +1670,7 @@ watch(activeSection, id => {
   min-height: 72px;
   padding: 10px;
   border: var(--border-w) dashed var(--outline-variant);
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   color: var(--on-surface-variant);
   font-size: var(--fs-tiny);
   user-select: none;

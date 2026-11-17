@@ -266,7 +266,7 @@ onBeforeUnmount(stopDrag)
   flex: 1;
   min-width: 0;
   height: 148px;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: hsl(var(--hue, 210) 100% 50%);
   box-shadow: inset 0 0 0 var(--border-w) color-mix(in oklab, var(--outline-variant) 55%, transparent);
   cursor: crosshair;
@@ -320,7 +320,7 @@ onBeforeUnmount(stopDrag)
   width: 34px;
   height: 34px;
   flex-shrink: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   border: var(--border-w) solid var(--outline-variant);
 }
 .ui-color__hex {
@@ -329,7 +329,7 @@ onBeforeUnmount(stopDrag)
   height: 34px;
   padding: 0 11px;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   font: inherit;

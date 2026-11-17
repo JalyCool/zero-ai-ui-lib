@@ -197,7 +197,7 @@ defineExpose({ payload, submit })
   min-width: 0;
   padding: 7px 9px;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(11px * var(--radius-scale));
+  border-radius: calc(var(--r-11) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   font-size: var(--fs-small);
@@ -231,7 +231,7 @@ defineExpose({ payload, submit })
 .ui-schema-form__submit {
   padding: var(--btn-pad-md);
   border: 0;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--primary);
   color: var(--on-primary);
   font-size: var(--btn-fs-md);

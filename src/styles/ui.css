@@ -18,7 +18,7 @@ button {
   gap: 7px;
   padding: 10px 16px;
   border: var(--border-w) solid transparent;
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface);
   font-size: var(--fs-small);
@@ -32,7 +32,7 @@ button {
 }
 .ui-btn:active { transform: scale(var(--press-scale)); }
 .ui-btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
-.ui-btn--sm { padding: 7px 12px; font-size: var(--fs-tiny); border-radius: calc(11px * var(--radius-scale)); }
+.ui-btn--sm { padding: 7px 12px; font-size: var(--fs-tiny); border-radius: calc(var(--r-11) * var(--radius-scale)); }
 .ui-btn--lg { padding: 13px 22px; font-size: var(--fs-body); }
 .ui-btn--block { width: 100%; }
 .ui-btn--primary { background: var(--primary); color: var(--on-primary); }
@@ -44,7 +44,7 @@ button {
   width: 40px;
   height: 40px;
   padding: 0;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--surface-container);
   color: var(--on-surface-variant);
 }
@@ -171,7 +171,7 @@ button {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--outline-variant);
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
   transition: border-color var(--t-fade), box-shadow var(--t-fade), background var(--t-fade);
 }
@@ -315,14 +315,17 @@ button {
 }
 
 /* ---------- Segmented ---------- */
+/* 单行与多行共用同一张「底层卡片」轨道；间距 / 内边距收进 --seg-gap，
+   JS 量列数与指示器几何时也从 computed 读取，两处永不脱节。 */
 .ui-segmented {
+  --seg-gap: 3px;
   position: relative;
   display: flex;
   width: 100%;
   min-width: 0;
-  gap: 3px;
-  padding: 3px;
-  border-radius: calc(13px * var(--radius-scale));
+  gap: var(--seg-gap);
+  padding: var(--seg-gap);
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container);
   isolation: isolate;
 }
@@ -345,9 +348,9 @@ button {
   top: 3px;
   bottom: 3px;
   left: 3px;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--primary);
-  transition: transform var(--t-panel), width var(--t-panel),
+  transition: transform var(--t-panel), width var(--t-panel), height var(--t-panel),
               background var(--t-fade), opacity var(--t-fade);
 }
 .ui-segmented button {
@@ -361,7 +364,7 @@ button {
   min-width: 0;
   padding: 8px 6px;
   border: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface-variant);
   font-size: var(--fs-tiny);
@@ -395,29 +398,31 @@ button {
 .ui-segmented.is-icon-only button { padding: 10px; }
 .ui-segmented.is-icon-only .ui-segmented__icon svg { width: 20px; height: 20px; }
 
-/* ---------- 多行：装不下时自动切网格 ---------- */
-/* 一行里滑动的指示器换行后会跨行乱跑，所以多行时让「选中项自己填底色」。 */
-/* 多行：最多 maxRows 行（默认 3）。
-   上限高度由 JS 实测行高算出后写进 --seg-max-h；没超行时是 none（不留白），
-   超了才开滚动。 */
+/* ---------- 多行：装不下时自动切网格 ----------
+   与单行同一张底层卡片轨道 + 同一个滑动指示器：指示器由 JS 量出激活格
+   的实测矩形（含跨行坐标），translate3d 连续滑动 —— 跨行也是同一段运动，
+   不再有「跨行乱跑」或瞬移。 */
 .ui-segmented.is-multiline {
+  display: grid;
+  grid-template-columns: repeat(var(--seg-cols, 3), minmax(0, 1fr));
+  gap: var(--seg-gap);
   overflow-y: var(--seg-scroll, hidden);
   overscroll-behavior: contain;
   scrollbar-width: thin;
   max-height: var(--seg-max-h, none);
 }
-.ui-segmented.is-multiline {
-  display: grid;
-  grid-template-columns: repeat(var(--seg-cols, 3), minmax(0, 1fr));
-  gap: 4px;
-  padding: 0;
-  background: transparent;
+/* 多行指示器：几何全部来自 JS（left/top 归零，translate3d 定位）；
+   量到几何前 v-if 不渲染，不会出现从 0 展开的假动画。 */
+.ui-segmented.is-multiline .ui-segmented__indicator {
+  top: 0;
+  bottom: auto;
+  left: 0;
 }
 .ui-segmented.is-multiline button {
   min-height: 44px;
   max-height: 64px;
   overflow: hidden;
-  background: var(--surface-container);
+  background: transparent;
   border: var(--border-w) solid transparent;
 }
 /* 多行网格里文字必须自己收缩：min-width 0 + block，否则长标签把格子撑到巨大、
@@ -430,11 +435,7 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ui-segmented.is-multiline button.is-active {
-  background: var(--primary);
-  color: var(--on-primary);
-}
-.ui-segmented.is-multiline button.is-disabled { background: var(--surface-container); }
+.ui-segmented.is-multiline button.is-disabled { background: transparent; }
 
 /* ---------- Avatar ---------- */
 .ui-avatar {
@@ -520,7 +521,7 @@ button {
   gap: 10px;
   padding: 12px 13px;
   border-left: 3px solid var(--primary);
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: var(--surface-container-low);
 }
 .ui-alert--success { border-left-color: var(--ui-success); }
@@ -583,7 +584,7 @@ button {
 .ui-accordion { interpolate-size: allow-keywords; }
 .ui-accordion {
   overflow: hidden;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: var(--surface-container-low);
 }
 .ui-accordion__head {
@@ -625,7 +626,7 @@ button {
 .ui-empty {
   padding: 26px 18px;
   border: 1px dashed var(--outline-variant);
-  border-radius: calc(16px * var(--radius-scale));
+  border-radius: calc(var(--r-16) * var(--radius-scale));
   background: var(--surface-container-low);
   text-align: center;
 }
@@ -655,7 +656,7 @@ button {
   max-height: 82dvh;
   overflow-y: auto;
   padding: 20px;
-  border-radius: calc(24px * var(--radius-scale));
+  border-radius: calc(var(--r-24) * var(--radius-scale));
   background: var(--surface-container-high);
   scrollbar-width: none;
 }
@@ -699,7 +700,7 @@ button {
   align-items: center;
   gap: 9px;
   padding: 11px 13px;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: var(--on-surface);
   color: var(--surface);
   font-size: var(--fs-small);

@@ -134,7 +134,7 @@ watch(() => props.modelValue, value => { if (value && !open.value) expand() })
   display: inline-block;
   height: 40px;
   border: var(--border-w) solid transparent;
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container);
   /* 宽度由 MotionValue 驱动；底色/描边保持 CSS 令牌过渡 */
   transition: background var(--t-fade), border-color var(--t-fade);
@@ -169,7 +169,7 @@ watch(() => props.modelValue, value => { if (value && !open.value) expand() })
   top: 2px;
   width: 36px;
   height: 36px;
-  border-radius: calc(11px * var(--radius-scale));
+  border-radius: calc(var(--r-11) * var(--radius-scale));
   background: transparent;
   transition: background var(--t-fade), transform var(--t-feedback);
 }

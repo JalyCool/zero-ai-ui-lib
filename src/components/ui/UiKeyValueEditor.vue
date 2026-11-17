@@ -60,7 +60,7 @@ function removeRow(index) {
   min-width: 0;
   padding: 7px 9px;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(11px * var(--radius-scale));
+  border-radius: calc(var(--r-11) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   font-size: var(--fs-small);

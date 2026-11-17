@@ -263,7 +263,7 @@ function pickAgenda(row) {
   gap: 2px;
   padding: 12px 4px;
   border: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   font: inherit;
@@ -284,7 +284,7 @@ function pickAgenda(row) {
   gap: 10px;
   padding: 9px 10px;
   border: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface);
   font: inherit;

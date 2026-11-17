@@ -339,7 +339,7 @@ defineExpose({ close })
   flex-shrink: 0;
   max-width: 100%;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   overflow: hidden;
@@ -358,7 +358,7 @@ defineExpose({ close })
   transition: transform var(--t-feedback);
 }
 .ui-tool-menu.is-open {
-  border-radius: calc(18px * var(--radius-scale));
+  border-radius: calc(var(--r-18) * var(--radius-scale));
   background: var(--surface);
   border-color: color-mix(in oklab, var(--primary) 30%, var(--outline-variant));
 }
@@ -451,7 +451,7 @@ defineExpose({ close })
   width: 100%;
   padding: 8px 9px;
   border: 0;
-  border-radius: calc(11px * var(--radius-scale));
+  border-radius: calc(var(--r-11) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface);
   text-align: left;
@@ -459,7 +459,7 @@ defineExpose({ close })
   transition: background var(--t-fade), color var(--t-fade), border-radius var(--t-panel);
 }
 .ui-tool-menu__item:hover { background: var(--surface-container-low); }
-.ui-tool-menu__item:active { border-radius: calc(8px * var(--radius-scale)); }
+.ui-tool-menu__item:active { border-radius: calc(var(--r-8) * var(--radius-scale)); }
 .ui-tool-menu__item-dot {
   width: 6px;
   height: 6px;

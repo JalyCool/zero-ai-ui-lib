@@ -7,7 +7,7 @@
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--icon-bg);
   color: var(--icon-fg);
   display: grid;

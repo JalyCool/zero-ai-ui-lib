@@ -449,7 +449,7 @@ onBeforeUnmount(() => {
   max-width: 100%;
   overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(11px * var(--radius-scale));
+  border-radius: calc(var(--r-11) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface-variant);
   transition: left var(--t-panel), top var(--t-panel),
@@ -475,7 +475,7 @@ onBeforeUnmount(() => {
               box-shadow var(--t-fade);
 }
 .ui-floating-menu.is-open {
-  border-radius: calc(18px * var(--radius-scale));
+  border-radius: calc(var(--r-18) * var(--radius-scale));
   background: var(--surface);
   border-color: color-mix(in oklab, var(--primary) 30%, var(--outline-variant));
   color: var(--on-surface);
@@ -564,7 +564,7 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 9px 8px;
   border: 0;
-  border-radius: calc(11px * var(--radius-scale));
+  border-radius: calc(var(--r-11) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface);
   text-align: left;

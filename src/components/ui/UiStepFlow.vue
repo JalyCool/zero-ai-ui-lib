@@ -139,7 +139,7 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
 <style scoped>
 .ui-stepflow { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-.ui-stepflow__track { position: relative; display: flex; gap: 6px; padding: 5px; border-radius: calc(16px * var(--radius-scale)); background: var(--surface-container); }
+.ui-stepflow__track { position: relative; display: flex; gap: 6px; padding: 5px; border-radius: calc(var(--r-16) * var(--radius-scale)); background: var(--surface-container); }
 .ui-stepflow.is-vertical .ui-stepflow__track { flex-direction: column; align-items: stretch; }
 
 /* 指示器：靠 transform 在轨道上滑动，宽度 / 高度都跟随格位。 */
@@ -148,7 +148,7 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
   top: 5px;
   left: 5px;
   z-index: 0;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--primary-container);
   /* 宽高按 calc 一次算定，位移用百分比 translate：换步时就是平移。 */
   transition: transform var(--t-panel), width var(--t-panel), height var(--t-panel);
@@ -165,7 +165,7 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
   min-width: 0;
   padding: 8px 10px;
   border: 0;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface-variant);
   font-size: var(--fs-tiny);

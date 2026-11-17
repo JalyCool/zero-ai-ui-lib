@@ -400,12 +400,12 @@ const Root = () => {
   padding: 8px 14px;
   border-left: 3px solid var(--primary);
   background: var(--surface-container-low);
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   color: var(--on-surface-variant);
 }
 .ui-md-pre {
   background: var(--surface-container-low);
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   padding: 12px 14px;
   margin: .9em 0;
   overflow-x: auto;
@@ -428,7 +428,7 @@ const Root = () => {
 /* 代码块：语言图标 + 名称的头部条 */
 .ui-md-codeblock {
   margin: .9em 0;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--surface-container-low);
   overflow: hidden;
 }
@@ -443,7 +443,7 @@ const Root = () => {
 }
 .ui-md-codeblock__lang { text-transform: lowercase; letter-spacing: .02em; }
 .ui-md-codeblock .ui-md-pre { margin: 0; background: none; padding: 8px 14px 12px; }
-.ui-md-img { max-width: 100%; border-radius: calc(12px * var(--radius-scale)); }
+.ui-md-img { max-width: 100%; border-radius: calc(var(--r-12) * var(--radius-scale)); }
 .ui-md-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
 .ui-md-table th, .ui-md-table td { padding: 7px 10px; text-align: left; }
 .ui-md-table tr + tr th, .ui-md-table tr + tr td { border-top: var(--border-w) solid var(--outline-variant); }

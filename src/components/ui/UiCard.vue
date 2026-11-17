@@ -99,7 +99,7 @@ const isProduct = computed(() => props.variant === 'product')
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  border-radius: calc(18px * var(--radius-scale));
+  border-radius: calc(var(--r-18) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   transition: border-color var(--t-fade), background var(--t-fade),
@@ -132,7 +132,7 @@ const isProduct = computed(() => props.variant === 'product')
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--surface-container-high);
   color: var(--primary);
 }
@@ -170,7 +170,7 @@ const isProduct = computed(() => props.variant === 'product')
   padding: 14px;
   overflow: clip;
   border-color: transparent;
-  border-radius: calc(20px * var(--radius-scale));
+  border-radius: calc(var(--r-20) * var(--radius-scale));
   background:
     linear-gradient(180deg, color-mix(in oklab, var(--card-accent) 5%, var(--surface)) 0%, var(--surface) 100%);
 }
@@ -201,7 +201,7 @@ const isProduct = computed(() => props.variant === 'product')
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--surface);
 }
 .ui-card--product .ui-card__product-icon svg { width: 20px; height: 20px; overflow: visible; }
@@ -245,7 +245,7 @@ const isProduct = computed(() => props.variant === 'product')
 .ui-card--product .ui-card__footer :deep(.ui-btn) {
   min-height: 40px;
   padding: 0 20px;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   font-size: calc(15px * var(--font-scale, 1));
 }
 /* 产品卡里的动作按钮跟随品牌色，而不是全局主色：

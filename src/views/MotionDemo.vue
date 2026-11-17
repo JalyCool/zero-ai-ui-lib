@@ -270,7 +270,7 @@ useMotionValueEvent(scrollYProgress, 'change', v => {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  border-radius: calc(18px * var(--radius-scale));
+  border-radius: calc(var(--r-18) * var(--radius-scale));
   background: var(--primary);
   color: var(--on-primary);
   font-size: var(--fs-small);

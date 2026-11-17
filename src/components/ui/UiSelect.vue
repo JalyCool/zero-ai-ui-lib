@@ -547,7 +547,7 @@ onBeforeUnmount(() => {
   min-width: 0;
   overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
   transition: left var(--t-panel), top var(--t-panel),
               width var(--t-panel), height var(--t-panel),
@@ -564,7 +564,7 @@ onBeforeUnmount(() => {
   z-index: 320;
 }
 .ui-select__surface.is-open {
-  border-radius: calc(18px * var(--radius-scale));
+  border-radius: calc(var(--r-18) * var(--radius-scale));
   background: var(--surface);
   border-color: color-mix(in oklab, var(--primary) 28%, var(--outline-variant));
 }
@@ -697,7 +697,7 @@ onBeforeUnmount(() => {
   left: 6px;
   right: 6px;
   z-index: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: var(--surface-container-low);
   pointer-events: none;
   transition: transform var(--t-panel), height var(--t-panel);
@@ -714,7 +714,7 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 10px 11px;
   border: 0;
-  border-radius: calc(10px * var(--radius-scale));
+  border-radius: calc(var(--r-10) * var(--radius-scale));
   background: transparent;
   color: var(--on-surface);
   font: inherit;

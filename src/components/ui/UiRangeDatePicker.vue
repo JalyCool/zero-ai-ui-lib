@@ -398,7 +398,7 @@ watch(() => props.modelValue, () => {
   min-width: 0;
   overflow: hidden;
   border: var(--border-w) solid var(--outline-variant);
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: var(--surface-container-low);
   transition: left var(--t-panel), top var(--t-panel),
               width var(--t-panel), height var(--t-panel),
@@ -410,7 +410,7 @@ watch(() => props.modelValue, () => {
   z-index: 320;
 }
 .ui-range-date__surface.is-open {
-  border-radius: calc(20px * var(--radius-scale));
+  border-radius: calc(var(--r-20) * var(--radius-scale));
   background: var(--surface);
   border-color: color-mix(in oklab, var(--primary) 28%, var(--outline-variant));
 }

@@ -71,7 +71,7 @@ function tipOf(value, index) {
 .bar {
   width: 100%;
   max-width: 26px;
-  border-radius: calc(8px * var(--radius-scale));
+  border-radius: calc(var(--r-8) * var(--radius-scale));
   background: var(--primary-container);
   position: relative;
   transition: background var(--t-fade), border-radius var(--t-panel);

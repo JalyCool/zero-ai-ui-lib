@@ -899,7 +899,7 @@ watch(() => props.modelValue, value => {
   /* 入场位移随气质放大（活泼模式更远一点）。 */
   animation-name: cgCardIn;
   overflow: hidden;
-  border-radius: calc(16px * var(--radius-scale));
+  border-radius: calc(var(--r-16) * var(--radius-scale));
   background: var(--surface-container-low);
   color: var(--on-surface);
   transform-origin: center center;
@@ -1007,7 +1007,7 @@ watch(() => props.modelValue, value => {
   position: relative;
   aspect-ratio: 5 / 4;
   overflow: hidden;
-  border-radius: calc(12px * var(--radius-scale));
+  border-radius: calc(var(--r-12) * var(--radius-scale));
   background: var(--surface-container-low);
   transition: transform var(--t-panel), box-shadow var(--t-fade), border-color var(--t-fade);
 }
@@ -1045,7 +1045,7 @@ watch(() => props.modelValue, value => {
   gap: 2px;
   height: 100%;
   padding: 11px 14px;
-  border-radius: calc(14px * var(--radius-scale));
+  border-radius: calc(var(--r-14) * var(--radius-scale));
   background: linear-gradient(140deg, var(--surface-container-low), var(--surface-container));
   font-size: var(--fs-small);
 }

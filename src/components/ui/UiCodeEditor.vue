@@ -118,7 +118,7 @@ watch(() => props.modelValue, syncScroll)
   align-items: stretch;
   height: calc(var(--code-lines) * 1.55em + 17px);
   min-width: 0;
-  border-radius: calc(13px * var(--radius-scale));
+  border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
   overflow: hidden;
   transition: border-color var(--t-fade);
