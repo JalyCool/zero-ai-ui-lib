@@ -337,7 +337,27 @@ tbody td {
   font-feature-settings: var(--font-feat-tnum);
 }
 tbody tr:last-child td { border-bottom: 0; }
+tbody tr { transition: background var(--t-fade); }
 tbody tr.is-selected { background: color-mix(in oklab, var(--primary) 10%, transparent); }
+/* 选中：底色从左往右铺开，与 VirtualList 同一语言 */
+tbody tr > td:first-child { position: relative; }
+tbody tr.is-selected > td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--primary);
+  transform: scaleY(0);
+  transform-origin: center;
+  animation: uiTableSelBar 260ms var(--spring-pop) both;
+}
+@keyframes uiTableSelBar {
+  from { transform: scaleY(0); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
+}
 .is-striped tbody tr:nth-child(even) { background: color-mix(in oklab, var(--surface-container) 55%, transparent); }
 .is-striped tbody tr.is-selected { background: color-mix(in oklab, var(--primary) 12%, transparent); }
 tbody tr.is-clickable { cursor: pointer; transition: background var(--t-fade); }

@@ -87,14 +87,72 @@ const showError = computed(() => touched.value && !!error.value)
     </span>
     <slot :error="error" :validate="validate" :pattern-ok="patternOk" :touched="touched" @blur="touched = true" />
     <span v-if="message" class="ui-form-field__msg" :class="{ 'is-error': showError }" role="status">{{ message }}</span>
+
+    <!-- 校验失败：在右侧浮一个气泡说明原因（不挤占布局，也不常驻红色怪行） -->
+    <Transition name="field-bubble">
+      <span v-if="showError" class="ui-form-field__bubble" role="alert">{{ error }}</span>
+    </Transition>
   </div>
 </template>
 <style scoped>
-.ui-form-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ui-form-field { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* 右侧气泡：锚在字段右上角，箭头指向字段；进出场是位移 + 模糊 + 缩放 */
+.ui-form-field__bubble {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 0;
+  z-index: 30;
+  max-width: 220px;
+  padding: 7px 11px;
+  border-radius: calc(10px * var(--radius-scale));
+  background: var(--inverse-surface, #2f3033);
+  color: var(--inverse-on-surface, #f2f1f6);
+  font-size: var(--fs-micro);
+  line-height: 1.45;
+  white-space: pre-line;
+  pointer-events: none;
+}
+.ui-form-field__bubble::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 12px;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+/* 窄屏（没有右侧空间）时气泡改到下方，避免被视口裁掉 */
+@media (max-width: 720px) {
+  .ui-form-field__bubble { left: 0; top: calc(100% + 6px); max-width: 100%; }
+  .ui-form-field__bubble::before { left: 14px; top: -3px; }
+}
+.field-bubble-enter-active, .field-bubble-leave-active {
+  transition: opacity var(--t-fade), transform var(--t-pop), filter var(--t-fade);
+}
+.field-bubble-enter-from, .field-bubble-leave-to {
+  opacity: 0; transform: translateX(-6px) scale(.94); filter: blur(5px);
+}
 /* 必填星号：强调色（primary），不是红色 —— 红色留给「真错了」 */
 .ui-field__label em.is-required { margin-left: 3px; color: var(--primary); font-style: normal; font-weight: var(--w-strong); }
 .ui-form-field__msg { font-size: var(--fs-micro); color: var(--on-surface-variant); line-height: 1.45; }
 .ui-form-field__msg.is-error { color: var(--error); }
+/* 提交后高亮：字段整体临时套一圈错误色轮廓（滚到位时一眼看到问题在哪） */
 .ui-form-field.has-error :deep(input),
 .ui-form-field.has-error :deep(textarea) { border-color: color-mix(in oklab, var(--error) 55%, var(--outline-variant)); }
+.ui-form-field.has-error :deep(.ui-field__control) {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--error) 16%, transparent);
+  border-radius: calc(13px * var(--radius-scale));
+}
+.ui-form-field.has-error { animation: uiFieldNudge 420ms var(--spring-pop) both; }
+@keyframes uiFieldNudge {
+  0% { transform: none; }
+  30% { transform: translateX(-3px); }
+  60% { transform: translateX(2px); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-form-field.has-error, .ui-form-field__bubble { animation: none; transition-duration: .01ms; }
+}
 </style>

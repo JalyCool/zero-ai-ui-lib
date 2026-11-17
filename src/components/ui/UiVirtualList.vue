@@ -304,6 +304,22 @@ defineExpose({
   transition: background var(--t-fade);
 }
 .ui-vlist__row.is-selected { background: var(--primary-container); color: var(--on-primary-container); }
+/* 选中底色从左往右铺开（不是整行闪一下）：用伪元素做宽度过渡 */
+.ui-vlist__row { position: relative; }
+.ui-vlist__row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--primary-container);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--t-panel), opacity var(--t-fade);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.ui-vlist__row.is-selected::before { transform: scaleX(1); opacity: 1; }
+.ui-vlist__row > * { position: relative; z-index: 1; }
 .ui-vlist__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 行首勾选标记。 */
 .ui-vlist__mark {
@@ -315,10 +331,24 @@ defineExpose({
   border: var(--border-w) solid var(--outline-variant);
   border-radius: 4px;
   color: transparent;
-  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade);
+  transition: background var(--t-fade), border-color var(--t-fade), color var(--t-fade),
+              transform var(--t-pop);
 }
 .ui-vlist__mark svg { width: 10px; height: 10px; }
+.ui-vlist__mark svg path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset var(--spring-pop-dur) var(--spring-pop);
+}
 .ui-vlist__mark.is-on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+/* 勾选瞬间：方块轻微弹一下，勾的笔画从左到右抽出来 */
+.ui-vlist__mark.is-on svg path { stroke-dashoffset: 0; }
+.ui-vlist__mark.is-on { animation: uiVlistMarkPop 320ms var(--spring-pop) both; }
+@keyframes uiVlistMarkPop {
+  0% { transform: scale(.72); }
+  60% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
 .ui-vlist__mark--radio { border-radius: 50%; }
 .ui-vlist__mark--radio.is-on { background: var(--primary); border-color: var(--primary); box-shadow: inset 0 0 0 3px var(--surface); }
 @media (prefers-reduced-motion: reduce) {

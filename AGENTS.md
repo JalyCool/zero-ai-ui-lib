@@ -172,7 +172,7 @@ import {
 | `UiSchemaForm` | `:schema` JSON Schema（properties / required / enum / type）自动生成表单，`@submit` 回传收敛后的值 |
 | `UiDataTable` | `:columns` `{ key, label, width?, align?, sortable?, hidden? }` + `:rows`；粘性表头、三态排序、`max-height` 内滚动、`#cell-<key>` 插槽。增强：`group-by` 分组（组标题整行合并，`#group` 可自定义）、`server` 服务端模式（`sort-change` / `page-change` 只发事件，不动本地顺序）、`v-model:page` + `total` + `page-size` 分页条、`v-model:visible` 列显隐（**直接复用 UiSelect 的 `multiple` 下拉**，不再自建复选框浮层）、`selection="single\|multiple"` + `v-model:selected` 多选（表头全选、半选）；增强项与基础表格是同一个组件、同一套实现，不另起第二个表格 |
 | `UiTreeView` | `:nodes` 递归树（folder / file / md / json / image 图标分色），箭头旋转变形、`default-open` 初始展开；分组用 `grid-template-rows: 0fr ↔ 1fr` 过渡（嵌套子树也连续，不靠 JS 量像素）。增强：`filter` 关键字过滤（命中节点与祖先保留、命中分支自动展开）、`multi` + `cascade` 级联多选（勾目录 = 整棵子树，父级半选）、`draggable` 拖拽换父（`@move` 回传 `{ from, to }`，目录行高亮） |
-| `UiVirtualList` | 定高虚拟滚动（`item-height` `height`），几百上千行只渲染窗口；勾选标记在行首；`selection="single|multiple"` 决定单击语义；`drag-select`（多选）长按某行后竖向拖动连续勾选 —— 锚点初始状态决定这段是选中还是取消，往回拖可改终点，拖到边缘自动滚动（限速 12px/帧），期间容器 `touch-action: none` 接管原生滚动 |
+| `UiVirtualList` | 定高虚拟滚动（`item-height` `height`），几百上千行只渲染窗口；勾选标记在行首，**勾选有笔画抽出动画 + 行底色从左铺开**；`selection="single|multiple"` 决定单击语义；`drag-select`（多选）长按某行后竖向拖动连续勾选 —— 锚点初始状态决定这段是选中还是取消，往回拖可改终点，拖到边缘自动滚动（限速 12px/帧），期间容器 `touch-action: none` 接管原生滚动 |
 | `UiFileDropzone` | 拖入 / 点击收 `File` 列表，`accept` `max-size`(MB) 过滤，不合格文件走 `@reject` |
 | `UiSearchField` | 图标 ⇄ 输入框原地形变：外壳宽度走 view 弹簧，同一个搜索图标平移到尾部成为搜索按钮；Enter / 点图标 `@search`，Esc 先清空后收起，点外部收起 |
 | `confirmDialog` | `const ok = await confirmDialog({ title, message, danger })`，统一替代 `window.confirm`。**有意不接 Esc / Enter**：确认必须显式点击按钮，防键盘误触发危险操作（普通对话框不受此限制） |
@@ -180,7 +180,7 @@ import {
 
 | `UiColorPicker` | `v-model` 颜色 + `label` `swatches` `disabled`；**自绘取色盘**（结构照 Nuxt UI）：饱和度 × 明度面 + 竖直色相轨道 + 拖动 / 方向键 + HEX 输入 + 预设色板，不调用系统 `<input type="color">`；HSV / RGB / HEX 换算在组件内完成 |
 | `UiAutocomplete` | `v-model` + `options`；**与 UiSelect 同一套形变展开**：点击后外壳固定定位长成面板，输入框在展开层里重新实现（盖住原字段），输入即时过滤、↑↓ / Enter / Esc、点外部收起；`free` 允许自由输入 |
-| `UiForm` / `UiFormField` | Form 管提交与校验（`validate-on-submit`、`@submit` / `@invalid`）；FormField 提供 label / hint / rules / required，错误直接显示在 hint 行 |
+| `UiForm` / `UiFormField` | Form 管提交与校验（`validate-on-submit`、`@submit` / `@invalid`）；FormField 提供 label / hint / rules / required / `pattern`（格式正则，失焦才判红、改对立刻变绿勾）；**必填星号是强调色不是红色**；错误平时不显示，点提交才校验：滚到第一处错误 + 轮廓高亮 + 抖动 + **右侧气泡**说明原因（窄屏自动落到下方） |
 | `UiBreadcrumb` | `items` 为 `[{ label, value? }]`；最后一项是当前页，点击 `@select` 回传 |
 | `UiPagination` | `v-model` 页码 + `total` `page-size` `siblings`；中间用省略号折叠 |
 | `UiSideNav` | 预制响应式导航：**桌面端渲染为常驻侧栏（可折叠）**，**移动端渲染为左侧滑抽屉**（压暗模糊遮罩、选中即收、Esc 关闭、打开锁 `#scrollArea`）；`items` 为 `{ value, label, icon }`，`active` 当前项，`v-model` 抽屉开合，`v-model:collapsed` 桌面折叠，`breakpoint`（默认 900），`width` / `collapsed-width`，`title` / `#head`，`contain` 在父容器内 absolute 渲染（预览用，不锁滚动），`@select` 回传 value |
