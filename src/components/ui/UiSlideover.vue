@@ -103,8 +103,9 @@ onBeforeUnmount(() => { clearTimeout(timer); document.removeEventListener('keydo
   border-radius: calc(22px * var(--radius-scale));
   transition: transform var(--t-sheet), border-radius var(--t-sheet);
 }
-.ui-slideover.is-open .ui-slideover__panel.is-left { border-radius: 0 calc(22px * var(--radius-scale)) calc(22px * var(--radius-scale)) 0; }
-.ui-slideover.is-open .ui-slideover__panel.is-right { border-radius: calc(22px * var(--radius-scale)) 0 0 calc(22px * var(--radius-scale)); }
+/* 贴边那一侧的圆角归零：side 类挂在外层 .ui-slideover 上（不是面板本身） */
+.ui-slideover.is-open.is-left .ui-slideover__panel { border-radius: 0 calc(22px * var(--radius-scale)) calc(22px * var(--radius-scale)) 0; }
+.ui-slideover.is-open.is-right .ui-slideover__panel { border-radius: calc(22px * var(--radius-scale)) 0 0 calc(22px * var(--radius-scale)); }
 .ui-slideover.is-closing .ui-slideover__panel { transition: transform var(--t-exit); }
 .ui-slideover.is-right .ui-slideover__panel {
   right: 0;

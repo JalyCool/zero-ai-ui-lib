@@ -154,6 +154,12 @@ async function renderLayer(format) {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
       svg.classList.add('ui-code-image__svg')
       layer.appendChild(svg)
+      /* EAN-13 / EAN-8 / UPC 这类码会在左侧额外画一个孤立数字（前导数字），
+         它和控制 margin 直接相关：margin 大 → 前导数字离码越远、整体越偏左。
+         下面按「有没有前导数字」分别给左右留白，让码本身的视觉重心居中。 */
+      const hasLeadDigit = /^(ean13|ean8|upc|upca|upce|isbn|issn)$/i.test(String(meta.render))
+      /* 前导数字只需要一个字符宽的容身之处，再大就是无谓空隙 */
+      const leadWidth = hasLeadDigit ? 11 : 6
       JsBarcode(svg, contentText.value, {
         format: meta.render,
         flat: !!opts.flat,
@@ -164,10 +170,12 @@ async function renderLayer(format) {
         font: 'var(--font-numeric)',
         fontSize: 15,
         textMargin: 2,
-        /* EAN-13 第一个数字孤立在左侧时，把它和右侧两组数字靠拢：
-           margin 给足左右留白 + textAlign 居中，避免「码距过大、整体偏左」 */
-        margin: 6,
-        textAlign: 'center',
+        /* 前导数字贴紧条码：左留白只够放一个数字 */
+        marginLeft: leadWidth,
+        marginRight: hasLeadDigit ? leadWidth + 4 : 6,
+        marginTop: 6,
+        marginBottom: 4,
+
         width: 2,
         height: size - 40
       })

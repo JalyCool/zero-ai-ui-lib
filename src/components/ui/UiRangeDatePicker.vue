@@ -7,7 +7,10 @@ const props = defineProps({
   modelValue: { type: Object, default: null },
   label: { type: String, default: '日期范围' },
   /* 快捷预设（借鉴日历控件）：天数数组，空数组关闭 */
-  presets: { type: Array, default: () => [0, 7, 30] }
+  presets: { type: Array, default: () => [0, 7, 30] },
+  /* 可选范围（含端点）：YYYY-MM-DD；null = 不限制 */
+  min: { type: String, default: null },
+  max: { type: String, default: null }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -124,6 +127,18 @@ function splitDisplay(date) {
   return { year: sameYear ? '' : date.getFullYear() + '年', monthDay }
 }
 
+/* ---------- 范围限制 ---------- */
+const minDate = computed(() => parseDate(props.min))
+const maxDate = computed(() => parseDate(props.max))
+
+/* 某天是否在可选范围内（两端都含） */
+function dayInRange(date) {
+  const t = date.getTime()
+  if (minDate.value && t < minDate.value.getTime()) return false
+  if (maxDate.value && t > maxDate.value.getTime()) return false
+  return true
+}
+
 /* ---------- 选择 ---------- */
 function syncDraft() {
   draftStart.value = modelStart.value
@@ -164,7 +179,10 @@ function cellDate(day) {
 }
 
 function selectDay(day) {
-  const value = formatInput(cellDate(day))
+  const date = cellDate(day)
+  /* 超出 min / max 的日期点了也没反应 */
+  if (!dayInRange(date)) return
+  const value = formatInput(date)
   if (!draftStart.value || (draftStart.value && draftEnd.value)) {
     /* 开始新一轮：先选起点。 */
     draftStart.value = value
@@ -331,6 +349,7 @@ watch(() => props.modelValue, () => {
                 type="button"
                 :tabindex="open ? 0 : -1"
                 :class="cellClass(day)"
+                :disabled="!dayInRange(cellDate(day))"
                 @click="selectDay(day)"
               >
                 {{ day }}
@@ -542,6 +561,7 @@ watch(() => props.modelValue, () => {
   gap: 6px;
   padding: 0 2px 8px;
 }
+.ui-range-date__cell button:disabled { opacity: .3; cursor: not-allowed; }
 .ui-range-date__preset {
   padding: 3px 10px;
   border-radius: 999px;

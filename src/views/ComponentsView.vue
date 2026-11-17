@@ -469,6 +469,7 @@ const navItems = [
   ] }
 ]
 const splitRatio = ref(0.42)
+const splitSnapRatio = ref(0.5)
 const ctxLog = ref('在灰色区域里右键 / 长按试试')
 const ctxItems = [
   { label: '复制', shortcut: '⌘C', icon: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>' },
@@ -498,6 +499,17 @@ const timelineItems = [
   { title: '晨跑 5.2 公里', time: '06:40', text: '配速 5\'42"，心率 148', tone: 'primary' },
   { title: '骑行 18 公里', time: '18:05', text: '通勤往返', tone: 'success' },
   { title: '未记录饮水', time: '21:00', tone: 'warning' }
+]
+const timelineSide = ref('right')
+const timelineSideOptions = [
+  { label: '时间在右', value: 'right' },
+  { label: '时间在左', value: 'left' },
+  { label: '不显示时间', value: 'none' }
+]
+const carouselMode = ref('cycle')
+const carouselModeOptions = [
+  { label: '循环', value: 'cycle' },
+  { label: '无限', value: 'infinite' }
 ]
 const carouselItems = [
   { title: '晨跑', text: '5.2 公里 · 32 分钟' },
@@ -918,9 +930,9 @@ onMounted(() => {
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">日历 <small>Calendar</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiCalendar v-model="calDate" :events="calEvents" />
+            <UiCalendar v-model="calDate" :events="calEvents" switchable />
           </div>
-          <span class="lib-cell__note">月视图 + 事件点；点日期回传 ISO 字符串。</span>
+          <span class="lib-cell__note">四种视图（月 / 周 / 年 / 日程）可切换：年视图是 12 个月总览、点月份下钻回月视图；日程视图按日期列出当月事件。切换走内容替换（旧视图模糊淡出、新视图浮入）。</span>
         </div>
 
         <div class="lib-cell">
@@ -973,9 +985,13 @@ onMounted(() => {
                 <template #first><div class="lib-tile">左侧 {{ Math.round(splitRatio * 100) }}%</div></template>
                 <div class="lib-tile">右侧</div>
               </UiSplitter>
+              <UiSplitter v-model="splitSnapRatio" :min="0.1" :max="0.9" :handle="14" :snap-count="4">
+                <template #first><div class="lib-tile">吸附 1/4 · {{ Math.round(splitSnapRatio * 100) }}%</div></template>
+                <div class="lib-tile">右侧</div>
+              </UiSplitter>
             </div>
           </div>
-          <span class="lib-cell__note">Grid 按最小列宽铺满；Splitter 拖动分隔条实时改比例。</span>
+          <span class="lib-cell__note">Grid 按最小列宽铺满；Splitter 拖动分隔条实时改比例。第二条开了 <code>snap-count=4</code>：松手吸附到 1/4、2/4、3/4 这类分段值（也可传 <code>stops</code> 指定具体点）。</span>
         </div>
 
         <div class="lib-cell">
@@ -1099,15 +1115,18 @@ onMounted(() => {
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">时间线 / 轮播 / 跑马灯</span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiTimeline :items="timelineItems" />
-            <UiCarousel v-model="carouselIndex" :items="carouselItems" :height="120" :autoplay="true" />
+            <UiSegmented v-model="timelineSide" layout="one-line" label="时间位置" :options="timelineSideOptions" />
+            <UiTimeline :items="timelineItems" :time-position="timelineSide" />
+
+            <UiSegmented v-model="carouselMode" layout="one-line" label="轮播变体" :options="carouselModeOptions" />
+            <UiCarousel v-model="carouselIndex" :items="carouselItems" :height="120" :autoplay="true" :loop-mode="carouselMode" />
             <div class="lib-demo-row lib-dots-demo">
               <span class="lib-muted">翻页指示器</span>
               <UiPagerDots :total="carouselItems.length" :model-value="carouselIndex" @update:model-value="carouselIndex = $event" />
             </div>
             <UiMarquee text="跑马灯：记录不中断 · 数据自己会说话 · 每天一点点" :speed="60" />
           </div>
-          <span class="lib-cell__note">时间线按时间轴铺点；轮播可拖拽翻页；跑马灯悬停暂停。</span>
+          <span class="lib-cell__note">时间线时间可放左侧（独立列、右对齐贴轨道）或右侧。<strong>轮播两种变体</strong>：<code>cycle</code> 到尾回到第一张；<code>infinite</code> 首尾各克隆一张，走到克隆位无动画瞬移归位，视觉上一直朝一个方向延伸、不跳回。<strong>手动翻页（箭头 / 圆点）会重置自动计时器。</strong>外层容器不带圆角，圆角是卡片自己的。</span>
         </div>
 
         <div class="lib-cell">

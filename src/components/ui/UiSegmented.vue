@@ -38,6 +38,10 @@ const emit = defineEmits(['update:modelValue'])
 const rootEl = ref(null)
 const columns = ref(1)
 const isMultiline = ref(false)
+/* 实测：行高、总行数、超行后的最大高度 */
+const rowHeight = ref(0)
+const rowCount = ref(1)
+const scrollMaxHeight = ref(0)
 
 const activeIndex = computed(() => props.options.findIndex(option => option.value === props.modelValue))
 const hasIcons = computed(() => props.options.some(option => option.icon))
@@ -115,6 +119,27 @@ function measure() {
   const cols = Math.min(count, Math.max(1, fits))
   columns.value = cols
   isMultiline.value = cols < count
+  nextTick(measureRows)
+}
+
+/* 多行时量真实行高与行数：max-height 必须按实测算，' */
+function measureRows() {
+  const el = rootEl.value
+  if (!el) return
+  const buttons = Array.from(el.querySelectorAll(":scope > button"))
+  if (!buttons.length) return
+  const first = buttons[0]
+  rowHeight.value = first.offsetHeight
+  const tops = new Set(buttons.map(b => b.offsetTop))
+  rowCount.value = tops.size
+  const gap = 4
+  const rows = Math.max(1, Math.round(props.maxRows))
+  /* 只有真的超过 maxRows 才限高；否则不设上限，避免留白 */
+  scrollMaxHeight.value = rowCount.value > rows
+    ? rows * first.offsetHeight + (rows - 1) * gap
+    : 0
+  el.style.setProperty("--seg-max-h", scrollMaxHeight.value ? scrollMaxHeight.value + "px" : "none")
+  el.style.setProperty("--seg-scroll", scrollMaxHeight.value ? "auto" : "hidden")
 }
 
 let observer = null
@@ -156,7 +181,7 @@ function pick(option) {
         'is-icon-top': iconPlacement === 'top',
         'is-icon-only': !showLabels && hasIcons
       }"
-      :style="{ '--seg-cols': columns, '--seg-max-rows': maxRows }"
+      :style="{ '--seg-cols': columns, '--seg-max-rows': maxRows, '--seg-max-h': scrollMaxHeight ? scrollMaxHeight + 'px' : 'none', '--seg-scroll': scrollMaxHeight ? 'auto' : 'hidden' }"
       role="group"
     >
       <span

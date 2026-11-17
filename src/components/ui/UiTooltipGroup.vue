@@ -169,6 +169,8 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   line-height: 1.45;
   pointer-events: none;
   white-space: pre-line;
+  /* 暖态在兄弟触发器之间切换时，气泡平滑滑过去（不是瞬移） */
+  transition: transform var(--t-panel), opacity var(--t-fade), filter var(--t-fade);
 }
 .ui-tip-enter-active,
 .ui-tip-leave-active { transition: opacity var(--t-fade), transform var(--t-pop), filter var(--t-fade); }

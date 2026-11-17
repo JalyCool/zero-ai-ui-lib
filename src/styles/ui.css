@@ -397,13 +397,14 @@ button {
 
 /* ---------- 多行：装不下时自动切网格 ---------- */
 /* 一行里滑动的指示器换行后会跨行乱跑，所以多行时让「选中项自己填底色」。 */
-/* 多行：最多 maxRows 行（默认 3），超出在控件内纵向滚动。
-   行高 = 按钮高度 + 网格 gap，所以上限 = rows * (按钮高 + gap) - gap。 */
+/* 多行：最多 maxRows 行（默认 3）。
+   上限高度由 JS 实测行高算出后写进 --seg-max-h；没超行时是 none（不留白），
+   超了才开滚动。 */
 .ui-segmented.is-multiline {
-  overflow-y: auto;
+  overflow-y: var(--seg-scroll, hidden);
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  max-height: calc(var(--seg-max-rows, 3) * (var(--seg-row-h, 38px) + 4px) - 4px);
+  max-height: var(--seg-max-h, none);
 }
 .ui-segmented.is-multiline {
   display: grid;

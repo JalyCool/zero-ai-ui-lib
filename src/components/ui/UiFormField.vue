@@ -76,8 +76,7 @@ const entry = { validate, el: () => rootEl.value }
 if (form) form.fields.add(entry)
 onBeforeUnmount(() => { if (form) form.fields.delete(entry) })
 
-/* 校验失败才占位提示行：平时 hint 显示在下方，错误出现才换成红字 */
-const message = computed(() => (error.value ? error.value : props.hint))
+/* 错误只在右侧气泡显示；下方只留 hint，不出现常驻红色错误行 */
 const showError = computed(() => touched.value && !!error.value)
 </script>
 <template>
@@ -86,9 +85,9 @@ const showError = computed(() => touched.value && !!error.value)
       {{ label }}<em v-if="required" class="is-required" aria-hidden="true">*</em>
     </span>
     <slot :error="error" :validate="validate" :pattern-ok="patternOk" :touched="touched" @blur="touched = true" />
-    <span v-if="message" class="ui-form-field__msg" :class="{ 'is-error': showError }" role="status">{{ message }}</span>
+    <!-- 说明文本常驻在下方（hint）；错误一律只在右侧气泡里说，不再往下塞红字 -->
+    <span v-if="props.hint && !showError" class="ui-form-field__msg" role="status">{{ props.hint }}</span>
 
-    <!-- 校验失败：在右侧浮一个气泡说明原因（不挤占布局，也不常驻红色怪行） -->
     <Transition name="field-bubble">
       <span v-if="showError" class="ui-form-field__bubble" role="alert">{{ error }}</span>
     </Transition>

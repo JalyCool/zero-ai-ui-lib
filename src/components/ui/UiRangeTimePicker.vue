@@ -23,7 +23,10 @@ const props = defineProps({
     type: String,
     default: 's',
     validator: value => ['h', 'h/2', 'm', 'm/2', 's'].includes(value)
-  }
+  },
+  /* 可选范围（含端点）：'HH:mm' / 'HH:mm:ss'；null = 不限制。透传给两端波轮 */
+  min: { type: String, default: null },
+  max: { type: String, default: null }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -124,6 +127,8 @@ watch(() => props.modelValue, value => {
         class="ui-range-time__picker"
         :model-value="startValue"
         :precision="precision"
+        :min="min"
+        :max="max"
         label=""
         @update:model-value="onStart"
       />
@@ -151,6 +156,8 @@ watch(() => props.modelValue, value => {
         class="ui-range-time__picker"
         :model-value="endValue"
         :precision="precision"
+        :min="min"
+        :max="max"
         label=""
         @update:model-value="onEnd"
       />
@@ -175,14 +182,21 @@ watch(() => props.modelValue, value => {
   min-width: 0;
 }
 /* 中间列与输入框同高：时长占顶部一行，箭头在余下空间垂直居中，
-   恰好落在两个输入框的中线位置。 */
+   恰好落在两个输入框的中线位置。
+   宽度固定成「最长时长文本」的宽度：时长从 9h 变成 1h03m03s 时
+   不会把两侧选择器挤变形（这是"中间时间过长影响布局"的根因）。 */
 .ui-range-time__mid {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex-shrink: 0;
-  min-width: 18px;
+  justify-content: flex-start;
+  flex: 0 0 auto;
+  /* 容纳 "~12h30m30s" 这类最长文本 */
+  min-width: 5.4em;
+  padding-top: 2px;
 }
+/* 时长文本超出也不换行，避免把箭头挤下去 */
+.ui-range-time__duration { white-space: nowrap; }
 .ui-range-time__duration {
   height: 15px;
   display: flex;
