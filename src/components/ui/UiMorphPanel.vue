@@ -35,9 +35,16 @@ const trigger = { w: 0, h: 0 }
 const content = { w: 0, h: 0 }
 const size = ref({ w: 0, h: 0 })
 const localOpen = ref(!!props.open)
+/* 收起过渡中：内容淡出、外壳缩回按钮尺寸的半路上——
+   按钮必须等外壳缩完才回归，否则它会在大盒子里闪现一帧（闪烁根因）。 */
+const closing = ref(false)
+let closingTimer = 0
 const isOpen = () => (props.open === undefined ? localOpen.value : props.open)
 
 let observer = null
+/* max-content 测量的重入门闩：测量本身会触发 ResizeObserver，
+   没有门闩就是 RO -> 测量 -> RO 的反馈循环（内容抖动）。 */
+let measuring = false
 
 /* 量按钮真实尺寸：只在收起态量（展开态按钮被拉伸，量出来是外壳宽度） */
 function measureTrigger() {
@@ -54,10 +61,12 @@ function measureTrigger() {
   el.style.height = prevHeight
 }
 
-/* 量内容自然尺寸：平时被外壳裁剪，量之前临时放开 */
+/* 量内容自然尺寸：平时被外壳裁剪，量之前临时放开。
+   测量期间的尺寸变化不再触发 RO 回调（门闩），杜绝反馈循环。 */
 function measureContent() {
   const body = bodyEl.value
-  if (!body) return
+  if (!body || measuring) return
+  measuring = true
   const prevWidth = body.style.width
   const prevHeight = body.style.height
   body.style.width = 'max-content'
@@ -66,6 +75,7 @@ function measureContent() {
   content.h = body.offsetHeight
   body.style.width = prevWidth
   body.style.height = prevHeight
+  measuring = false
 }
 
 function applySize() {
@@ -105,12 +115,32 @@ function setOpen(value) {
   if (value) emit('open')
   else emit('close')
   if (value) {
-    /* 展开：先量内容，按钮尺寸沿用收起态记录的 */
+    /* 展开：打断收起尾段，先量内容，按钮尺寸沿用收起态记录的 */
+    clearTimeout(closingTimer)
+    closing.value = false
     nextTick(() => { measureContent(); applySize(); observeBody() })
   } else {
-    /* 收起：先量按钮（此时已经回到收起态布局），再缩回按钮尺寸 */
+    /* 收起：内容淡出 + 外壳缩回按钮尺寸播完后，按钮才回归——
+       全程不销毁内容，只驱动可见性（opacity / blur / visibility）。 */
     nextTick(() => { measureTrigger(); applySize() })
+    clearTimeout(closingTimer)
+    closing.value = true
+    const ms = reduceMotion() ? 0 : readDuration('--spring-view-dur', 460)
+    closingTimer = setTimeout(() => { closingTimer = 0; closing.value = false }, ms + 60)
   }
+}
+
+function reduceMotion() {
+  return typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+function readDuration(name, fallback) {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  if (!raw) return fallback
+  const amount = parseFloat(raw)
+  if (!Number.isFinite(amount)) return fallback
+  return raw.endsWith('ms') ? amount : amount * 1000
 }
 
 function toggle() {
@@ -155,6 +185,7 @@ function onWinResize() { measure() }
 window.addEventListener('resize', onWinResize)
 
 onBeforeUnmount(() => {
+  clearTimeout(closingTimer)
   document.removeEventListener('pointerdown', onDocPointer)
   document.removeEventListener('keydown', onKeydown)
   window.removeEventListener('resize', onWinResize)
@@ -168,7 +199,7 @@ defineExpose({ open: () => setOpen(true), close, measure })
   <div
     ref="rootEl"
     class="ui-morph-panel"
-    :class="{ 'is-open': isOpen(), 'is-disabled': disabled }"
+    :class="{ 'is-open': isOpen(), 'is-closing': closing, 'is-disabled': disabled }"
     :style="shellStyle()"
   >
     <!-- 收起态：按钮。展开时淡出并模糊，但保持占位不拦截。 -->
@@ -211,7 +242,8 @@ defineExpose({ open: () => setOpen(true), close, measure })
 .ui-morph-panel.is-open:focus-within { border-color: var(--primary); }
 .ui-morph-panel.is-disabled { opacity: .42; }
 
-/* 收起态：按钮占满外壳；展开态：按钮淡出、不再吃点击 */
+/* 收起态：按钮占满外壳；展开与收起尾段：按钮淡出、不再吃点击。
+   收起时按钮必须等外壳缩完才回归（is-closing 保持淡出），否则闪现。 */
 .ui-morph-panel__trigger {
   display: inline-flex;
   align-items: center;
@@ -224,14 +256,17 @@ defineExpose({ open: () => setOpen(true), close, measure })
   cursor: pointer;
   transition: opacity var(--t-fade), filter var(--t-fade);
 }
-.ui-morph-panel.is-open .ui-morph-panel__trigger {
+.ui-morph-panel.is-open .ui-morph-panel__trigger,
+.ui-morph-panel.is-closing .ui-morph-panel__trigger {
   opacity: 0;
   filter: blur(6px);
   pointer-events: none;
   user-select: none;
 }
 
-/* 展开态内容：从模糊中浮现 */
+/* 展开态内容：从模糊中浮现。
+   内容常驻不销毁：closed 态用 visibility 兜底（淡出完成后才隐藏，
+   淡入立即可见），可见性切换不参与销毁重建。 */
 .ui-morph-panel__body {
   position: absolute;
   left: 0;
@@ -240,14 +275,27 @@ defineExpose({ open: () => setOpen(true), close, measure })
   pointer-events: none;
   opacity: 0;
   filter: blur(10px);
-  transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-panel);
   transform: scale(.98);
+  visibility: hidden;
+  transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-panel),
+              visibility 0s linear 300ms;
 }
 .ui-morph-panel.is-open .ui-morph-panel__body {
   pointer-events: auto;
   opacity: 1;
   filter: blur(0);
   transform: none;
+  visibility: visible;
+  transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-panel),
+              visibility 0s;
+}
+/* 收起尾段保持淡出姿态，与外壳收缩同步 */
+.ui-morph-panel.is-closing .ui-morph-panel__body {
+  pointer-events: none;
+  opacity: 0;
+  filter: blur(10px);
+  transform: scale(.98);
+  visibility: visible;
 }
 .ui-morph-panel__content { display: flex; align-items: center; gap: 8px; }
 </style>

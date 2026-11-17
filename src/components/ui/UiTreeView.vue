@@ -4,7 +4,8 @@ const ROOT_KEY = Symbol('ui-tree-root')
 </script>
 
 <script setup>
-import { computed, inject, provide, ref } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { animate, getSpringConfig, motion, prefersReducedMotion, useMotionValue } from '../../composables/useMotion'
 
 const props = defineProps({
   /* [{ label, value?, children?, kind? }]；kind 决定图标 */
@@ -137,6 +138,91 @@ function pick(row) {
   emit('select', row.node)
 }
 
+/* ---------------- 分组展开：motion 弹簧驱动高度 ----------------
+   分组 DOM 常驻不销毁，高度由每组的 MotionValue 弹簧驱动（view 场景），
+   行内容随 opacity/blur 的 CSS 过渡浮现 —— 替换掉原来的 grid 0fr↔1fr
+   直线过渡（生硬）。嵌套子树高度变化由 ResizeObserver 校正（直接
+   set 跳变，避免 RO -> 动画 -> RO 的反馈循环）。 */
+const groupEls = new Map()
+const groupMvs = new Map()
+const groupRoKeys = new Map()
+let groupRo = null
+
+function setGroupEl(key, el) {
+  if (el) {
+    groupEls.set(key, el)
+    const clip = el.querySelector('.ui-tree__group-clip')
+    if (clip && typeof ResizeObserver !== 'undefined') {
+      if (!groupRo) {
+        groupRo = new ResizeObserver(entries => {
+          entries.forEach(entry => {
+            const k = groupRoKeys.get(entry.target)
+            if (k === undefined || !isOpen(k)) return
+            const natural = entry.target.scrollHeight
+            const mv = groupHeight(k)
+            if (Math.abs(natural - mv.get()) > 1) mv.set(natural)
+          })
+        })
+      }
+      groupRo.observe(clip)
+      groupRoKeys.set(clip, key)
+    }
+  } else {
+    groupEls.delete(key)
+  }
+}
+
+function groupHeight(key) {
+  if (!groupMvs.has(key)) groupMvs.set(key, useMotionValue(0))
+  return groupMvs.get(key)
+}
+
+function naturalGroupHeight(key) {
+  const clip = groupEls.get(key)?.querySelector('.ui-tree__group-clip')
+  return clip ? clip.scrollHeight : 0
+}
+
+function syncGroupHeight(key, open, animateIt = true) {
+  const mv = groupHeight(key)
+  const natural = naturalGroupHeight(key)
+  if (!open) {
+    if (animateIt && !prefersReducedMotion() && mv.get() > 0) animate(mv, 0, getSpringConfig('view'))
+    else mv.set(0)
+    return
+  }
+  if (Math.abs(natural - mv.get()) < 1) { mv.set(natural); return }
+  if (animateIt && !prefersReducedMotion()) animate(mv, natural, getSpringConfig('view'))
+  else mv.set(natural)
+}
+
+onMounted(() => {
+  /* 初始态直接落位：defaultOpen / 过滤展开的分组不播动画 */
+  nextTick(() => {
+    rows.value.forEach(row => {
+      if (!row.hasChildren) return
+      syncGroupHeight(row.key, isOpen(row.key), false)
+    })
+  })
+})
+
+onBeforeUnmount(() => {
+  if (groupRo) groupRo.disconnect()
+})
+
+/* 本层展开切换 / 过滤变化：驱动本层各组弹簧 */
+watch(
+  () => rows.value.map(row => ({ key: row.key, has: row.hasChildren, open: row.hasChildren && isOpen(row.key) })),
+  (list, prev) => {
+    list.forEach(item => {
+      if (!item.has) return
+      const before = prev?.find(o => o.key === item.key)
+      if (before && before.open === item.open) return
+      syncGroupHeight(item.key, item.open)
+    })
+  },
+  { flush: 'post' }
+)
+
 /* ---------- 拖拽换父 ---------- */
 function onDragStart(row, event) {
   if (!props.draggable) return
@@ -239,11 +325,14 @@ defineExpose(isRoot ? {
         <span class="ui-tree__label">{{ row.node.label }}</span>
       </button>
 
-      <!-- 子级分组：常驻 DOM，高度 0 <-> auto 连续过渡，行内容从模糊中浮现。 -->
-      <div
+      <!-- 子级分组：DOM 常驻不销毁，高度由 motion 弹簧驱动（view 场景），
+           行内容随 opacity/blur 浮现；is-open 只管箭头旋转与淡入。 -->
+      <motion.div
         v-if="row.hasChildren"
+        :ref="el => setGroupEl(row.key, el)"
         class="ui-tree__group"
         :class="{ 'is-open': isOpen(row.key) }"
+        :style="{ height: groupHeight(row.key) }"
       >
         <div class="ui-tree__group-clip">
         <UiTreeView
@@ -261,7 +350,7 @@ defineExpose(isRoot ? {
           @update:model-value="value => emit('update:modelValue', value)"
         />
         </div>
-      </div>
+      </motion.div>
     </template>
   </div>
 </template>
@@ -331,20 +420,16 @@ defineExpose(isRoot ? {
 .ui-tree__icon[data-kind="image"] { color: var(--secondary); }
 .ui-tree__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 分组：grid 的 0fr <-> 1fr 在任意高度下都能原生过渡（含嵌套子树），
-   不再依赖 interpolate-size 或 JS 量像素；内容一起从模糊里浮现。 */
+/* 分组：高度由 motion 弹簧驱动（内联 style），这里只管淡入与裁剪。
+   行 DOM 常驻不销毁；嵌套子树高度变化由 ResizeObserver 校正。 */
 .ui-tree__group {
-  display: grid;
-  grid-template-rows: 0fr;
+  overflow: hidden;
   opacity: 0;
   filter: blur(5px);
-  transition:
-    grid-template-rows var(--t-view),
-    opacity var(--t-fade),
-    filter var(--t-fade);
+  transition: opacity var(--t-fade), filter var(--t-fade);
 }
-.ui-tree__group.is-open { grid-template-rows: 1fr; opacity: 1; filter: blur(0); }
-.ui-tree__group-clip { min-height: 0; overflow: hidden; }
+.ui-tree__group.is-open { opacity: 1; filter: blur(0); }
+.ui-tree__group-clip { overflow: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-tree__group { transition-duration: .01ms !important; filter: none; }

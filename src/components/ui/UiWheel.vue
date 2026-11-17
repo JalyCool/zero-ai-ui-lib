@@ -136,10 +136,10 @@ function clampColumnScroll(index) {
 
 function onScroll(index) {
   schedulePaint(index)
-  if (props.min !== null || props.max !== null) {
-    /* 拖动越界：立刻拉回，跟手表现为「推不动」 */
-    if (clampColumnScroll(index)) { clearTimeout(timers[index]); return }
-  }
+  /* 列级（级联界）与全局限制一律钳制：clampColumnScroll 内部自判
+     「无限制 = 全范围 = 不钳」。之前只在全局 min/max 时调用，
+     列级限界的越界行看得见摸得着 —— 就是「禁用样式却能滚到」的根因。 */
+  if (clampColumnScroll(index)) { clearTimeout(timers[index]); return }
   clearTimeout(timers[index])
   timers[index] = setTimeout(() => {
     const raw = centeredValue(index)

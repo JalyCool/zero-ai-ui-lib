@@ -84,6 +84,8 @@ let closeTimer = null
 let closedBox = null
 let openedBox = null
 let borderX = 0
+/* 最近一次展开用的宽度：打断收起重新展开时按它量平移终点 */
+let lastOpenW = 0
 let borderY = 0
 
 const selectedValues = computed(() => {
@@ -218,6 +220,19 @@ const press = usePress({
    立刻收起 —— 表现出来就是「点了没反应 / 一闪就没了」。 */
 let openingAt = 0
 
+/* 展开宽度 = max(字段宽, 最长选项自然宽)，封顶视口可用宽。
+   之前一律用字段宽：选中项窄时，长选项全被截断。 */
+function measureContentWidth() {
+  const layer = panelEl.value
+  const content = panelContentEl.value
+  if (!layer || !content) return 0
+  const previous = layer.style.width
+  layer.style.width = 'max-content'
+  const w = Math.ceil(content.offsetWidth)
+  layer.style.width = previous
+  return w + borderX * 2
+}
+
 async function openMenu(byKeyboard = false) {
   if (open.value) return
   closing.value = false
@@ -261,7 +276,10 @@ async function openMenu(byKeyboard = false) {
 
   await nextTick()
 
-  const innerW = Math.max(1, closedW - borderX * 2)
+  /* 展开窗口宽度：max(字段宽, 最长选项自然宽)，封顶视口可用宽 */
+  const openW = Math.max(closedW, Math.min(measureContentWidth(), window.innerWidth - MARGIN * 2))
+  lastOpenW = openW
+  const innerW = Math.max(1, openW - borderX * 2)
   const vh = window.innerHeight
   /* 超长列表不要铺满整屏：一封顶到 62% 视口就内部滚动，
      否则面板把字段本身盖住，看着像「整个页面错位」。 */
@@ -271,7 +289,7 @@ async function openMenu(byKeyboard = false) {
   const targetH = Math.max(closedH, Math.min(naturalH, menuCap))
 
   let left = originLeft
-  left = Math.max(MARGIN, Math.min(left, window.innerWidth - MARGIN - closedW))
+  left = Math.max(MARGIN, Math.min(left, window.innerWidth - MARGIN - openW))
 
   let top = originTop
   top = Math.max(MARGIN, Math.min(top, window.innerHeight - MARGIN - targetH))
@@ -281,7 +299,7 @@ async function openMenu(byKeyboard = false) {
   requestAnimationFrame(() => {
     if (!floating.value) return
     openedBox = {
-      ...fixedStyle({ left: Math.round(left), top: Math.round(top), width: closedW, height: targetH }),
+      ...fixedStyle({ left: Math.round(left), top: Math.round(top), width: openW, height: targetH }),
       '--select-shift': shiftY + 'px',
       '--select-shift-x': shiftX + 'px'
     }
@@ -311,7 +329,7 @@ function interruptOpen() {
   // 值可能在收起途中已经改变：重新量一次平移终点，
   // 否则文字仍然飞向旧的选中项位置。
   if (closedBox) {
-    const innerW = Math.max(1, closedBox.width - borderX * 2)
+    const innerW = Math.max(1, lastOpenW - borderX * 2)
     const { shiftY, shiftX } = measure(innerW, closedBox.height, innerW)
     openedBox = { ...openedBox, '--select-shift': shiftY + 'px', '--select-shift-x': shiftX + 'px' }
   }

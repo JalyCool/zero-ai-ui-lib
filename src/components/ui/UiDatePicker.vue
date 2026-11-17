@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useMorphWindow } from '../../core/morphWindow'
 
 const props = defineProps({
@@ -107,12 +107,81 @@ const valuePrecision = computed(() => {
 /* precision 决定「哪一级是终点」：
    day   → 日网格里点某天即完成；
    month → 月网格里点某月即完成（补 01 日）；
-   year  → 年网格里点某年即完成（补 01-01）。 */
+   year  → 年网格里点某年即完成（补 01-01）。
+   非终点层级点击一律下钻（含「当前所在的年 / 月」）——选了当前月也要
+   能深入改日子，而不是把月份直接提交关窗。 */
 const viewMode = ref('days')
 const yearPage = ref(0)
-/* 切换方向：'in' = 下钻（更细），'back' = 上钻（更宏观）；决定用哪组过渡类 */
-const navBack = ref(false)
-const viewTransition = computed(() => (navBack.value ? 'date-view-back' : 'date-view'))
+
+/* ZoomTo 状态机：年 / 月 / 日三个视图**常驻不销毁**（隐藏 = display:none，
+   组件与 DOM 永远活着），切换只驱动可见性 + 缩放类 —— 元素销毁重建
+   会让 Zoom 动画出现错位（旧层高度突变、入场层从错误的盒子里起跳）。 */
+const zoom = ref({ from: null, to: 'days', phase: 'idle', back: false })
+let zoomTimer = 0
+
+/* 翻页滑动（年页 / 月步 / 月换页）：同一套两帧状态机 */
+const slide = ref({ dir: 0, phase: 'idle' })
+let slideTimer = 0
+
+function transitionMs() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--spring-view-dur').trim()
+  const amount = parseFloat(raw)
+  return Number.isFinite(amount) ? (raw.endsWith('ms') ? amount : amount * 1000) : 460
+}
+
+/* 镜头推拉：from 阶段提交目标面板的起始态（一帧），run 阶段开过渡 */
+function goto(mode, back) {
+  if (viewMode.value === mode) return
+  clearTimeout(zoomTimer)
+  zoom.value = { from: viewMode.value, to: mode, phase: 'from', back }
+  viewMode.value = mode
+  nextTick(() => requestAnimationFrame(() => {
+    zoom.value = { ...zoom.value, phase: 'run' }
+    zoomTimer = setTimeout(() => { zoom.value = { from: null, to: mode, phase: 'idle', back } }, transitionMs() + 60)
+  }))
+}
+
+/* 翻页滑动：内容从行进方向滑入（下一页从右、上一页从左） */
+function animateSlide(dir) {
+  clearTimeout(slideTimer)
+  slide.value = { dir, phase: 'from' }
+  nextTick(() => requestAnimationFrame(() => {
+    slide.value = { dir, phase: 'run' }
+    slideTimer = setTimeout(() => { slide.value = { dir: 0, phase: 'idle' } }, 360 + 50)
+  }))
+}
+
+/* 每个面板的类：三态机（idle / from / run）驱动，常驻不销毁 */
+function paneClass(name) {
+  const z = zoom.value
+  const cls = {}
+  if (z.phase === 'idle') {
+    if (viewMode.value !== name) { cls['is-hidden'] = true; return cls }
+    cls['is-active'] = true
+  } else {
+    const leaving = z.from === name
+    const entering = z.to === name
+    if (!leaving && !entering) { cls['is-hidden'] = true; return cls }
+    cls['is-overlay'] = true
+    cls[z.back ? 'is-back' : 'is-in'] = true
+    if (leaving) {
+      cls['is-leave'] = true
+      if (z.phase === 'from') { cls['is-on'] = true; cls['is-static'] = true }
+      else cls['is-off'] = true
+    } else {
+      cls['is-enter'] = true
+      if (z.phase === 'from') { cls['is-off'] = true; cls['is-static'] = true }
+      else cls['is-on'] = true
+    }
+  }
+  if (viewMode.value === name && slide.value.phase !== 'idle') {
+    cls['is-slide'] = true
+    if (slide.value.phase === 'from') cls['is-slide-from'] = true
+    else cls['is-slide-run'] = true
+    cls[slide.value.dir > 0 ? 'is-slide-next' : 'is-slide-prev'] = true
+  }
+  return cls
+}
 
 const minDate = computed(() => parseDate(props.min))
 const maxDate = computed(() => parseDate(props.max))
@@ -151,68 +220,44 @@ const monthCells = computed(() => Array.from({ length: 12 }, (_, i) => i))
 
 /* 顶栏点击 = 往宏观走（日 -> 月 -> 年）：镜头拉远 */
 function enterMonths() {
-  navBack.value = true
-  viewMode.value = 'months'
+  goto('months', true)
 }
 function enterYears() {
-  navBack.value = true
   yearPage.value = Math.floor(viewDate.value.getFullYear() / 10)
-  viewMode.value = 'years'
+  goto('years', true)
 }
 /* 网格下钻 = 往细走（年 -> 月 -> 日）：镜头推近 */
 function backToDays() {
-  navBack.value = false
-  viewMode.value = 'days'
+  goto('days', false)
 }
 function backToMonths() {
-  navBack.value = false
-  viewMode.value = 'months'
+  goto('months', false)
 }
 
-/* 选月：precision=month 直接完成；否则进入该月的日视图。
-   「已高亮再点 = 选中本层」：precision=day 时第一次点某月只是下钻预览，
-   想直接选这个月（不指定日）再点一次同一格即提交。 */
+/* 选月：precision=month 是终点（点击即提交）；否则**一律下钻**——
+   点当前所在月也要进入日视图改日子，不再有「再点已高亮项 = 提交本层」。 */
 function selectMonth(month) {
   const year = viewDate.value.getFullYear()
   const next = new Date(year, month, 1)
-  const alreadyHere = viewMode.value === 'months'
-    && year === selectedDate.value.getFullYear() && month === selectedDate.value.getMonth()
-  if (props.precision === 'month' || alreadyHere) {
+  if (props.precision === 'month') {
     viewDate.value = next
-    /* precision=day 但用户点了「选中本层」：提交到月粒度 */
-    if (props.precision !== 'month' && props.precision !== 'year') {
-      current.value = year + '-' + pad(month + 1)
-      emit('update:modelValue', current.value)
-      closeWindow()
-      return
-    }
     commitDate(next)
     return
   }
   viewDate.value = next
-  navBack.value = false
-  viewMode.value = 'days'
+  goto('days', false)
 }
 
-/* 选年：precision=year 直接完成；否则进入该年的月视图。
-   与选月同规则：再点已高亮的年份 = 选中本层（提交到年粒度）。 */
+/* 选年：precision=year 是终点；否则一律下钻到该年的月视图。 */
 function selectYear(year) {
   const next = new Date(year, viewDate.value.getMonth(), 1)
-  const alreadyHere = viewMode.value === 'years' && year === selectedDate.value.getFullYear()
-  if (props.precision === 'year' || alreadyHere) {
+  if (props.precision === 'year') {
     viewDate.value = next
-    if (props.precision !== 'year') {
-      current.value = String(year)
-      emit('update:modelValue', current.value)
-      closeWindow()
-      return
-    }
     commitDate(next)
     return
   }
   viewDate.value = next
-  navBack.value = false
-  viewMode.value = 'months'
+  goto('months', false)
 }
 
 /* 按精度把日期写成对应格式并提交 */
@@ -297,13 +342,15 @@ function shiftMonth(amount) {
   viewDate.value = new Date(viewDate.value.getFullYear(), viewDate.value.getMonth() + amount, 1)
 }
 
-/* 左右箭头按当前视图走：日 -> 月，月 -> 年，年 -> 十年 */
+/* 左右箭头按当前视图走：日 -> 月，月 -> 年，年 -> 十年；翻页带方向滑动 */
 function stepBackward() {
+  animateSlide(-1)
   if (viewMode.value === 'days') shiftMonth(-1)
   else if (viewMode.value === 'months') viewDate.value = new Date(viewDate.value.getFullYear() - 1, viewDate.value.getMonth(), 1)
   else yearPage.value -= 1
 }
 function stepForward() {
+  animateSlide(1)
   if (viewMode.value === 'days') shiftMonth(1)
   else if (viewMode.value === 'months') viewDate.value = new Date(viewDate.value.getFullYear() + 1, viewDate.value.getMonth(), 1)
   else yearPage.value += 1
@@ -414,72 +461,72 @@ watch(() => props.modelValue, value => {
             </button>
           </div>
 
-          <!-- 三套网格叠在同一格：切换时旧视图模糊淡出、新视图从模糊浮入 -->
+          <!-- 三套网格**常驻不销毁**（is-hidden = display:none）：
+               Zoom 时旧层模糊淡出、新层从缩放里浮现，双面板叠放过渡 ——
+               元素销毁重建会让 Zoom 产生错位，这里只驱动可见性。 -->
           <div class="ui-date__stage">
-            <Transition :name="viewTransition">
-              <!-- 日 -->
-              <div v-if="viewMode === 'days'" key="days" class="ui-date__pane">
-                <div class="ui-date__weekdays" aria-hidden="true">
-                  <span v-for="weekday in weekdays" :key="weekday">{{ weekday }}</span>
-                </div>
-                <div class="ui-date__grid">
-                  <span v-for="(day, index) in calendarCells" :key="`${monthLabel}-${index}`" class="ui-date__cell">
-                    <button
-                      v-if="day"
-                      type="button"
-                      :tabindex="open ? 0 : -1"
-                      :disabled="!dayInRange(new Date(viewDate.getFullYear(), viewDate.getMonth(), day))"
-                      :class="{
-                        'is-selected': isSameDay(new Date(viewDate.getFullYear(), viewDate.getMonth(), day), selectedDate),
-                        'is-today': isSameDay(new Date(viewDate.getFullYear(), viewDate.getMonth(), day), todayDate())
-                      }"
-                      @click="selectDay(day)"
-                    >
-                      {{ day }}
-                    </button>
-                  </span>
-                </div>
+            <!-- 日 -->
+            <div :class="['ui-date__pane', paneClass('days')]">
+              <div class="ui-date__weekdays" aria-hidden="true">
+                <span v-for="weekday in weekdays" :key="weekday">{{ weekday }}</span>
               </div>
-
-              <!-- 月 -->
-              <div v-else-if="viewMode === 'months'" key="months" class="ui-date__pane">
-                <div class="ui-date__months">
+              <div class="ui-date__grid">
+                <span v-for="(day, index) in calendarCells" :key="`${monthLabel}-${index}`" class="ui-date__cell">
                   <button
-                    v-for="month in monthCells"
-                    :key="month"
+                    v-if="day"
                     type="button"
                     :tabindex="open ? 0 : -1"
-                    :disabled="!monthSelectable(viewDate.getFullYear(), month)"
+                    :disabled="!dayInRange(new Date(viewDate.getFullYear(), viewDate.getMonth(), day))"
                     :class="{
-                      'is-selected': viewDate.getFullYear() === selectedDate.getFullYear() && month === selectedDate.getMonth(),
-                      /* 终点层（precision=month）= 选中语义；否则 = 下钻语义 */
-                      'is-final': precision === 'month',
-                      'is-drill': precision !== 'month'
+                      'is-selected': isSameDay(new Date(viewDate.getFullYear(), viewDate.getMonth(), day), selectedDate),
+                      'is-today': isSameDay(new Date(viewDate.getFullYear(), viewDate.getMonth(), day), todayDate())
                     }"
-                    @click="selectMonth(month)"
-                  >{{ month + 1 }}月</button>
-                </div>
+                    @click="selectDay(day)"
+                  >
+                    {{ day }}
+                  </button>
+                </span>
               </div>
+            </div>
 
-              <!-- 年 -->
-              <div v-else key="years" class="ui-date__pane">
-                <div class="ui-date__months">
-                  <button
-                    v-for="year in yearCells"
-                    :key="year"
-                    type="button"
-                    :tabindex="open ? 0 : -1"
-                    :disabled="!yearSelectable(year)"
-                    :class="{
-                      'is-selected': year === selectedDate.getFullYear(),
-                      'is-final': precision === 'year',
-                      'is-drill': precision !== 'year'
-                    }"
-                    @click="selectYear(year)"
-                  >{{ year }}</button>
-                </div>
+            <!-- 月 -->
+            <div :class="['ui-date__pane', paneClass('months')]">
+              <div class="ui-date__months">
+                <button
+                  v-for="month in monthCells"
+                  :key="month"
+                  type="button"
+                  :tabindex="open ? 0 : -1"
+                  :disabled="!monthSelectable(viewDate.getFullYear(), month)"
+                  :class="{
+                    'is-selected': viewDate.getFullYear() === selectedDate.getFullYear() && month === selectedDate.getMonth(),
+                    /* 终点层（precision=month）= 选中语义；否则 = 下钻语义 */
+                    'is-final': precision === 'month',
+                    'is-drill': precision !== 'month'
+                  }"
+                  @click="selectMonth(month)"
+                >{{ month + 1 }}月</button>
               </div>
-            </Transition>
+            </div>
+
+            <!-- 年 -->
+            <div :class="['ui-date__pane', paneClass('years')]">
+              <div class="ui-date__months">
+                <button
+                  v-for="year in yearCells"
+                  :key="year"
+                  type="button"
+                  :tabindex="open ? 0 : -1"
+                  :disabled="!yearSelectable(year)"
+                  :class="{
+                    'is-selected': year === selectedDate.getFullYear(),
+                    'is-final': precision === 'year',
+                    'is-drill': precision !== 'year'
+                  }"
+                  @click="selectYear(year)"
+                >{{ year }}</button>
+              </div>
+            </div>
           </div>
 
           <div class="ui-date__footer">
@@ -661,23 +708,39 @@ watch(() => props.modelValue, value => {
   font-size: var(--fs-micro);
   text-align: center;
 }
-/* 三套视图叠在同一格：切换时旧视图模糊淡出、新视图从模糊浮入 */
+/* 三套视图常驻叠在同一舞台：hidden = display:none（组件与 DOM 不销毁）；
+   Zoom 过渡期双面板 absolute 叠放，旧层按方向飞出、新层从缩放里浮现，
+   结束后活动面板回到文档流 —— 位置切换不可见（两者都铺满舞台）。 */
 .ui-date__stage { position: relative; min-height: 232px; }
-.ui-date__pane { display: flex; flex-direction: column; gap: 2px; }
-/* ZoomTo：精度层级切换 = 一次镜头推拉。
-   下钻（年 -> 月 -> 日）：旧层向「里」放大模糊淡出，新层从缩小状态放大落定；
-   上钻（点顶栏年 / 月往宏观走）：方向反过来。 */
-.date-view-enter-active, .date-view-leave-active {
+.ui-date__pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
 }
-.date-view-enter-from { opacity: 0; transform: scale(.72); filter: blur(10px); }
-.date-view-leave-to { opacity: 0; transform: scale(1.35); filter: blur(10px); }
-.date-view-back-enter-active, .date-view-back-leave-active {
-  transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
-}
-.date-view-back-enter-from { opacity: 0; transform: scale(1.35); filter: blur(10px); }
-.date-view-back-leave-to { opacity: 0; transform: scale(.72); filter: blur(10px); }
-.date-view-leave-active { position: absolute; inset: 0; }
+.ui-date__pane.is-hidden { display: none; }
+.ui-date__pane.is-active { opacity: 1; transform: scale(1); filter: blur(0); }
+/* 过渡期：双面板铺满舞台叠放 */
+.ui-date__pane.is-overlay { position: absolute; inset: 0; }
+.ui-date__pane.is-leave { z-index: 0; pointer-events: none; }
+.ui-date__pane.is-enter { z-index: 1; pointer-events: none; }
+/* from 态：一次性提交起始位（无过渡）；run 态：由基础 transition 接管 */
+.ui-date__pane.is-static { transition: none; }
+.ui-date__pane.is-on { opacity: 1; transform: scale(1); filter: blur(0); }
+.ui-date__pane.is-off { opacity: 0; filter: blur(10px); }
+/* 方向映射：in（下钻）= 旧层放大飞出、新层从缩小进来；
+   back（上钻）= 反向 */
+.ui-date__pane.is-leave.is-off.is-in { transform: scale(1.35); }
+.ui-date__pane.is-leave.is-off.is-back { transform: scale(.72); }
+.ui-date__pane.is-enter.is-off.is-in { transform: scale(.72); }
+.ui-date__pane.is-enter.is-off.is-back { transform: scale(1.35); }
+/* 翻页滑动：下一页从右滑入、上一页从左滑入 */
+.ui-date__pane.is-slide.is-slide-from { opacity: 0; filter: blur(6px); transition: none; }
+.ui-date__pane.is-slide.is-slide-from.is-slide-next { transform: translateX(22px); }
+.ui-date__pane.is-slide.is-slide-from.is-slide-prev { transform: translateX(-22px); }
+.ui-date__pane.is-slide.is-slide-next.is-slide-run { opacity: 1; transform: translateX(0); filter: blur(0); }
+.ui-date__pane.is-slide.is-slide-prev.is-slide-run { opacity: 1; transform: translateX(0); filter: blur(0); }
 
 /* 顶部三段标题：年 / 月 可点，当前这一级高亮 */
 .ui-date__crumbs { display: flex; align-items: baseline; gap: 2px; flex: 1; justify-content: center; }

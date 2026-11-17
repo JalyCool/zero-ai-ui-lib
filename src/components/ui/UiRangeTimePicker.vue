@@ -181,26 +181,21 @@ watch(() => props.modelValue, value => {
   flex: 1;
   min-width: 0;
 }
-/* 中间列与输入框同高：时长占顶部一行，箭头在余下空间垂直居中，
-   恰好落在两个输入框的中线位置。
-   宽度固定成「最长时长文本」的宽度：时长从 9h 变成 1h03m03s 时
-   不会把两侧选择器挤变形（这是"中间时间过长影响布局"的根因）。 */
+/* 中列：时长文本在流内撑出宽度；箭头**绝对定位钉在字段中线**（42px 字段
+   的一半 = 21px）——之前用「剩余空间居中」，波轮一展开（行高 172px）
+   箭头就漂到波轮中心，与两端字段错位；钉线后展开收起都不动。 */
 .ui-range-time__mid {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
+  position: relative;
   flex: 0 0 auto;
-  /* 两端字段已按精度定宽，中列只容常见读数即可（最长 ~12h30m30s 会自然撑开） */
   min-width: 3.6em;
-  padding-top: 2px;
 }
 /* 时长文本超出也不换行，避免把箭头挤下去 */
-.ui-range-time__duration { white-space: nowrap; }
 .ui-range-time__duration {
   height: 15px;
+  padding-top: 3px;
   display: flex;
   align-items: center;
+  justify-content: center;
   white-space: nowrap;
 }
 .ui-range-time__approx {
@@ -220,12 +215,15 @@ watch(() => props.modelValue, value => {
   letter-spacing: .02em;
   line-height: 1.1;
 }
-/* 较浅的箭头：比正文浅一档的描边色。 */
+/* 较浅的箭头：比正文浅一档的描边色，垂直钉在两端字段的中线上。 */
 .ui-range-time__arrow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 21px;
+  transform: translateY(-50%);
   display: grid;
   place-items: center;
-  width: 16px;
-  margin: auto 0;
   color: color-mix(in oklab, var(--on-surface-variant) 55%, transparent);
 }
 .ui-range-time__arrow svg { width: 16px; height: 16px; }
