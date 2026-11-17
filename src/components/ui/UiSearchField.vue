@@ -164,8 +164,12 @@ watch(() => props.modelValue, value => { if (value && !open.value) expand() })
 .ui-search__icon::before {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: calc(12px * var(--radius-scale));
+  /* 36×36 居中于 40×40 按钮：四周各留 2px，与图标同轴 */
+  left: 2px;
+  top: 2px;
+  width: 36px;
+  height: 36px;
+  border-radius: calc(11px * var(--radius-scale));
   background: transparent;
   transition: background var(--t-fade), transform var(--t-feedback);
 }

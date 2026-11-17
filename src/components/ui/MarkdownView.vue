@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import UiIcon from './UiIcon.vue'
 import UiLink from './UiLink.vue'
 import UiAvatarTag from './UiAvatarTag.vue'
+import { getSpringConfig, motion } from '../../composables/useMotion'
 import { normalizeIconName, ICON_EXPLICIT_RE, ICON_INLINE_RE, MENTION_RE } from '../../core/iconify'
 
 /* ============================================================
@@ -26,7 +27,7 @@ const props = defineProps({
   /* 流式更新：内容增长时只让「新增 / 变化的块」播进场，其余保持不动；
      同时预留容器高度，逐块长出来时不把下面的内容顶得跳。 */
   streaming: { type: Boolean, default: false },
-  /* 流式新增块的进场方式：rise / blur / fade */
+  /* 流式 token 的进场方式：rise（上浮 + 模糊）/ blur（只模糊）/ fade（只透明） */
   streamEffect: { type: String, default: 'rise' }
 })
 
@@ -174,24 +175,49 @@ function renderNode(node) {
 }
 
 /* 整棵树：props 变化时随父组件重渲染 */
-/* ---------- streaming：按词拆 span + CSS transition（上浮 + 去模糊） ---------- */
-/* 方案：流式文本按空格拆成词（无空白的 CJK 每 3 字一组），每个词一个
-   <span class="stream-word">。词表按块缓存，帧间只比「词的前缀」：
-   · 旧词的 vnode class 恒为 stream-word is-in（静止终态），key 稳定 -> 节点复用；
-   · 新词先以 stream-word（初始态：透明 + 上浮 + 模糊）插入，
-     下一帧由 JS 补 is-in -> class 变化触发 CSS transition，
-     transform / filter / opacity 三条同时过渡 —— 上浮 + 去模糊。
-   词一旦成 span 就永远是 span（不回并纯文本），
-   动画绝不会被「下一帧结构变化」打断 —— 这就是不再闪现的关键。 */
+/* ---------- streaming：词壳 = motion.span（上浮 + 模糊，逐 token 蹦出来） ----------
+   方案：流式文本按空格拆成词（无空白的 CJK 每 3 字一组），每个词一个
+   <motion.span class="stream-word">。词表按块缓存，帧间只比「词的前缀」：
+   · 词壳 key 稳定（blockId + '.' + ti）-> Vue 节点复用，motion 组件实例
+     不重建 -> 已入场词不重播（每个词只在挂载时播一次 initial -> animate）；
+   · 新词挂载即从 initial（透明 + 上浮 + 模糊）弹向落定态，transition 走
+     feedback 场景弹簧，同一批新增词按批次序号级联延迟，逐个蹦出来；
+   · 词一旦成壳就永远是壳（不回并纯文本），
+     动画绝不会被「下一帧结构变化」打断 —— 这就是不再闪现的关键。
+   initial/animate 在模块级冻结（引用恒定），重渲染传新对象也不会让
+   motion 重播；transition 按（effect, 级联步进）记忆化，同理。 */
 const shownTokens = new Map()   /* blockId -> 上一帧的词表 */
 const freshInfo = ref(new Map())  /* blockId -> { whole, stable } 本轮渲染所需 */
-/* 已入场词登记（非响应式）：某词一旦补过 is-in，之后任何一帧的 vnode
-   都直接带 is-in —— 否则「无增量的重渲染」会把 class 重置回初始态，
-   动画被打断、词闪回去。key 形如 blockId + '.' + ti */
-const animatedTokens = new Set()
 /* 预留高度：上一次渲染完成时容器的高度，避免逐块长出来时页面上下跳。 */
 const reserveHeight = ref(0)
 const rootEl = ref(null)
+
+/* 各 effect 的初始态 / 落定态（模块级冻结，引用恒定）。 */
+const TOKEN_STATES = {
+  rise: {
+    initial: { opacity: 0, y: '0.35em', filter: 'blur(6px)' },
+    animate: { opacity: 1, y: '0em', filter: 'blur(0px)' }
+  },
+  blur: {
+    initial: { opacity: 0, filter: 'blur(8px)' },
+    animate: { opacity: 1, filter: 'blur(0px)' }
+  },
+  fade: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 }
+  }
+}
+const tokenTransitions = new Map()
+function tokenTransition(effect, batchIndex) {
+  const step = Math.min(Math.max(batchIndex, 0), 24)
+  const memoKey = effect + '|' + step
+  let transition = tokenTransitions.get(memoKey)
+  if (!transition) {
+    transition = { ...getSpringConfig('feedback'), delay: step * 0.018 }
+    tokenTransitions.set(memoKey, transition)
+  }
+  return transition
+}
 
 /* 块在文档里的稳定身份：标签名 + 同类序号（不含文本） */
 function blockId(el, indexInType) {
@@ -254,24 +280,12 @@ watch(() => props.content, () => {
   freshInfo.value = fresh
 }, { immediate: true })
 
-/* 渲染后：给刚插入的新词补 is-in（双 rAF 确保初始态已提交一帧，
-   class 变化才会触发 transition）；同时缓存高度做 min-height 预留。 */
+/* 渲染后：缓存高度做 min-height 预留（词壳入场由 motion 自驱，无须补类）。 */
 watch(freshInfo, async () => {
   if (!props.streaming) return
   await nextTick()
   const el = rootEl.value
   if (!el) return
-  const pending = el.querySelectorAll('.stream-word:not(.is-in)')
-  if (pending.length) {
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      pending.forEach(node => {
-        node.classList.add('is-in')
-        /* 节点自带块 id 与词序号（data-ti），直接登记，不反查 DOM */
-        const bid = node.getAttribute('data-ti')
-        if (bid) animatedTokens.add(bid)
-      })
-    }))
-  }
   const height = el.offsetHeight
   if (height > reserveHeight.value) {
     reserveHeight.value = height
@@ -291,25 +305,19 @@ function withStreaming(tree) {
     const seq = typeCount.get(type) || 0
     typeCount.set(type, seq + 1)
     const id = type + '#' + seq
-    const info = freshInfo.value.get(id)
-    if (info && info.whole) {
-      /* 整块第一次出现：块级进场（stream-effect），内部维持原结构 */
-      return h(child.type, {
-        ...child.props,
-        class: [child.props.class, 'ui-md-fresh', 'is-fresh-' + props.streamEffect].filter(Boolean).join(' ')
-      }, child.children)
-    }
     const tokens = shownTokens.get(id)
     if (!tokens || !tokens.length) return child
-    /* 没有增量也要重建词壳：让旧帧的 span 结构在这一帧保持一致 */
+    /* 没有增量也要重建词壳：让旧帧的 span 结构在这一帧保持一致。
+       整块第一次出现 = stable 0 = 全部词按批次级联蹦出。 */
+    const info = freshInfo.value.get(id)
     const stable = info ? info.stable : tokens.length
     return h(child.type, { ...child.props }, wrapAllTokens(child.children, tokens, stable, id))
   })
 }
 
 /* 把块的 children 按词表整体 span 化：文本按 token 顺序消费，
-   前 stable 个词 = is-in（静止终态），其余 = 待入场（下一帧补 is-in）。
-   递归进嵌套结构（strong / 链接 / 数组 children）。 */
+   每个词一个 motion.span；批次序号 = ti - stable（稳定前缀内为 0，
+   新增词按出现次序级联延迟）。递归进嵌套结构（strong / 链接 / 数组 children）。 */
 function wrapAllTokens(children, tokens, stable, id) {
   let ti = 0
   function consume(text) {
@@ -320,10 +328,14 @@ function wrapAllTokens(children, tokens, stable, id) {
       if (chars.length < tokChars.length) break
       if (tokChars.some((ch, k) => ch !== chars[k])) break
       const tokenKey = id + '.' + ti
-      /* 静止条件：在本帧稳定前缀内，或历史上已经入场过（无增量重渲染不重置） */
-      const settled = ti < stable || animatedTokens.has(tokenKey)
-      const cls = settled ? 'stream-word is-in' : 'stream-word'
-      out.push(h('span', { class: cls, key: tokenKey, 'data-ti': tokenKey }, tokens[ti]))
+      const state = TOKEN_STATES[props.streamEffect] || TOKEN_STATES.rise
+      out.push(h(motion.span, {
+        class: 'stream-word',
+        key: tokenKey,
+        initial: state.initial,
+        animate: state.animate,
+        transition: tokenTransition(props.streamEffect, ti - stable)
+      }, tokens[ti]))
       chars = chars.slice(tokChars.length)
       ti += 1
     }
@@ -429,58 +441,15 @@ const Root = () => {
 .ui-md-table tr + tr th, .ui-md-table tr + tr td { border-top: var(--border-w) solid var(--outline-variant); }
 .ui-md-hr { border: 0; border-top: var(--border-w) solid var(--outline-variant); margin: 1.4em 0; }
 
-/* ---------- streaming：词壳 + transition（上浮 + 去模糊） ----------
-   每个词一个 inline-block span：inline 元素 transform 无效，必须 inline-block。
-   初始态 = 透明 + 上浮 + 模糊；下一帧补 is-in，class 变化触发 transition，
-   transform / filter / opacity 三条同时过渡 —— 上浮与去模糊同步进行。 */
+/* ---------- streaming：词壳（motion 驱动） ----------
+   每个词一个 inline-block motion.span：inline 元素 transform 无效，必须 inline-block。
+   透明度 / 位移 / 模糊全部由 motion 的 initial -> animate 驱动（feedback 弹簧 +
+   批次级联延迟），CSS 不再持有初始态与过渡，避免双重驱动。 */
 .stream-word {
   display: inline-block;
-  opacity: 0;
-  transform: translateY(.35em);
-  filter: blur(6px);
-  transition: opacity 260ms cubic-bezier(.25, 1, .5, 1),
-              transform 260ms cubic-bezier(.22, 1, .36, 1),
-              filter 260ms cubic-bezier(.25, 1, .5, 1);
-}
-.stream-word.is-in {
-  opacity: 1;
-  transform: translateY(0);
-  filter: blur(0);
 }
 
-/* ---------- streaming：新增块进场 ---------- */
-/* 块内文本：更短的上浮 + 模糊，和块本身错开一点 */
-/* 流式新增的那一段文字：上浮 + 模糊渐现（这是「新字浮上来」的核心，
-   与整块进场分开 —— 同一块里的文字增长只播这一层，不重播整块）。 */
-/* inline-block：行内元素的 transform 会被浏览器忽略，上浮根本不生效 */
-.ui-md-fresh-text { display: inline-block; }
-/* 出字 ~70ms/8 字，动画 220ms：尾字持续翻新、前面的字早已落定 */
-.ui-md-fresh-text.is-rise { animation: uiMdTextRise 220ms cubic-bezier(.34, 1.4, .64, 1) both; }
-/* 块级也新增时（整块第一次出现），块内文字同样叠一层，但错开一点 */
-.ui-md-fresh .ui-md-fresh-text { animation: uiMdTextRise 380ms cubic-bezier(.34, 1.4, .64, 1) both; }
-@keyframes uiMdTextRise {
-  from { opacity: 0; transform: translateY(.24em); filter: blur(.1em); }
-  to { opacity: 1; transform: translateY(0); filter: blur(0); }
-}
-.ui-md-fresh.is-fresh-rise { animation: uiMdRise 460ms cubic-bezier(.34, 1.4, .64, 1) both; }
-.ui-md-fresh.is-fresh-blur { animation: uiMdBlur 500ms cubic-bezier(.22, 1, .36, 1) both; }
-.ui-md-fresh.is-fresh-fade { animation: uiMdFade 340ms cubic-bezier(.25, 1, .5, 1) both; }
-/* 流式新增的文字：上浮 + 模糊渐现（块级进场的同一语言，但位移更小，
-   因为文本是逐字长出来的，位移太大会像整段在飘）。 */
-@keyframes uiMdRise {
-  from { opacity: 0; transform: translateY(.34em); filter: blur(.12em); }
-  to { opacity: 1; transform: translateY(0); filter: blur(0); }
-}
-@keyframes uiMdBlur {
-  from { opacity: 0; filter: blur(.22em); }
-  to { opacity: 1; filter: blur(0); }
-}
-@keyframes uiMdFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 @media (prefers-reduced-motion: reduce) {
-  .stream-word { transition-duration: .01ms; transform: none; filter: none; }
-  .ui-md-fresh.is-fresh-rise, .ui-md-fresh.is-fresh-blur, .ui-md-fresh.is-fresh-fade { animation-duration: .01ms !important; }
+  .stream-word { transform: none; filter: none; }
 }
 </style>
