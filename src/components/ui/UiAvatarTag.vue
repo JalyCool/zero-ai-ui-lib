@@ -40,10 +40,20 @@ const headSize = computed(() => (props.size === 'md' ? 24 : props.size === 'lg' 
 const initial = computed(() => (props.name || '?').trim().slice(0, 1).toUpperCase())
 
 /* ---------- 头像主色 -> 药丸底色（默认开启，不可关闭） ----------
-   做法：把图片缩到 24×24 画到 canvas，按饱和度 / 亮度过滤掉近白近黑的像素，
-   剩下的按「谁更鲜艳」加权求平均色。跨域图片污染 canvas 时静默失败，
-   退回 accent / 默认表面色。 */
+   三种头像各有主体色的来源：
+   · agent：主体色就是 UiAgentAvatar 的 color（agentColor > accent > 默认紫），
+     直接跟随，无须取色 —— 药丸永远和头像本体同色。
+   · 图片：把图缩到 24×24 画到 canvas，按饱和度 / 亮度过滤掉近白近黑的像素，
+     剩下的按「谁更鲜艳」加权求平均色。跨域图片污染 canvas 时静默失败。
+   · 图标：把 SVG 标记包成 data URL 走同一取色管线；currentColor 的单色
+     图标栅格化后是黑色，会被饱和度阈值滤掉 -> 自动退回 accent / 默认底色。
+   显式 accent 在图片 / 图标模式仍是最高优先（品牌语义的刻意指定）；
+   agent 模式里 accent 已参与本体色回退链，天然一致。 */
 const pickedColor = ref('')
+
+const AGENT_FALLBACK = '#7438ff'
+/* agent 本体色：与 UiAgentAvatar 实际渲染的 fill 完全同源，二者永不脱节 */
+const agentBodyColor = computed(() => props.agentColor || props.accent || AGENT_FALLBACK)
 
 function rgbToHsl(r, g, b) {
   r /= 255; g /= 255; b /= 255
@@ -100,13 +110,33 @@ function extractDominant(src) {
   img.src = src
 }
 
-/* 药丸底色：优先用显式 accent，其次用图片主色 */
-const tagAccent = computed(() => props.accent || pickedColor.value || '')
+/* 图标栅格化取色：SVG 标记 -> data URL（同源无污染，canvas 可安全读取） */
+function extractIconColor() {
+  if (!props.icon || typeof document === 'undefined') return
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${props.iconViewBox}">${props.icon}</svg>`
+  extractDominant('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg))
+}
 
-onMounted(() => { if (props.src) extractDominant(props.src) })
+/* 药丸底色：agent 跟随本体色；图片 / 图标 = 显式 accent 优先，否则取色结果 */
+const tagAccent = computed(() => {
+  if (props.agent) return agentBodyColor.value
+  if (props.accent) return props.accent
+  return pickedColor.value
+})
+
+onMounted(() => {
+  if (props.src) extractDominant(props.src)
+  else if (props.icon) extractIconColor()
+})
 watch(() => props.src, value => {
   pickedColor.value = ''
   if (value) extractDominant(value)
+  else if (props.icon) extractIconColor()
+})
+watch(() => [props.icon, props.iconViewBox], () => {
+  if (props.agent || props.src) return
+  pickedColor.value = ''
+  extractIconColor()
 })
 </script>
 
@@ -125,7 +155,7 @@ watch(() => props.src, value => {
           v-if="agent"
           class="ui-avatar-tag__agent"
           :shape="agentShape"
-          :color="agentColor || accent || '#7438ff'"
+          :color="agentBodyColor"
           :size="headSize"
           :state="agentState"
           gaze="none"

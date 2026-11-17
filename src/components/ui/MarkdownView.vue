@@ -72,6 +72,8 @@ function mentionProps(username) {
     src: p.image || undefined,
     agent,
     agentShape: agent ? (p.shape || 'circle') : undefined,
+    /* agent 主体色（可选）：药丸底色会自动跟随它（AvatarTag 的主体色跟随） */
+    agentColor: agent ? (p.color || undefined) : undefined,
     shape: agent ? undefined : (p.shape || 'circle'),
     size: props.tagSize
   }
