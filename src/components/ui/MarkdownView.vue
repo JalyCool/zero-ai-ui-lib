@@ -175,86 +175,161 @@ function renderNode(node) {
 
 /* 整棵树：props 变化时随父组件重渲染 */
 /* ---------- streaming ---------- */
-/* seenBlocks / freshBlocks 都不能是响应式的：
-   render 里读它们、render 里写它们 = 自己触发自己（Maximum recursive updates）。 */
-const seenBlocks = new Set()
-const freshBlocks = ref(new Set())
+/* ---------- 流式增量：按「块内已显示的前缀」算新字符 ---------- */
+/* 关键：流式是同一块里文字在增长，块级 key 每帧都变，
+   按块判断只会整块重播。这里改成记住每块「上一次已渲染的文本」，
+   只给超出前缀的那一段打 rise —— 才是「新字浮上来」。 */
+const shownText = new Map()   /* blockId -> 上次已渲染文本 */
+const freshChunks = ref(new Map())  /* blockId -> 本轮新增的文本 */
 /* 预留高度：上一次渲染完成时容器的高度，避免逐块长出来时页面上下跳。 */
 const reserveHeight = ref(0)
 const rootEl = ref(null)
 
-/* 顶层块的稳定标识：标签名 + 文本前 400 字（渲染前后一致） */
-function blockKey(type, text) {
-  return type + '|' + String(text || '').trim().slice(0, 400)
+/* 块在文档里的稳定身份：标签名 + 它在同类兄弟里的序号（不含文本！
+   文本一变身份就变，那就退化成整块重播了） */
+function blockId(el, indexInType) {
+  return el.tagName.toLowerCase() + "#" + indexInType
 }
 
-/* 在 watcher 里算「这一轮哪些块是新的」——不在 render 里改状态 */
+/* 公共前缀长度（按码点切，避免把 emoji / 组合字符切坏） */
+function commonPrefix(a, b) {
+  const x = Array.from(a || "")
+  const y = Array.from(b || "")
+  const limit = Math.min(x.length, y.length)
+  let i = 0
+  while (i < limit && x[i] === y[i]) i += 1
+  return i
+}
+
+/* watcher 里算：这一轮每个块新增了哪段文字 */
 watch(() => props.content, () => {
   if (!props.streaming) {
-    freshBlocks.value = new Set()
-    seenBlocks.clear()
+    shownText.clear()
+    freshChunks.value = new Map()
     reserveHeight.value = 0
     return
   }
-  const doc = new DOMParser().parseFromString(marked.parse(props.content || ''), 'text/html')
-  const keys = new Set()
-  const fresh = new Set()
+  const doc = new DOMParser().parseFromString(marked.parse(props.content || ""), "text/html")
+  const next = new Map()
+  const fresh = new Map()
+  const typeCount = new Map()
   Array.from(doc.body.children).forEach(el => {
-    const key = blockKey(el.tagName.toLowerCase(), el.textContent)
-    keys.add(key)
-    if (!seenBlocks.has(key)) fresh.add(key)
+    const type = el.tagName.toLowerCase()
+    const seq = typeCount.get(type) || 0
+    typeCount.set(type, seq + 1)
+    const id = blockId(el, seq)
+    const text = el.textContent || ""
+    const before = shownText.get(id)
+    if (before === undefined) {
+      /* 整块第一次出现：整段都算新内容 */
+      fresh.set(id, text)
+    } else {
+      const beforeChars = Array.from(before)
+      const afterChars = Array.from(text)
+      const cut = commonPrefix(before, text)
+      /* 只有「纯追加」才算新增；文字被改写（cut < 旧长度）就不播，避免跳字 */
+      if (cut >= beforeChars.length && afterChars.length > beforeChars.length) {
+        fresh.set(id, afterChars.slice(cut).join(""))
+      }
+    }
+    next.set(id, text)
   })
-  seenBlocks.clear()
-  keys.forEach(k => seenBlocks.add(k))
-  freshBlocks.value = fresh
+  shownText.clear()
+  next.forEach((v, k) => shownText.set(k, v))
+  freshChunks.value = fresh
 }, { immediate: true })
 
 /* 渲染完成后把最终高度缓存成 min-height（高度只增不减，不会抖） */
-watch(freshBlocks, async () => {
+watch(freshChunks, async () => {
   if (!props.streaming) return
   await nextTick()
   const el = rootEl.value
   if (el && el.offsetHeight > reserveHeight.value) reserveHeight.value = el.offsetHeight
 })
 
-/* 给新增的顶层块打 is-fresh（只读 freshBlocks，不写任何状态） */
+/* 给新增文字打上 rise。
+   新增的那一段可能落在块里的任意深度（段落的直接文本、列表项、表格单元格…），
+   所以先算「这个块总共新增了哪些字」，再从末尾往前把对应长度的文本包起来。 */
 function withStreaming(tree) {
   if (!props.streaming) return tree
-  const out = []
-  for (const child of tree) {
-    if (child && child.type && child.props) {
-      const key = blockKey(child.type, flatText(child.children))
-      if (freshBlocks.value.has(key)) {
-        /* 新增块整体播进场；块内直接文本的再套一层 rise，做到「字也在浮上来」 */
-        const inner = Array.isArray(child.children)
-          ? child.children.map((node, i) => (
-            typeof node === 'string' && node.trim()
-              ? h('span', { class: 'ui-md-fresh-text', 'data-i': i, key: 'ft' + i }, node)
-              : node
-          ))
-          : child.children
-        out.push(h(child.type, {
-          ...child.props,
-          class: [child.props.class, 'ui-md-fresh', 'is-fresh-' + props.streamEffect].filter(Boolean).join(' ')
-        }, inner))
-        continue
-      }
+  const typeCount = new Map()
+  return tree.map(child => {
+    if (!child || !child.type || !child.props) return child
+    const type = typeof child.type === "string" ? child.type : ""
+    if (!type) return child
+    const seq = typeCount.get(type) || 0
+    typeCount.set(type, seq + 1)
+    const id = type + "#" + seq
+    const fresh = freshChunks.value.get(id)
+    if (!fresh) return child
+    /* 从块末尾倒数 fresh.length 个字符开始包：deepMark 递归找到那个位置 */
+    let remaining = fresh
+    const nextChildren = markTail(child.children, remaining)
+    return h(child.type, { ...child.props, class: [child.props.class, "ui-md-streaming"].filter(Boolean).join(" ") }, nextChildren)
+  })
+}
+
+/* 递归地把「末尾 n 个字符」包进 rise。
+   坑：新增文本可能跨越节点边界（普通文本 + <strong> 里各一部分），
+   span 必须插在被替换文本的**原位置**，不能 append 到数组末尾 ——
+   否则文字顺序会乱（「好」跑到 strong 后面）。 */
+function markTail(children, fresh) {
+  if (!Array.isArray(children) || !children.length || !fresh.length) return children
+  const out = children.slice()
+  let need = Array.from(fresh).length
+  for (let i = out.length - 1; i >= 0 && need > 0; i -= 1) {
+    const node = out[i]
+    const isText = typeof node === "string" || typeof node === "number"
+    if (isText) {
+      const text = String(node)
+      const chars = Array.from(text)
+      /* 这一段能吃掉的新增字符数 */
+      const take = Math.min(chars.length, need)
+      const head = chars.slice(0, chars.length - take).join("")
+      const tail = chars.slice(chars.length - take).join("")
+      /* span 插回这个文本节点原来的位置 */
+      out.splice(i, 1, head, h("span", { class: "ui-md-fresh-text is-rise", key: "fresh-" + i }, tail))
+      need -= take
+      continue
     }
-    out.push(child)
+    if (node && Array.isArray(node.children)) {
+      const flatLen = Array.from(flatText(node.children)).length
+      if (flatLen === 0) continue
+      if (flatLen >= need) {
+        /* 新增全在这个子节点内部：递归进去，仍然插在原位 */
+        out.splice(i, 1, h(node.type, { ...node.props, key: node.key }, markTail(node.children, fresh)))
+        return out
+      }
+      /* 整个子节点都是新增的：全标动作 */
+      out.splice(i, 1, h(node.type, { ...node.props, key: node.key }, markAll(node.children)))
+      need -= flatLen
+    }
   }
   return out
 }
-
+/* 整段都算新增：所有文本节点都包 rise */
+function markAll(children) {
+  if (!Array.isArray(children)) return children
+  return children.map((node, i) => {
+    if (typeof node === "string" && node.trim()) {
+      return h("span", { class: "ui-md-fresh-text is-rise", key: "all-" + i }, node)
+    }
+    if (typeof node === "string") return node
+    if (node && Array.isArray(node.children)) {
+      return h(node.type, { ...node.props, key: node.key }, markAll(node.children))
+    }
+    return node
+  })
+}
 /* 把 VNode 子树拍平成文本，用于算块标识 */
 function flatText(children) {
-  if (!Array.isArray(children)) return ''
+  if (!Array.isArray(children)) return ""
   return children.map(c => {
-    if (typeof c === 'string' || typeof c === 'number') return String(c)
+    if (typeof c === "string" || typeof c === "number") return String(c)
     if (c && Array.isArray(c.children)) return flatText(c.children)
-    return ''
-  }).join('')
+    return ""
+  }).join("")
 }
-
 const Root = () => {
   if (!props.content || !props.content.trim()) return null
   seq = 0
@@ -336,7 +411,11 @@ const Root = () => {
 
 /* ---------- streaming：新增块进场 ---------- */
 /* 块内文本：更短的上浮 + 模糊，和块本身错开一点 */
+/* 流式新增的那一段文字：上浮 + 模糊渐现（这是「新字浮上来」的核心，
+   与整块进场分开 —— 同一块里的文字增长只播这一层，不重播整块）。 */
 .ui-md-fresh-text { display: inline; }
+.ui-md-fresh-text.is-rise { animation: uiMdTextRise 380ms cubic-bezier(.34, 1.4, .64, 1) both; }
+/* 块级也新增时（整块第一次出现），块内文字同样叠一层，但错开一点 */
 .ui-md-fresh .ui-md-fresh-text { animation: uiMdTextRise 380ms cubic-bezier(.34, 1.4, .64, 1) both; }
 @keyframes uiMdTextRise {
   from { opacity: 0; transform: translateY(.24em); filter: blur(.1em); }

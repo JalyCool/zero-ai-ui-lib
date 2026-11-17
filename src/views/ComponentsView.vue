@@ -369,13 +369,15 @@ function toggleMdFeed() {
   }
   mdFeed.value = ''
   mdStreamingLive.value = true
+  /* 按码点切，不要把 emoji / 中文组合字符切坏；每次 6~10 个字符，
+     节奏 ~70ms，接近真实 LLM 的出字速度，才看得出「新字浮上来」。 */
+  const chars = Array.from(mdDoc)
   let i = 0
-  const full = mdDoc
   mdTimer = setInterval(() => {
-    i = Math.min(full.length, i + 24)
-    mdFeed.value = full.slice(0, i)
-    if (i >= full.length) { mdStreamingLive.value = false; clearInterval(mdTimer) }
-  }, 90)
+    i = Math.min(chars.length, i + 8)
+    mdFeed.value = chars.slice(0, i).join('')
+    if (i >= chars.length) { mdStreamingLive.value = false; clearInterval(mdTimer) }
+  }, 70)
 }
 const MD_USERS = {
   nova: { username: 'nova', showname: 'Nova', type: 'agent', shape: 'triangle' },
@@ -1027,7 +1029,7 @@ onMounted(() => {
             <UiButton size="sm" variant="tonal" @click="toggleMdFeed">{{ mdStreamingLive ? '停止' : '模拟流式输出' }}</UiButton>
           </div>
           <div class="lib-md-demo">
-            <MarkdownView :content="mdStreamingLive ? mdFeed : mdDoc" :mentions="mdMentions" :streaming="mdStreaming" :mention-resolver="mdResolve" />
+            <MarkdownView :content="mdStreamingLive ? mdFeed : mdDoc" :mentions="mdMentions" :streaming="mdStreaming" :stream-effect="'rise'" :mention-resolver="mdResolve" />
           </div>
           <span class="lib-cell__note">标题 / 强调 / 列表 / 引用 / 表格全部走库令牌；内联图标支持 pack:icon、pack/icon、pack--icon、i-pack:icon 与 ::pack:icon:: 五种写法（本地注册表优先于 Iconify）；@用户名 在 mentions 开启时渲染为 UiAvatarTag。</span>
         </div>
