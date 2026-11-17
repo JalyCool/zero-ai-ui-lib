@@ -97,7 +97,7 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
 
       <button
         v-for="(step, index) in steps"
-        :key="step.label + index"
+        :key="step.label || step.title || index"
         type="button"
         class="ui-stepflow__step"
         :class="{ 'is-active': index === clamped, 'is-done': index < clamped, 'is-locked': index > clamped + 1 }"
@@ -113,8 +113,8 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
           <template v-else>{{ index + 1 }}</template>
         </span>
         <span class="ui-stepflow__text">
-          <span class="ui-stepflow__label">{{ step.label }}</span>
-          <span v-if="step.description" class="ui-stepflow__desc">{{ step.description }}</span>
+          <span class="ui-stepflow__label">{{ step.label || step.title }}</span>
+          <span v-if="step.description || step.desc" class="ui-stepflow__desc">{{ step.description || step.desc }}</span>
         </span>
       </button>
     </div>
@@ -123,7 +123,7 @@ onBeforeUnmount(() => { /* 指示器是纯 CSS 计算，没有监听器需要清
       <Transition :name="`stepflow-${direction > 0 ? 'next' : 'prev'}`">
         <div :key="clamped" class="ui-stepflow__panel-inner">
           <slot :index="clamped" :step="steps[clamped]" :next="next" :prev="prev" :finish="() => emit('finish')">
-            <p class="ui-stepflow__fallback">{{ steps[clamped]?.description || steps[clamped]?.label }}</p>
+            <p class="ui-stepflow__fallback">{{ steps[clamped]?.description || steps[clamped]?.desc || steps[clamped]?.label || steps[clamped]?.title }}</p>
           </slot>
         </div>
       </Transition>
