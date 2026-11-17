@@ -174,42 +174,62 @@ function renderNode(node) {
 }
 
 /* 整棵树：props 变化时随父组件重渲染 */
-/* ---------- streaming ---------- */
-/* ---------- 流式增量：按「块内已显示的前缀」算新字符 ---------- */
-/* 关键：流式是同一块里文字在增长，块级 key 每帧都变，
-   按块判断只会整块重播。这里改成记住每块「上一次已渲染的文本」，
-   只给超出前缀的那一段打 rise —— 才是「新字浮上来」。 */
-const shownText = new Map()   /* blockId -> 上次已渲染文本 */
-const freshChunks = ref(new Map())  /* blockId -> 本轮新增的文本 */
+/* ---------- streaming：按词拆 span + CSS transition（上浮 + 去模糊） ---------- */
+/* 方案：流式文本按空格拆成词（无空白的 CJK 每 3 字一组），每个词一个
+   <span class="stream-word">。词表按块缓存，帧间只比「词的前缀」：
+   · 旧词的 vnode class 恒为 stream-word is-in（静止终态），key 稳定 -> 节点复用；
+   · 新词先以 stream-word（初始态：透明 + 上浮 + 模糊）插入，
+     下一帧由 JS 补 is-in -> class 变化触发 CSS transition，
+     transform / filter / opacity 三条同时过渡 —— 上浮 + 去模糊。
+   词一旦成 span 就永远是 span（不回并纯文本），
+   动画绝不会被「下一帧结构变化」打断 —— 这就是不再闪现的关键。 */
+const shownTokens = new Map()   /* blockId -> 上一帧的词表 */
+const freshInfo = ref(new Map())  /* blockId -> { whole, stable } 本轮渲染所需 */
+/* 已入场词登记（非响应式）：某词一旦补过 is-in，之后任何一帧的 vnode
+   都直接带 is-in —— 否则「无增量的重渲染」会把 class 重置回初始态，
+   动画被打断、词闪回去。key 形如 blockId + '.' + ti */
+const animatedTokens = new Set()
 /* 预留高度：上一次渲染完成时容器的高度，避免逐块长出来时页面上下跳。 */
 const reserveHeight = ref(0)
 const rootEl = ref(null)
 
-/* 块在文档里的稳定身份：标签名 + 它在同类兄弟里的序号（不含文本！
-   文本一变身份就变，那就退化成整块重播了） */
+/* 块在文档里的稳定身份：标签名 + 同类序号（不含文本） */
 function blockId(el, indexInType) {
-  return el.tagName.toLowerCase() + "#" + indexInType
+  return el.tagName.toLowerCase() + '#' + indexInType
 }
 
-/* 公共前缀长度（按码点切，避免把 emoji / 组合字符切坏） */
-function commonPrefix(a, b) {
-  const x = Array.from(a || "")
-  const y = Array.from(b || "")
-  const limit = Math.min(x.length, y.length)
+/* 分词：空格切开（空白本身也是 token，保证 join === 原文）；
+   无空白的长段（中文整句）每 3 字一组，让 CJK 也有逐词节奏 */
+function tokenize(text) {
+  const raw = String(text || '').split(/(\s+)/)
+  const out = []
+  for (const piece of raw) {
+    if (!piece) continue
+    if (/^\s+$/.test(piece)) { out.push(piece); continue }
+    const chars = Array.from(piece)
+    if (chars.length > 6) {
+      for (let i = 0; i < chars.length; i += 3) out.push(chars.slice(i, i + 3).join(''))
+    } else out.push(piece)
+  }
+  return out
+}
+
+/* 两词表的最长公共前缀（token 级） */
+function commonTokenPrefix(a, b) {
+  const limit = Math.min(a.length, b.length)
   let i = 0
-  while (i < limit && x[i] === y[i]) i += 1
+  while (i < limit && a[i] === b[i]) i += 1
   return i
 }
 
-/* watcher 里算：这一轮每个块新增了哪段文字 */
 watch(() => props.content, () => {
   if (!props.streaming) {
-    shownText.clear()
-    freshChunks.value = new Map()
+    shownTokens.clear()
+    freshInfo.value = new Map()
     reserveHeight.value = 0
     return
   }
-  const doc = new DOMParser().parseFromString(marked.parse(props.content || ""), "text/html")
+  const doc = new DOMParser().parseFromString(marked.parse(props.content || ''), 'text/html')
   const next = new Map()
   const fresh = new Map()
   const typeCount = new Map()
@@ -218,124 +238,117 @@ watch(() => props.content, () => {
     const seq = typeCount.get(type) || 0
     typeCount.set(type, seq + 1)
     const id = blockId(el, seq)
-    const text = el.textContent || ""
-    const before = shownText.get(id)
-    if (before === undefined) {
-      /* 整块第一次出现：整段都算新内容 */
-      fresh.set(id, { text, whole: true })
+    const tokens = tokenize(el.textContent || '')
+    const prev = shownTokens.get(id)
+    if (prev === undefined) {
+      /* 整块第一次出现：整块都是新的，块级进场，内部不逐词 */
+      fresh.set(id, { whole: true, stable: 0 })
     } else {
-      const beforeChars = Array.from(before)
-      const afterChars = Array.from(text)
-      const cut = commonPrefix(before, text)
-      /* 只有「纯追加」才算新增；文字被改写（cut < 旧长度）就不播，避免跳字 */
-      if (cut >= beforeChars.length && afterChars.length > beforeChars.length) {
-        fresh.set(id, afterChars.slice(cut).join(""))
-      }
+      const stable = commonTokenPrefix(prev, tokens)
+      if (tokens.length > stable) fresh.set(id, { whole: false, stable })
     }
-    next.set(id, text)
+    next.set(id, tokens)
   })
-  shownText.clear()
-  next.forEach((v, k) => shownText.set(k, v))
-  freshChunks.value = fresh
+  shownTokens.clear()
+  next.forEach((v, k) => shownTokens.set(k, v))
+  freshInfo.value = fresh
 }, { immediate: true })
 
-/* 渲染完成后把高度缓存成 min-height：增长时不缩（下方内容不被顶得上下跳）。
-   但内容变短 = 新一轮流式从头开始，此时上一轮全文的高度必须清零 ——
-   流式中根本不知道总长度，占着旧全文高度就是错的。 */
-watch(freshChunks, async () => {
+/* 渲染后：给刚插入的新词补 is-in（双 rAF 确保初始态已提交一帧，
+   class 变化才会触发 transition）；同时缓存高度做 min-height 预留。 */
+watch(freshInfo, async () => {
   if (!props.streaming) return
   await nextTick()
   const el = rootEl.value
   if (!el) return
-  const h = el.offsetHeight
-  if (h > reserveHeight.value) {
-    reserveHeight.value = h
-  } else if (h < reserveHeight.value * 0.6) {
-    /* 明显变短（重新开播）：跟着缩，不留大片空白 */
-    reserveHeight.value = h
+  const pending = el.querySelectorAll('.stream-word:not(.is-in)')
+  if (pending.length) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      pending.forEach(node => {
+        node.classList.add('is-in')
+        /* 节点自带块 id 与词序号（data-ti），直接登记，不反查 DOM */
+        const bid = node.getAttribute('data-ti')
+        if (bid) animatedTokens.add(bid)
+      })
+    }))
+  }
+  const height = el.offsetHeight
+  if (height > reserveHeight.value) {
+    reserveHeight.value = height
+  } else if (height < reserveHeight.value * 0.6) {
+    /* 明显变短 = 新一轮流式从头开始：跟着缩，不占旧全文高度 */
+    reserveHeight.value = height
   }
 })
-
-/* ---------- 流式进场：滑动窗口逐字 ----------
-   旧实现的毛病：整段新增文字包在一个 span 里，下一帧这段被并进 head 纯文本，
-   动画播到一半直接落定 —— 看起来就是「字跳出来」。
-   新实现：块末尾 K 个字符各包一个 span，key = 块内绝对索引（字符身份稳定）。
-   新字进来窗口滑动，出窗的字符动画早已播完（K 按最长出字速度覆盖 240ms），
-   并回纯文本时没有任何视觉跳变。 */
-const WINDOW_CHARS = 40   /* ~5 帧（8 字 / 70ms）的窗口，动画 240ms 足够播完 */
 
 function withStreaming(tree) {
   if (!props.streaming) return tree
   const typeCount = new Map()
   return tree.map(child => {
     if (!child || !child.type || !child.props) return child
-    const type = typeof child.type === "string" ? child.type : ""
+    const type = typeof child.type === 'string' ? child.type : ''
     if (!type) return child
     const seq = typeCount.get(type) || 0
     typeCount.set(type, seq + 1)
-    const id = type + "#" + seq
-    const entry = freshChunks.value.get(id)
-    if (!entry) return child
-    if (entry.whole) {
-      /* 整块第一次出现：块级进场（stream-effect），块内文字不再逐字 */
+    const id = type + '#' + seq
+    const info = freshInfo.value.get(id)
+    if (info && info.whole) {
+      /* 整块第一次出现：块级进场（stream-effect），内部维持原结构 */
       return h(child.type, {
         ...child.props,
-        class: [child.props.class, "ui-md-fresh", "is-fresh-" + props.streamEffect].filter(Boolean).join(" ")
+        class: [child.props.class, 'ui-md-fresh', 'is-fresh-' + props.streamEffect].filter(Boolean).join(' ')
       }, child.children)
     }
-    return h(child.type, { ...child.props }, windowTail(child.children, id))
+    const tokens = shownTokens.get(id)
+    if (!tokens || !tokens.length) return child
+    /* 没有增量也要重建词壳：让旧帧的 span 结构在这一帧保持一致 */
+    const stable = info ? info.stable : tokens.length
+    return h(child.type, { ...child.props }, wrapAllTokens(child.children, tokens, stable, id))
   })
 }
 
-/* 把「最后一个文本位置」的末尾窗口字符包成逐字 span（递归找最后一个有文本的节点） */
-function windowTail(children, blockId) {
-  if (!Array.isArray(children)) return children
-  /* 找最后一个文本落点（字符串 / 字符串 children 的 vnode / 数组 / 嵌套 vnode） */
-  for (let i = children.length - 1; i >= 0; i -= 1) {
-    const node = children[i]
-    if (typeof node === "string" && node.length) {
-      const out = children.slice()
-      out[i] = wrapWindow(node, blockId, i)
-      return out
+/* 把块的 children 按词表整体 span 化：文本按 token 顺序消费，
+   前 stable 个词 = is-in（静止终态），其余 = 待入场（下一帧补 is-in）。
+   递归进嵌套结构（strong / 链接 / 数组 children）。 */
+function wrapAllTokens(children, tokens, stable, id) {
+  let ti = 0
+  function consume(text) {
+    const out = []
+    let chars = Array.from(text)
+    while (ti < tokens.length) {
+      const tokChars = Array.from(tokens[ti])
+      if (chars.length < tokChars.length) break
+      if (tokChars.some((ch, k) => ch !== chars[k])) break
+      const tokenKey = id + '.' + ti
+      /* 静止条件：在本帧稳定前缀内，或历史上已经入场过（无增量重渲染不重置） */
+      const settled = ti < stable || animatedTokens.has(tokenKey)
+      const cls = settled ? 'stream-word is-in' : 'stream-word'
+      out.push(h('span', { class: cls, key: tokenKey, 'data-ti': tokenKey }, tokens[ti]))
+      chars = chars.slice(tokChars.length)
+      ti += 1
     }
-    if (Array.isArray(node)) {
-      if (flatText(node)) {
-        const out = children.slice()
-        out[i] = windowTail(node, blockId)
-        return out
+    if (chars.length) out.push(chars.join(''))
+    return out
+  }
+  function walk(list) {
+    const out = []
+    for (const node of list) {
+      if (typeof node === 'string' || typeof node === 'number') {
+        out.push(...consume(String(node)))
+      } else if (Array.isArray(node)) {
+        out.push(walk(node))
+      } else if (node && typeof node.children === 'string') {
+        out.push(h(node.type, { ...node.props }, consume(node.children)))
+      } else if (node && Array.isArray(node.children)) {
+        out.push(h(node.type, { ...node.props, key: node.key }, walk(node.children)))
+      } else {
+        out.push(node)
       }
-      continue
     }
-    if (node && typeof node.children === "string" && node.children.length) {
-      const out = children.slice()
-      out[i] = h(node.type, { ...node.props }, wrapWindow(node.children, blockId, i))
-      return out
-    }
-    if (node && Array.isArray(node.children) && flatText(node.children)) {
-      const out = children.slice()
-      out[i] = h(node.type, { ...node.props, key: node.key }, windowTail(node.children, blockId))
-      return out
-    }
+    return out
   }
-  return children
-}
-
-/* 单段文本的末尾窗口：head 纯文本 + 每字一个 span（key 带块 id 与绝对索引，稳定身份） */
-function wrapWindow(text, blockId, slot) {
-  const chars = Array.from(text)
-  const from = Math.max(0, chars.length - WINDOW_CHARS)
-  const head = chars.slice(0, from).join("")
-  const nodes = []
-  if (head) nodes.push(head)
-  for (let j = from; j < chars.length; j += 1) {
-    nodes.push(h("span", {
-      class: "ui-md-fresh-text is-rise",
-      /* key 含块 id + 字符在块内的序号：字符首次入窗时节点插入 → 动画播一次；
-         之后每帧 key 不变 → 节点保留 → 动画自然播完，不会被并回文本打断 */
-      key: blockId + "@" + slot + "." + j
-    }, chars[j]))
-  }
-  return nodes
+  if (!Array.isArray(children)) return children
+  return walk(children)
 }
 const Root = () => {
   if (!props.content || !props.content.trim()) return null
@@ -416,6 +429,25 @@ const Root = () => {
 .ui-md-table tr + tr th, .ui-md-table tr + tr td { border-top: var(--border-w) solid var(--outline-variant); }
 .ui-md-hr { border: 0; border-top: var(--border-w) solid var(--outline-variant); margin: 1.4em 0; }
 
+/* ---------- streaming：词壳 + transition（上浮 + 去模糊） ----------
+   每个词一个 inline-block span：inline 元素 transform 无效，必须 inline-block。
+   初始态 = 透明 + 上浮 + 模糊；下一帧补 is-in，class 变化触发 transition，
+   transform / filter / opacity 三条同时过渡 —— 上浮与去模糊同步进行。 */
+.stream-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(.35em);
+  filter: blur(6px);
+  transition: opacity 260ms cubic-bezier(.25, 1, .5, 1),
+              transform 260ms cubic-bezier(.22, 1, .36, 1),
+              filter 260ms cubic-bezier(.25, 1, .5, 1);
+}
+.stream-word.is-in {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
 /* ---------- streaming：新增块进场 ---------- */
 /* 块内文本：更短的上浮 + 模糊，和块本身错开一点 */
 /* 流式新增的那一段文字：上浮 + 模糊渐现（这是「新字浮上来」的核心，
@@ -448,6 +480,7 @@ const Root = () => {
   to { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .stream-word { transition-duration: .01ms; transform: none; filter: none; }
   .ui-md-fresh.is-fresh-rise, .ui-md-fresh.is-fresh-blur, .ui-md-fresh.is-fresh-fade { animation-duration: .01ms !important; }
 }
 </style>
