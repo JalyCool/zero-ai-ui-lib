@@ -1,0 +1,81 @@
+/* ============================================================
+   Tailwind v4（应用侧工具类，可选）
+   ------------------------------------------------------------
+   接入原则：Tailwind 不携带第二套设计值 —— 所有颜色 / 圆角 / 字号
+   / 字重工具类都引用本库令牌（@theme 里写 var(--token)），
+   主题切换（浅 / 深 / 运行时换肤）自动跟随，与组件库永不脱节。
+
+   · 不引入 preflight：base.css 是唯一的 reset，避免破坏 99 个组件；
+   · theme / utilities 各自进 cascade layer：所有既有样式（未分层）
+     优先级天然高于工具类 —— 工具类只用于新写布局，不会意外覆盖
+     组件内部样式；
+   · @source 限定扫描 src/，排除 3rdpartexample（万级文件，拖慢构建）。
+   ============================================================ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "../../src";
+@source not "../../3rdpartexample";
+
+@theme {
+  /* 颜色：引用 MD3 角色令牌 —— bg-primary / text-on-surface-variant … */
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-high: var(--surface-container-high);
+  --color-surface-highest: var(--surface-container-highest);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-error: var(--error);
+  --color-on-error: var(--on-error);
+  --color-accent: var(--accent);
+  --color-accent-container: var(--accent-container);
+
+  /* 圆角阶梯：rounded-13 = var(--r-13)，与组件 CSS 同源 */
+  --radius-8: var(--r-8);
+  --radius-9: var(--r-9);
+  --radius-10: var(--r-10);
+  --radius-11: var(--r-11);
+  --radius-12: var(--r-12);
+  --radius-13: var(--r-13);
+  --radius-14: var(--r-14);
+  --radius-16: var(--r-16);
+  --radius-18: var(--r-18);
+  --radius-20: var(--r-20);
+  --radius-22: var(--r-22);
+  --radius-24: var(--r-24);
+  --radius-28: var(--r-28);
+  /* 语义别名 */
+  --radius-card: var(--r-card);
+  --radius-metric: var(--r-metric);
+  --radius-button: var(--r-button);
+  --radius-list: var(--r-list);
+  --radius-preview: var(--r-preview);
+
+  /* 字号：text-tiny / text-body / text-big … */
+  --text-h1: var(--fs-h1);
+  --text-value: var(--fs-value);
+  --text-big: var(--fs-big);
+  --text-body: var(--fs-body);
+  --text-small: var(--fs-small);
+  --text-tiny: var(--fs-tiny);
+  --text-micro: var(--fs-micro);
+
+  /* 字重：font-heading / font-label / font-strong */
+  --font-weight-heading: var(--w-heading);
+  --font-weight-label: var(--w-label);
+  --font-weight-strong: var(--w-strong);
+  --font-weight-body: var(--w-body);
+
+  /* 字体族不在此映射：默认 theme 发射的 --font-sans/--font-mono 位于
+     layer(theme)，被未分层的 tokens.css 按层级规则压过 —— font-mono /
+     font-sans 工具类自动解析到库的回退栈，无循环引用。 */
+}

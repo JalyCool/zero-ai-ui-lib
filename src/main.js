@@ -1,5 +1,8 @@
 import { createApp } from 'vue'
 
+/* Tailwind 先于令牌导入：其默认 theme 变量发射在 layer(theme) 里，
+   会被后面未分层的 tokens.css 按层级规则覆盖，互不冲突。 */
+import './styles/tailwind.css'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/components.css'

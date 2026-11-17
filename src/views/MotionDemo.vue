@@ -89,24 +89,27 @@ useMotionValueEvent(scrollYProgress, 'change', v => {
 </script>
 
 <template>
-  <div class="motion-demo view">
-    <div class="demo-card">
-      <div class="demo-title">动效气质</div>
-      <p class="demo-desc">弹簧参数来自 core/spring.js 的 TONE_SPRINGS，桥接层换算成 motion 的 duration/bounce。</p>
-      <div class="demo-row">
+  <!-- 参考实现：布局 / 外观全部用 Tailwind 工具类（@theme 已映射库令牌，
+       bg-surface-low / rounded-card / text-big 等随主题自动切换）；
+       密度联动的间距仍用令牌（gap 走 .view 的 --space-gap）。 -->
+  <div class="view flex flex-col gap-3.5 pb-10">
+    <div class="bg-surface-low rounded-card p-4">
+      <div class="text-big font-heading tracking-[-0.01em] mb-1.5">动效气质</div>
+      <p class="m-0 mb-3 text-small text-on-surface-variant leading-[1.6]">弹簧参数来自 core/spring.js 的 TONE_SPRINGS，桥接层换算成 motion 的 duration/bounce。</p>
+      <div class="flex items-center flex-wrap gap-2.5 mb-3">
         <UiButton variant="outline" size="sm" @click="switchTone">
           切换到 {{ tone === 'calm' ? MOTION_TONES.lively.label : MOTION_TONES.calm.label }}
         </UiButton>
-        <code class="demo-code">view: {{ JSON.stringify(viewConfig) }}</code>
+        <code class="font-mono text-micro text-on-surface-variant bg-surface-container rounded-8 px-2 py-[3px] break-all">view: {{ JSON.stringify(viewConfig) }}</code>
       </div>
     </div>
 
-    <div class="demo-card">
-      <div class="demo-title">声明式弹簧（可打断）</div>
-      <p class="demo-desc">点盒子切换目标；动画途中再点直接反向，motion 自动从当前位置续接。</p>
-      <div class="demo-stage">
+    <div class="bg-surface-low rounded-card p-4">
+      <div class="text-big font-heading tracking-[-0.01em] mb-1.5">声明式弹簧（可打断）</div>
+      <p class="m-0 mb-3 text-small text-on-surface-variant leading-[1.6]">点盒子切换目标；动画途中再点直接反向，motion 自动从当前位置续接。</p>
+      <div class="flex items-center min-h-[120px] rounded-card bg-[color-mix(in_oklab,var(--surface-container)_55%,transparent)] p-2.5">
         <motion.div
-          class="demo-box"
+          class="w-[84px] h-[84px] shrink-0 grid place-items-center rounded-18 bg-primary text-on-primary text-small font-strong cursor-pointer select-none"
           :animate="advanced ? { x: 150, rotate: 6 } : { x: 0, rotate: 0 }"
           :transition="getSpringConfig('view')"
           :whileHover="{ scale: 1.04, transition: getSpringConfig('feedback') }"
@@ -118,51 +121,51 @@ useMotionValueEvent(scrollYProgress, 'change', v => {
       </div>
     </div>
 
-    <div class="demo-card">
-      <div class="demo-title">数值弹簧 useProjectSpring</div>
-      <p class="demo-desc">0 ↔ 1 的弹簧跟随值绑进 :style，读数走 useMotionValueEvent。</p>
-      <div class="demo-row">
+    <div class="bg-surface-low rounded-card p-4">
+      <div class="text-big font-heading tracking-[-0.01em] mb-1.5">数值弹簧 useProjectSpring</div>
+      <p class="m-0 mb-3 text-small text-on-surface-variant leading-[1.6]">0 ↔ 1 的弹簧跟随值绑进 :style，读数走 useMotionValueEvent。</p>
+      <div class="flex items-center flex-wrap gap-2.5 mb-3">
         <UiButton variant="tonal" size="sm" @click="boost = boost ? 0 : 1">
           {{ boost ? '回落' : '放大' }}
         </UiButton>
-        <code class="demo-code">scale: {{ boostReadout }}</code>
+        <code class="font-mono text-micro text-on-surface-variant bg-surface-container rounded-8 px-2 py-[3px] break-all">scale: {{ boostReadout }}</code>
       </div>
-      <div class="demo-stage">
-        <motion.div class="demo-box demo-box--soft" :style="{ scale: boostScale }">
+      <div class="flex items-center min-h-[120px] rounded-card bg-[color-mix(in_oklab,var(--surface-container)_55%,transparent)] p-2.5">
+        <motion.div class="w-[84px] h-[84px] shrink-0 grid place-items-center rounded-18 bg-primary-container text-on-primary-container text-small font-strong cursor-default" :style="{ scale: boostScale }">
           {{ boostReadout }}
         </motion.div>
       </div>
     </div>
 
-    <div class="demo-card">
-      <div class="demo-title">命令式编排</div>
-      <p class="demo-desc">await animate() 串行三段：view 位移 → feedback 缩放 → expand 旋转。</p>
-      <div class="demo-row">
+    <div class="bg-surface-low rounded-card p-4">
+      <div class="text-big font-heading tracking-[-0.01em] mb-1.5">命令式编排</div>
+      <p class="m-0 mb-3 text-small text-on-surface-variant leading-[1.6]">await animate() 串行三段：view 位移 → feedback 缩放 → expand 旋转。</p>
+      <div class="flex items-center flex-wrap gap-2.5 mb-3">
         <UiButton variant="tonal" size="sm" :disabled="seqRunning" @click="runSequence">
           {{ seqRunning ? '播放中…' : '播放编排' }}
         </UiButton>
       </div>
-      <div class="demo-stage">
+      <div class="flex items-center min-h-[120px] rounded-card bg-[color-mix(in_oklab,var(--surface-container)_55%,transparent)] p-2.5">
         <motion.div
-          class="demo-box demo-box--seq"
+          class="w-[84px] h-[84px] shrink-0 grid place-items-center rounded-18 bg-primary text-on-primary text-small font-strong cursor-default"
           :style="{ x: seqX, scale: seqScale, rotate: seqRotate }"
         >SEQ</motion.div>
       </div>
     </div>
 
-    <div class="demo-card">
-      <div class="demo-title">退场动画 AnimatePresence</div>
-      <p class="demo-desc">点击 chip 移除：退场走 exit 弹簧 + 模糊，兄弟项自动收拢。</p>
-      <div class="demo-row">
+    <div class="bg-surface-low rounded-card p-4">
+      <div class="text-big font-heading tracking-[-0.01em] mb-1.5">退场动画 AnimatePresence</div>
+      <p class="m-0 mb-3 text-small text-on-surface-variant leading-[1.6]">点击 chip 移除：退场走 exit 弹簧 + 模糊，兄弟项自动收拢。</p>
+      <div class="flex items-center flex-wrap gap-2.5 mb-3">
         <UiButton variant="text" size="sm" @click="resetItems">重置</UiButton>
       </div>
-      <div class="demo-chips">
+      <div class="flex flex-wrap gap-2 min-h-10">
         <AnimatePresence>
           <motion.button
             v-for="item in items"
             :key="item"
             type="button"
-            class="demo-chip"
+            class="border-0 cursor-pointer px-3.5 py-2 rounded-full bg-surface-high text-on-surface text-small font-label font-sans"
             layout
             :initial="{ opacity: 0, scale: 0.8, filter: 'blur(8px)' }"
             :animate="{ opacity: 1, scale: 1, filter: 'blur(0px)' }"
@@ -176,27 +179,27 @@ useMotionValueEvent(scrollYProgress, 'change', v => {
       </div>
     </div>
 
-    <div style="height: 480px"></div>
+    <div class="h-[480px]"></div>
 
-    <div ref="inviewEl" class="demo-card">
-      <div class="demo-title">视口入场 whileInView</div>
-      <p class="demo-desc">滚动到本卡片时触发 expand 弹簧入场；useInView 状态：{{ cardInView ? '已进入' : '未进入' }}</p>
+    <div ref="inviewEl" class="bg-surface-low rounded-card p-4">
+      <div class="text-big font-heading tracking-[-0.01em] mb-1.5">视口入场 whileInView</div>
+      <p class="m-0 mb-3 text-small text-on-surface-variant leading-[1.6]">滚动到本卡片时触发 expand 弹簧入场；useInView 状态：{{ cardInView ? '已进入' : '未进入' }}</p>
     </div>
 
-    <div class="demo-card demo-card--sticky">
-      <div class="demo-title">滚动联动 useScroll</div>
-      <p class="demo-desc">进度来自 #scrollArea 容器：{{ progressText }}</p>
-      <div class="demo-track">
-        <motion.div class="demo-fill" :style="{ scaleX: scrollYProgress }" />
+    <div class="sticky top-2 z-[2] bg-surface-high rounded-card p-4">
+      <div class="text-big font-heading tracking-[-0.01em] mb-1.5">滚动联动 useScroll</div>
+      <p class="m-0 mb-3 text-small text-on-surface-variant leading-[1.6]">进度来自 #scrollArea 容器：{{ progressText }}</p>
+      <div class="h-1.5 rounded-full bg-surface-container overflow-hidden">
+        <motion.div class="h-full w-full rounded-full bg-primary origin-left" :style="{ scaleX: scrollYProgress }" />
       </div>
     </div>
 
-    <div class="demo-card">
-      <div class="demo-title">手势 drag</div>
-      <p class="demo-desc">拖拽 chip，松手在约束区内回弹（dragElastic）。</p>
-      <div class="demo-stage demo-stage--tall">
+    <div class="bg-surface-low rounded-card p-4">
+      <div class="text-big font-heading tracking-[-0.01em] mb-1.5">手势 drag</div>
+      <p class="m-0 mb-3 text-small text-on-surface-variant leading-[1.6]">拖拽 chip，松手在约束区内回弹（dragElastic）。</p>
+      <div class="flex items-center min-h-40 rounded-card bg-[color-mix(in_oklab,var(--surface-container)_55%,transparent)] p-2.5">
         <motion.div
-          class="demo-box demo-box--drag"
+          class="w-[84px] h-[84px] shrink-0 grid place-items-center rounded-18 bg-primary text-on-primary text-small font-strong cursor-grab active:cursor-grabbing select-none"
           :drag="true"
           :drag-constraints="{ left: -70, right: 70, top: -30, bottom: 30 }"
           :drag-elastic="0.18"
@@ -208,108 +211,3 @@ useMotionValueEvent(scrollYProgress, 'change', v => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.motion-demo {
-  display: flex;
-  flex-direction: column;
-  gap: calc(14px * var(--density));
-  padding-bottom: 40px;
-}
-.demo-card {
-  background: var(--surface-container-low);
-  border-radius: calc(var(--r-card) * var(--radius-scale));
-  padding: calc(16px * var(--density));
-}
-.demo-card--sticky {
-  position: sticky;
-  top: 8px;
-  z-index: 2;
-  background: var(--surface-container-high);
-}
-.demo-title {
-  font-size: var(--fs-big);
-  font-weight: var(--w-heading);
-  letter-spacing: -.01em;
-  margin-bottom: 6px;
-}
-.demo-desc {
-  margin: 0 0 12px;
-  font-size: var(--fs-small);
-  color: var(--on-surface-variant);
-  line-height: 1.6;
-}
-.demo-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.demo-code {
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  color: var(--on-surface-variant);
-  background: var(--surface-container);
-  border-radius: 6px;
-  padding: 3px 8px;
-  overflow-wrap: anywhere;
-}
-.demo-stage {
-  display: flex;
-  align-items: center;
-  min-height: 120px;
-  border-radius: calc(var(--r-card) * var(--radius-scale));
-  background: color-mix(in oklab, var(--surface-container) 55%, transparent);
-  padding: 10px;
-}
-.demo-stage--tall { min-height: 160px; }
-.demo-box {
-  width: 84px;
-  height: 84px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: calc(var(--r-18) * var(--radius-scale));
-  background: var(--primary);
-  color: var(--on-primary);
-  font-size: var(--fs-small);
-  font-weight: var(--w-strong);
-  cursor: pointer;
-  user-select: none;
-}
-.demo-box--soft { cursor: default; background: var(--primary-container); color: var(--on-primary-container); }
-.demo-box--seq { cursor: default; }
-.demo-box--drag { cursor: grab; }
-.demo-box--drag:active { cursor: grabbing; }
-.demo-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 40px;
-}
-.demo-chip {
-  border: none;
-  cursor: pointer;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: var(--surface-container-high);
-  color: var(--on-surface);
-  font-size: var(--fs-small);
-  font-weight: 550;
-  font-family: inherit;
-}
-.demo-track {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--surface-container);
-  overflow: hidden;
-}
-.demo-fill {
-  height: 100%;
-  width: 100%;
-  border-radius: 3px;
-  background: var(--primary);
-  transform-origin: 0 50%;
-}
-</style>

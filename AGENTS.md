@@ -228,6 +228,18 @@ import {
   活泼档的幅度更大，时长也统一放宽 **25%**（`core/spring.js` 的 `LIVELY_DURATION_SCALE`），既撑得住过冲、又不拖沓；小把手的圆角固定 `999px`，放大缩小时不会跑形。
   **按应用定位在代码里预置**：`setMotionTone('lively')`，或写进 `zero.config.yaml` 的 `ui.motion`。**不要做成设置项暴露给终端用户** —— 示例应用把这个切换放在 **Playground 设置弹层**里，仅用于演示，正式应用不要照抄到用户设置页。
 
+## 3.5 Tailwind 工具类（应用侧开发，可选）
+
+Tailwind v4（CSS-first）已接入**应用侧**（`@tailwindcss/vite` 只在 `vite.config.js`，库产物构建 `vite.lib.config.js` 不经过它——组件库仍然是纯令牌 CSS）。入口 `src/styles/tailwind.css`：
+
+- **不携带第二套设计值**：`@theme` 里颜色 / 圆角阶梯 / 字号 / 字重全部 `var()` 引用库令牌——`bg-primary`、`rounded-13`、`rounded-card`、`text-tiny`、`font-heading` 等工具类随主题（浅/深/运行时换肤）自动切换；
+- **不引入 preflight**：`base.css` 是唯一 reset；theme / utilities 各自进 cascade layer，**未分层的组件样式天然优先于工具类**——工具类只用于新写布局，永远不会意外覆盖组件内部样式（要覆盖组件样式就改组件本体或其令牌）；
+- **范围**：应用视图 / 演示页用工具类拼布局；库组件内部继续写令牌 CSS；密度联动的间距（`calc(Npx * var(--density))`）工具类表达不了，仍用令牌；
+- `@source` 限定扫描 `src/` 并排除 `3rdpartexample/`（万级文件拖慢构建）；
+- 字体族无需映射：默认 theme 发射的 `--font-sans`/`--font-mono` 在 layer(theme)，被未分层的 tokens.css 按层级规则压过，`font-mono`/`font-sans` 工具类自动解析到库的回退栈。
+
+参考实现：`src/views/MotionDemo.vue`（工具类优先 + 令牌映射，零 scoped 布局样式）。
+
 ## 4. 可展开卡片（列表 → 详情）
 
 路由约定：**父路由 = 页面，子路由 = 某张卡片的展开态**，URL 保持 `父/子` 层级，浏览器后退即收起。

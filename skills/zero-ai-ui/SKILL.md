@@ -40,6 +40,7 @@ createApp(App).mount('#app')
 14. **流式内容**：MarkdownView / UiText 都支持 `streaming`——MarkdownView 逐 **token** 上浮 + 模糊级联入场（motion 弹簧，位移约 0.9em 才读得出来），并预留高度防跳动；UiText 只给新增片段播进场；打字机无光标时默认 `reserve` 占位。
 15. **链接用 UiLink**（默认 primary 无下划线、悬停才出，外链自动 ↗ 角标），不要在 Markdown 或页面里手写裸 `<a>` 样式。
 16. **字体只引用变量**：`--font-sans` / `--font-mono` / `--font-numeric` 是唯一来源，别处不写死字体名；等宽数字永远两条一起给——`font-variant-numeric: tabular-nums` + `font-feature-settings: var(--font-feat-tnum)`（兼容老浏览器）。换字库只覆盖 `--font-sans-custom` / `--font-mono-custom`。
+17. **Tailwind（应用侧，可选）**：v4 CSS-first，`@theme` 已把库令牌映射成工具类（`bg-primary` / `rounded-card` / `rounded-13` / `text-tiny` / `font-heading`…），随主题自动切换；无 preflight、utilities 进 layer（组件样式天然优先，工具类只用于新布局）；组件内部仍写令牌 CSS；`--density` 联动的间距工具类表达不了，用令牌。
 17. **Markdown 用 MarkdownView**：需要 @ 提及时传 `mentions` + `mentionResolver`，返回 `{ username, showname, type: 'normal'|'agent', image, shape }`，自动渲染成 UiAvatarTag。
 
 ## 组件速查（完整 99 个见 AGENTS.md 第 2 节）
