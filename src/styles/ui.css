@@ -408,9 +408,12 @@ button {
   gap: var(--seg-gap);
   overflow-y: var(--seg-scroll, hidden);
   overscroll-behavior: contain;
-  scrollbar-width: thin;
+  /* 滚动条不占位不显示：max-rows 截行时与自动多行保持同一张干净卡片
+     （滚动条会把末列挤窄、还画出一条轨道，两种多行就长得不一样了）。 */
+  scrollbar-width: none;
   max-height: var(--seg-max-h, none);
 }
+.ui-segmented.is-multiline::-webkit-scrollbar { display: none; }
 /* 多行指示器：几何全部来自 JS（left/top 归零，translate3d 定位）；
    量到几何前 v-if 不渲染，不会出现从 0 展开的假动画。 */
 .ui-segmented.is-multiline .ui-segmented__indicator {

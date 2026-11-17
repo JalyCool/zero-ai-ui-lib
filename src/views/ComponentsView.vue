@@ -1079,7 +1079,7 @@ watch(activeSection, id => {
           <div class="lib-md-demo">
             <MarkdownView :content="mdStreamingLive ? mdFeed : mdDoc" :mentions="mdMentions" :streaming="mdStreaming" :stream-effect="'rise'" :mention-resolver="mdResolve" />
           </div>
-          <span class="lib-cell__note">标题 / 强调 / 列表 / 引用 / 表格全部走库令牌；内联图标支持 pack:icon、pack/icon、pack--icon、i-pack:icon 与 ::pack:icon:: 五种写法（本地注册表优先于 Iconify）；@用户名 在 mentions 开启时渲染为 UiAvatarTag。</span>
+          <span class="lib-cell__note">标题 / 强调 / 列表 / 引用 / 表格全部走库令牌；内联图标只认 ::pack:icon:: 显式标记（裸写法与路径 / URL 撞车率高，已停用；本地注册表优先于 Iconify）；@用户名 在 mentions 开启时渲染为 UiAvatarTag。</span>
         </div>
 
         <div class="lib-cell lib-cell--span">

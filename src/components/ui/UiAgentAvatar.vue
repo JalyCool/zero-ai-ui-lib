@@ -507,20 +507,33 @@ function startLoop() {
 }
 
 watch(() => props.state, () => { applyState(props.state); if (!props.animated) renderStatic() })
-watch(() => [props.animated, props.gaze, eyesCenter.value], () => startLoop())
+watch(() => [props.animated, props.gaze, eyesCenter.value], () => { syncMouseListener(); startLoop() })
+watch(() => [props.device], () => syncMouseListener())
 watch(() => [props.gazeWobble, props.device, props.size], () => { if (!props.animated) renderStatic() })
+
+/* mouse 注视的监听器生命周期：gaze / device 都可能动态切换（演示页用开关
+   切 none ↔ mouse），监听必须跟着同步，不能只在 mounted 按初始值挂一次。 */
+let mouseListening = false
+function syncMouseListener() {
+  const should = props.gaze === 'mouse' && !deviceOn.value
+  if (should === mouseListening) return
+  if (should) window.addEventListener('pointermove', onPointerMove, { passive: true })
+  else window.removeEventListener('pointermove', onPointerMove)
+  mouseListening = should
+}
 
 onMounted(() => {
   applyState(props.state)
   phoneEpoch = performance.now()
   phoneIdx = 0
   phoneDur = 780
-  if (props.gaze === 'mouse' && !deviceOn.value) window.addEventListener('pointermove', onPointerMove, { passive: true })
+  syncMouseListener()
   startLoop()
 })
 onBeforeUnmount(() => {
   cancelAnimationFrame(rafId)
-  window.removeEventListener('pointermove', onPointerMove)
+  if (mouseListening) window.removeEventListener('pointermove', onPointerMove)
+  mouseListening = false
 })
 
 const label = computed(() => `智能体头像（${props.state}${deviceOn.value ? ' · ' + (props.device === 'laptop' ? '电脑' : '手机') : ''}）`)

@@ -5,14 +5,13 @@ import UiIcon from './UiIcon.vue'
 import UiLink from './UiLink.vue'
 import UiAvatarTag from './UiAvatarTag.vue'
 import { getSpringConfig, motion } from '../../composables/useMotion'
-import { normalizeIconName, ICON_EXPLICIT_RE, ICON_INLINE_RE, MENTION_RE } from '../../core/iconify'
+import { normalizeIconName, ICON_EXPLICIT_RE, MENTION_RE } from '../../core/iconify'
 
 /* ============================================================
    MarkdownView —— Markdown 渲染器
    · marked 解析 -> DOM 树 -> 逐节点渲染成 Vue 元素（不 v-html 原文，天然防注入）
-   · 内联图标标记（icons 开启，默认开）：
-       ::pack:icon::  显式标记（默认行为）
-       pack:icon / pack/icon / pack--icon / i-pack:icon  四种裸写法
+   · 内联图标标记（icons 开启，默认开）：只认 ::pack:icon:: 显式标记；
+     裸写法（pack:icon / pack/icon 等）不再渲染 —— 与路径 / URL 撞车率高。
      本地注册表（registerIcons）的名字优先于 Iconify。
    · @提及（mentions 开启才渲染）：渲染为 UiAvatarTag 药丸，
      mentionResolver(username) 传 { username, showname, type: 'normal'|'agent', image, shape }。
@@ -55,8 +54,9 @@ function explode(parts, re, map) {
 function inlineParts(text) {
   let parts = [{ t: 'text', v: text }]
   if (props.icons) {
+    /* 只认 ::pack:icon:: 显式标记：裸写法（pack:icon / pack/icon 等）与
+       普通文本冲突率太高（路径、URL、版本号都会误渲染成图标）。 */
     parts = explode(parts, ICON_EXPLICIT_RE, m => ({ t: 'icon', name: m[1] }))
-    parts = explode(parts, ICON_INLINE_RE, m => ({ t: 'icon', name: m[2] }))
   }
   if (props.mentions) {
     parts = explode(parts, MENTION_RE, m => ({ t: 'mention', name: m[1] }))

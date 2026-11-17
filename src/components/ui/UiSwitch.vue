@@ -60,7 +60,8 @@ function toggle() {
 
 <style scoped>
 /* 一行：文字 + 开关。文案在右时开关在前、文字在后；
-   alignEnd 时整行展开、文字吃掉剩余宽度，开关与文字一起贴到行尾。 */
+   alignEnd 时整行展开、文字吃掉剩余宽度：文案在左 → 文字顶左、开关贴行尾；
+   文案在右 → 文字**右对齐到行尾**、开关贴行首。 */
 .ui-switch-row {
   display: inline-flex;
   align-items: center;
@@ -77,6 +78,8 @@ function toggle() {
 }
 .ui-switch-row.is-end .ui-switch-row__text { flex: 1; }
 .ui-switch-row.is-text-right .ui-switch-row__text { text-align: left; }
+/* 右对齐到行尾：alignEnd + 文案在右的组合语义 */
+.ui-switch-row.is-end.is-text-right .ui-switch-row__text { text-align: right; }
 .ui-switch-row.is-disabled { opacity: .55; cursor: not-allowed; }
 .ui-switch-row.is-disabled .ui-switch { cursor: not-allowed; }
 </style>

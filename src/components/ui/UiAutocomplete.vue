@@ -37,13 +37,18 @@ const panelInput = ref(null)
 const fieldInput = ref(null)
 const active = ref(-1)
 /* 展开层里的「正在输入的词」。
-   不能直接拿 modelValue 过滤：选中之后字段里存的就是那个值，
-   再次展开会只剩一条候选。query 与已提交的值分离，展开时才重置。 */
+   不能直接拿 modelValue 过滤：选中之后字段里存的就是那个值。
+   展开时输入框用当前选择**播种**（选择不清空、可见可改），
+   query 与已提交值一致的「未编辑」态不过滤（列表全量 + 选中高亮），
+   一旦输入立刻转为正常过滤。 */
 const query = ref('')
 const filtered = computed(() => {
+  const pristine = String(query.value || '') === String(props.modelValue || '')
   const q = String(query.value || '').trim().toLowerCase()
-  const list = props.options.filter(o => !q || String(o.label).toLowerCase().includes(q) || String(o.value).toLowerCase().includes(q))
-  return list.slice(0, props.max)
+  const source = pristine
+    ? props.options
+    : props.options.filter(o => !q || String(o.label).toLowerCase().includes(q) || String(o.value).toLowerCase().includes(q))
+  return source.slice(0, props.max)
 })
 const hasValue = computed(() => String(props.modelValue || '').length > 0)
 
@@ -125,9 +130,9 @@ async function openMenu(byKeyboard = false) {
   if (open.value || props.modelValue === undefined) return
   closing.value = false
   openingAt = performance.now()
-  /* 每次展开都从「空查询」开始：已提交的值不再当作过滤词，
-     否则选中一项后再展开，列表里就只剩刚选的那一条。 */
-  query.value = ''
+  /* 输入框用当前选择播种：展开后选择仍在输入框里（可改可删），
+     列表保持全量并高亮已选项 —— 不再把选择当过滤词，也不会显得被清空。 */
+  query.value = String(props.modelValue || '')
 
   const el = surfaceEl.value
   if (!el) return
