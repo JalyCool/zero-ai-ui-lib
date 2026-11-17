@@ -645,6 +645,8 @@ button {
 .ui-empty__action { margin-top: 14px; }
 
 /* ---------- Modal ---------- */
+/* 面板进出场由 motion 驱动（UiModal 内 motion.div 的 :initial/:animate），
+   这里只保留布局与外观；透明度/位移/过渡一律不写，避免与弹簧叠加。 */
 .ui-modal { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 20px; }
 .ui-modal__panel {
   position: relative;
@@ -656,18 +658,6 @@ button {
   border-radius: calc(24px * var(--radius-scale));
   background: var(--surface-container-high);
   scrollbar-width: none;
-  opacity: 0;
-  transform: translateY(14px) scale(.97);
-  transition: opacity var(--t-fade), transform var(--t-view);
-}
-.ui-modal.is-open .ui-modal__panel {
-  opacity: 1;
-  transform: none;
-}
-.ui-modal.is-closing .ui-modal__panel {
-  opacity: 0;
-  transform: translateY(12px) scale(.98);
-  transition: opacity var(--t-fade), transform var(--t-exit);
 }
 .ui-modal__panel::-webkit-scrollbar { display: none; }
 .ui-modal__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }

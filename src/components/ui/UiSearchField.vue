@@ -1,5 +1,6 @@
 <script setup>
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { animate, getSpringConfig, motion, useMotionValue } from '../../composables/useMotion'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -12,24 +13,33 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'search', 'clear', 'expand', 'collapse'])
 
 /* ============================================================
-   搜索框（借鉴 app_bar_search）：
-   · 外壳只做几何过渡（宽度 40px -> 字段宽），走 view 弹簧；
-   · 同一个搜索图标元素从「左侧」平移到「右侧尾部」，
-     位移量与外壳宽度用同一个变量算出来，所以图标始终贴着
-     右边框走 —— 收起 / 展开是同一段路反向，连贯不断裂；
-   · 展开后图标变成提交按钮（点击 = 搜索），输入区按内容
-     替换语言从模糊中浮现；
-   · Esc / 点击外部收起。
+   搜索框（motion-v 版）
+   外壳宽度与图标位移由 MotionValue 驱动、motion 组件渲染：
+   · 展开：宽度 → 字段宽，图标 x → 字段宽-40，同一 view 弹簧
+   · 收起：走 exit 弹簧；动画途中再点可打断（animate 从当前值续接）
+   · 输入区的内容替换（透明度 + 模糊 + 位移）保持 CSS 令牌驱动：
+     单属性的淡入淡出按项目约定留在 CSS（--t-fade），混合使用
+   图标始终贴着右边框走：位移量与宽度用同一个 fieldWidth() 算出。
    ============================================================ */
 
 const open = ref(!!props.modelValue)
 const inputEl = ref(null)
 const rootEl = ref(null)
 
+const widthMv = useMotionValue(40)
+const iconXv = useMotionValue(0)
+
+function fieldWidth() {
+  return Math.min(320, Math.max(40, window.innerWidth - 64))
+}
+
 function expand() {
   if (props.disabled || open.value) return
   open.value = true
   emit('expand')
+  const target = fieldWidth()
+  animate(widthMv, target, getSpringConfig('view'))
+  animate(iconXv, target - 40, getSpringConfig('view'))
   nextTick(() => inputEl.value?.focus())
 }
 
@@ -39,6 +49,8 @@ function collapse() {
   emit('collapse')
   if (!props.keepValue) emit('update:modelValue', '')
   emit('clear')
+  animate(widthMv, 40, getSpringConfig('exit'))
+  animate(iconXv, 0, getSpringConfig('exit'))
 }
 
 function onTriggerClick() {
@@ -65,17 +77,18 @@ function onDocPointer(event) {
 document.addEventListener('pointerdown', onDocPointer)
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointer))
 
-watch(() => props.modelValue, value => { if (value) open.value = true })
+watch(() => props.modelValue, value => { if (value && !open.value) expand() })
 </script>
 
 <template>
-  <div
+  <motion.div
     ref="rootEl"
     class="ui-search"
     :class="{ 'is-open': open, 'is-disabled': disabled }"
     role="search"
+    :style="{ width: widthMv }"
   >
-    <!-- 输入区：外壳长出来之后从模糊中浮现（内容替换语言）。 -->
+    <!-- 输入区：外壳长出来之后从模糊中浮现（内容替换语言，CSS 令牌驱动）。 -->
     <div class="ui-search__inner">
       <input
         ref="inputEl"
@@ -101,44 +114,39 @@ watch(() => props.modelValue, value => { if (value) open.value = true })
       </button>
     </div>
 
-    <!-- 同一个元素：收起态是展开按钮，展开态平移到尾部成为搜索动作。 -->
-    <button
+    <!-- 同一个元素：收起态是展开按钮，展开态平移到尾部成为搜索动作。
+         位移由 MotionValue 驱动（x = 字段宽 - 40），与外壳宽度同源。 -->
+    <motion.button
       type="button"
       class="ui-search__icon"
       :aria-label="open ? '执行搜索' : '展开搜索'"
+      :style="{ x: iconXv }"
       @click.stop="onTriggerClick"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.8-3.8" /></svg>
-    </button>
-  </div>
+    </motion.button>
+  </motion.div>
 </template>
 
 <style scoped>
 .ui-search {
-  --field-w: min(320px, calc(100vw - 64px));
-  /* 图标旅行时长：略慢于外壳变长（view 的 1.2 倍）。 */
-  --icon-travel: calc(var(--spring-view-dur) * 1.2);
   position: relative;
   display: inline-block;
-  width: 40px;
   height: 40px;
   border: var(--border-w) solid transparent;
   border-radius: calc(13px * var(--radius-scale));
   background: var(--surface-container);
-  /* 形变只动外壳几何：宽度 + 底色 + 描边 */
-  transition: width var(--t-view), background var(--t-fade), border-color var(--t-fade);
+  /* 宽度由 MotionValue 驱动；底色/描边保持 CSS 令牌过渡 */
+  transition: background var(--t-fade), border-color var(--t-fade);
 }
 .ui-search.is-open {
-  width: var(--field-w);
   background: var(--surface-container-low);
   border-color: var(--outline-variant);
 }
 .ui-search.is-open:focus-within { border-color: var(--primary); background: var(--surface); }
 .ui-search.is-disabled { opacity: .42; }
 
-/* 图标：同一个元素，贴着外壳右边框平移；位移量与宽度同源，
-   所以展开时它和右边框一起走，收起时原路返回。
-   旅行比外壳慢 20%：宽度先到、图标后落位，动效有前后层次。 */
+/* 图标：同一个元素，MotionValue 驱动 translateX；背景层只管 hover / 按压。 */
 .ui-search__icon {
   position: absolute;
   top: 0;
@@ -151,33 +159,19 @@ watch(() => props.modelValue, value => { if (value) open.value = true })
   background: transparent;
   color: var(--on-surface);
   cursor: pointer;
-  transition: transform var(--icon-travel) var(--spring-view), color var(--t-fade);
+  will-change: transform;
 }
-/* 背景单独一层：hover / 按压 / 压缩动画都只作用于它，图标本体不动。 */
 .ui-search__icon::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: calc(12px * var(--radius-scale));
   background: transparent;
-  transition: background var(--t-fade);
+  transition: background var(--t-fade), transform var(--t-feedback);
 }
 .ui-search__icon:hover::before { background: color-mix(in oklab, var(--primary) 12%, transparent); }
-.ui-search__icon:active::before { background: color-mix(in oklab, var(--primary) 18%, transparent); }
-.ui-search.is-open .ui-search__icon {
-  transform: translateX(calc(var(--field-w) - 40px));
-  color: var(--primary);
-}
-/* 展开旅行的前三分之一：背景框压缩到 94%，之后保持 94% 不回弹。 */
-.ui-search.is-open .ui-search__icon::before {
-  transform: scale(.94);
-  animation: uiSearchSqueeze var(--icon-travel) var(--spring-view) 1;
-}
-@keyframes uiSearchSqueeze {
-  0% { transform: scale(1); }
-  33% { transform: scale(.94); }
-  100% { transform: scale(.94); }
-}
+.ui-search__icon:active::before { background: color-mix(in oklab, var(--primary) 18%, transparent); transform: scale(.94); }
+.ui-search.is-open .ui-search__icon { color: var(--primary); }
 .ui-search__icon svg { position: relative; z-index: 1; width: 17px; height: 17px; }
 
 /* 输入区：占据外壳中间，展开时按内容替换语言浮现。 */

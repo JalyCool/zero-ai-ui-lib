@@ -87,7 +87,7 @@ const routes = [
     path: '/motion',
     name: 'motion',
     component: MotionDemoView,
-    meta: { tab: 'components', title: '动效演示', sub: 'Motion-v 与项目弹簧集成' }
+    meta: { tab: 'motion', title: '动效演示', sub: 'Motion-v 与项目弹簧集成' }
   },
   { path: '/', redirect: '/home' },
   { path: '/:pathMatch(.*)*', redirect: '/home' }

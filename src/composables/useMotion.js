@@ -66,12 +66,22 @@ export function getSpringConfig(scene = 'view', tone = null) {
  * 返回跟随用 MotionValue（驱动源变化时带弹簧跟随），可直接绑进
  * motion 组件的 :style（如 { scale: v }）。只接受数值，布尔态请用
  * motion 组件的 :animate 目标切换，不要把布尔喂给弹簧。
+ *
+ * ⚠️ 单位陷阱（实测 motion-dom 14.11）：attachFollow → FollowAnimation
+ * 把 options 原样交给 spring 生成器，**不做秒→毫秒归一化**
+ * （归一化只发生在 animateMotionValue，即 animate()/组件路径）。
+ * 所以 follow 路径的 duration 必须传毫秒，与 getSpringConfig 的
+ * 秒不同。见 ANIMATION_MIGRATION.md「参数映射」。
  */
 export function useProjectSpring(source, scene = 'view', options = null) {
   const initial = isMotionValue(source) ? source.get() : toValue(source)
   const driver = useMotionValue(Number.isFinite(initial) ? initial : 0)
+  const config = getSpringConfig(scene)
   const follower = useSpring(driver, () => ({
-    ...getSpringConfig(scene),
+    type: 'spring',
+    /* follow 路径按毫秒解读 duration：把场景的秒换算过去 */
+    duration: config.duration * 1000,
+    bounce: config.bounce,
     ...(options || {})
   }))
   if (isRef(source) || typeof source === 'function') {
@@ -80,6 +90,23 @@ export function useProjectSpring(source, scene = 'view', options = null) {
     })
   }
   return follower
+}
+
+/**
+ * 物理参数版弹簧（stiffness/damping）：duration-based 弹簧会忽略
+ * 初速度（motion 源码：时间定义的弹簧不继承 velocity），需要携带
+ * 初速度的动画（拖拽松手吸附、甩动）用它：
+ *   animate(heightMv, targetPx, { ...getSpringPhysicsConfig('sheet'), velocity })
+ * 换算与 springLinear 同源：ω = 2π/response → stiffness = ω²，
+ * damping = 2·ζ·ω。
+ */
+export function getSpringPhysicsConfig(scene = 'view', tone = null) {
+  const active = tone || getMotionTone()
+  const table = TONE_SPRINGS[active === 'lively' ? 'lively' : 'calm']
+  const params = table[scene] || table.view
+  const zeta = Math.min(1, Math.max(0.15, params.damping))
+  const w = (2 * Math.PI) / Math.max(0.06, params.response)
+  return { type: 'spring', stiffness: w * w, damping: 2 * zeta * w }
 }
 
 /**
@@ -108,4 +135,12 @@ export {
   useSpring,
   useTransform,
   useVelocity
+}
+
+export default {
+  getSpringConfig,
+  getSpringPhysicsConfig,
+  getSpringTokens,
+  useProjectSpring,
+  prefersReducedMotion
 }

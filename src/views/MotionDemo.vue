@@ -6,6 +6,7 @@ import {
   getSpringConfig,
   motion,
   useInView,
+  useMotionValue,
   useMotionValueEvent,
   useProjectSpring,
   useScroll
@@ -43,16 +44,20 @@ useMotionValueEvent(boostScale, 'change', v => {
   boostReadout.value = (0.96 + v * 0.3).toFixed(3)
 })
 
-/* 4. 命令式编排：await 串行三段不同场景的弹簧 */
-const seqEl = ref(null)
+/* 4. 命令式编排：await animate() 串行三段不同场景的弹簧。
+   动画作用在 MotionValue 上（经 :style 绑定渲染）——这是实测
+   可靠的命令式路径；对普通元素 animate() 的表现依赖版本细节。 */
+const seqX = useMotionValue(0)
+const seqScale = useMotionValue(1)
+const seqRotate = useMotionValue(0)
 const seqRunning = ref(false)
 async function runSequence() {
-  if (seqRunning.value || !seqEl.value) return
+  if (seqRunning.value) return
   seqRunning.value = true
   try {
-    await animate(seqEl.value, { x: [0, 130, 0] }, getSpringConfig('view'))
-    await animate(seqEl.value, { scale: [1, 1.16, 1] }, getSpringConfig('feedback'))
-    await animate(seqEl.value, { rotate: [0, 180, 0] }, getSpringConfig('expand'))
+    await animate(seqX, [0, 130, 0], getSpringConfig('view'))
+    await animate(seqScale, [1, 1.16, 1], getSpringConfig('feedback'))
+    await animate(seqRotate, [0, 180, 0], getSpringConfig('expand'))
   } finally {
     seqRunning.value = false
   }
@@ -138,7 +143,10 @@ useMotionValueEvent(scrollYProgress, 'change', v => {
         </UiButton>
       </div>
       <div class="demo-stage">
-        <div ref="seqEl" class="demo-box demo-box--seq">SEQ</div>
+        <motion.div
+          class="demo-box demo-box--seq"
+          :style="{ x: seqX, scale: seqScale, rotate: seqRotate }"
+        >SEQ</motion.div>
       </div>
     </div>
 
@@ -155,6 +163,7 @@ useMotionValueEvent(scrollYProgress, 'change', v => {
             :key="item"
             type="button"
             class="demo-chip"
+            layout
             :initial="{ opacity: 0, scale: 0.8, filter: 'blur(8px)' }"
             :animate="{ opacity: 1, scale: 1, filter: 'blur(0px)' }"
             :exit="{ opacity: 0, scale: 0.85, filter: 'blur(8px)', transition: getSpringConfig('exit') }"

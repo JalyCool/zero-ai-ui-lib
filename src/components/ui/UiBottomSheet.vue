@@ -1,19 +1,25 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import {
+  animate,
+  getSpringConfig,
+  getSpringPhysicsConfig,
+  motion,
+  prefersReducedMotion,
+  useMotionValue
+} from '../../composables/useMotion'
 
 /* ============================================================
-   置底面板
-   动效与设置面板（SettingsSheet / .sheet）保持一致：
-   面板只做 transform 位移（打开 --t-sheet、关闭 --t-exit），
-   不做整体透明度淡入淡出；遮罩用全局 .ui-scrim（压暗 + 模糊）。
-
-   本轮新增：
-   · 把手可拖拽：拖把手实时改面板高度（禁用 transition 跟手），
-     松手按 位移 + 速度 吸附到锚点；最低锚点之下继续拖 -> 关闭。
-   · anchors 吸附档位：20%、60%，以及「能显示全部内容的最小高度」。
-     若最小高度不足全屏 60%，60% 档自动不出现（去重）。
-   · scrim=false 版本：不加背景、不模糊背景，但模态性质保持
-     （透明拦截层挡住背景交互 + Esc 关闭 + 锁页面滚动 + aria-modal）。
+   置底面板（motion-v 版）
+   与原版（UiBottomSheet.vue）行为一致，动画引擎换成 motion：
+   · 进出：外层 frame 的 translateY 走声明式 :animate
+     （sheet 弹簧进、exit 弹簧出，关闭途中再打开可打断续接）
+   · 高度吸附：面板高度绑 MotionValue；把手拖拽时 .set() 跟手
+     （无动画），松手用物理弹簧吸附——duration-based 弹簧会忽略
+     初速度，所以吸附走 getSpringPhysicsConfig + velocity，
+     甩得越快冲得越远，落点干净
+   · 遮罩继续走全局 .ui-scrim 的 CSS 过渡（backdrop-filter 约束不变）
+   · anchors 档位 / 全内容锚点 / scrim=false 拦截层：逻辑照旧
    ============================================================ */
 
 const props = defineProps({
@@ -37,6 +43,9 @@ const FLING_MS = 140
 /* 低于最低锚点这么多像素 -> 判定关闭意图。 */
 const DISMISS_PX = 72
 
+const FRAME_HIDDEN = { y: '105%' }
+const FRAME_SHOWN = { y: '0%' }
+
 const panel = ref(null)
 const bodyEl = ref(null)
 const handleEl = ref(null)
@@ -50,48 +59,32 @@ const dragging = ref(false)
 const anchorList = ref([])
 const heightPx = ref(0)
 
+/* 面板高度：拖拽 .set() 跟手，松手 animate 吸附。 */
+const heightMv = useMotionValue(0)
+
 let scrollEl = null
 let previousOverflow = ''
 let closeTimer = null
-let frameA = 0
-let frameB = 0
-let paintedOpen = false
 let resizeObserver = null
 
-function readDuration(name, fallback) {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  if (!raw) return fallback
-  const amount = parseFloat(raw)
-  if (!Number.isFinite(amount)) return fallback
-  return raw.endsWith('ms') ? amount : amount * 1000
-}
-
-function reduceMotion() {
-  return typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+function panelNode() {
+  const node = panel.value
+  return node?.$el || node
 }
 
 function viewportHeight() {
   return window.innerHeight || document.documentElement.clientHeight || 640
 }
 
-/* 全内容锚点：把手 + 头部 + 内容完整高度 + 底部，夹在视口上限内。 */
 let measuring = false
 function fullFraction() {
   const body = bodyEl.value
-  /* 注意：局部不能叫 panel —— 会遮蔽同名 ref，右侧 panel.value 落进自己的 TDZ。 */
-  const node = panel.value
+  const node = panelNode()
   if (!body) return 0.9
-  /* chrome = 把手 + 头部 + 底部（都是 flex-shrink:0 的固定段）。
-     面板自身高度在收起态是 0，不能用 offsetHeight - clientHeight 反推。 */
   const chrome =
     (handleEl.value?.offsetHeight || 0) +
     (headEl.value?.offsetHeight || 0) +
     (footerEl.value?.offsetHeight || 0)
-  /* 关键：body 是 flex:1，面板一被拖高，body 的 scrollHeight 会跟着长，
-     锚点于是被「拖大」——松手就落到一个虚的高度上。
-     量锚点时把面板高度临时设成 auto，量到的是内容的自然高度。 */
   let needed = chrome + body.scrollHeight
   if (node && node.style.height && !measuring) {
     measuring = true
@@ -103,7 +96,6 @@ function fullFraction() {
     void node.offsetHeight
     measuring = false
   }
-  /* maxHeight 上限（px / dvh 都折算成视口比例） */
   const capMatch = /^(\d+(?:\.\d+)?)(dvh|vh|px|%)$/.exec(props.maxHeight)
   let cap = 0.9
   if (capMatch) {
@@ -113,10 +105,6 @@ function fullFraction() {
   return Math.min(cap, needed / viewportHeight())
 }
 
-/* 组装锚点：
-   · 「全内容」档永远存在（两种版本都要有，它是能看全内容的最小高度）；
-   · 固定档只保留 <= 全内容档的：有压暗背景时不放 20% 档（默认 [0.6]），
-     且当全内容不足 60% 时，60% 档也一并去掉。 */
 function computeAnchors() {
   const full = fullFraction()
   /* 面板里固定的几段（把手 + 标题 + 底部）必须始终可见，比它还矮的档没意义。 */
@@ -126,10 +114,7 @@ function computeAnchors() {
     (footerEl.value?.offsetHeight || 0)
   const minUsable = (chrome + 56) / viewportHeight()
   const base = props.anchors || (props.scrim ? [0.6] : [0.2, 0.6])
-  /* 关键规律（用户反复强调）：固定档必须**严格低于**内容全高。
-     内容只有 50% 高时，60% 档要直接消失，不能让人吸附到一个
-     只能看见半截内容、还要再滚一遍的高度。
-     留 2% 余量，避免 full≈0.6 时出现两个几乎重合的档。 */
+  /* 固定档必须严格低于内容全高；留 2% 余量避免几乎重合的档。 */
   const list = base
     .map(Number)
     .filter(value => Number.isFinite(value) && value > 0 && value < full - 0.02 && value >= minUsable)
@@ -165,16 +150,25 @@ function nearestAnchor(fraction, projected) {
   return best
 }
 
-function setHeight(fraction, { silent = false } = {}) {
+/* mode: 'jump' 立即落位（打开初值），'spring' 带弹簧吸附（松手/夹回）。 */
+function setHeight(fraction, { mode = 'spring', silent = false, velocity = 0 } = {}) {
   const clamped = Math.min(Math.max(fraction, 0.08), 1)
-  heightPx.value = Math.round(clamped * viewportHeight())
+  const px = Math.round(clamped * viewportHeight())
+  heightPx.value = px
+  if (mode === 'jump') {
+    heightMv.jump(px)
+  } else if (!prefersReducedMotion()) {
+    animate(heightMv, px, { ...getSpringPhysicsConfig('sheet'), velocity })
+  } else {
+    heightMv.jump(px)
+  }
   if (!silent) {
     const nearest = nearestAnchor(clamped)
     if (Math.abs(nearest - clamped) < 0.005) emit('anchor-change', nearest)
   }
 }
 
-/* ---------- 打开 / 关闭（沿用原有 transform 流程） ---------- */
+/* ---------- 打开 / 关闭 ---------- */
 
 function lockPage() {
   if (scrollEl) return
@@ -202,88 +196,6 @@ function onKeydown(event) {
   }
 }
 
-function cancelFrames() {
-  if (frameA) cancelAnimationFrame(frameA)
-  if (frameB) cancelAnimationFrame(frameB)
-  frameA = 0
-  frameB = 0
-}
-
-function beginOpen() {
-  clearTimeout(closeTimer)
-  closeTimer = null
-  cancelFrames()
-
-  if (rendered.value && paintedOpen && !open.value) {
-    closing.value = false
-    open.value = true
-    lockPage()
-    return
-  }
-
-  rendered.value = true
-  closing.value = false
-  open.value = false
-  lockPage()
-
-  nextTick(() => {
-    const el = panel.value
-    if (!props.modelValue || !el) return
-    el.focus({ preventScroll: true })
-    /* 先量锚点：打开落在「全内容」这一档。 */
-    refreshAnchors()
-    const full = anchorList.value[anchorList.value.length - 1] || 0.9
-    setHeight(full, { silent: true })
-    observeContent()
-    /* 首帧量到的 scrollHeight 可能还没算完（字体 / 图片 / 插槽），下一帧再校一次。 */
-    requestAnimationFrame(() => {
-      if (!props.modelValue) return
-      refreshAnchors()
-      const settled = anchorList.value[anchorList.value.length - 1] || full
-      setHeight(settled, { silent: true })
-    })
-
-    void el.offsetHeight
-    frameA = requestAnimationFrame(() => {
-      frameA = 0
-      frameB = requestAnimationFrame(() => {
-        frameB = 0
-        if (!props.modelValue) return
-        open.value = true
-        paintedOpen = true
-      })
-    })
-  })
-}
-
-function teardown() {
-  rendered.value = false
-  open.value = false
-  closing.value = false
-  paintedOpen = false
-  dragging.value = false
-  disconnectObserver()
-  unlockPage()
-}
-
-function beginClose() {
-  cancelFrames()
-  clearTimeout(closeTimer)
-  closeTimer = null
-
-  if (!paintedOpen) { teardown(); return }
-
-  closing.value = true
-  open.value = false
-
-  const exitMs = reduceMotion() ? 0 : readDuration('--spring-exit-dur', 650)
-  const scrimMs = reduceMotion() ? 0 : (props.scrim ? SCRIM_FADE : 0)
-  const holdMs = reduceMotion() ? 0 : Math.max(exitMs, scrimMs) + CLOSE_BUFFER
-
-  closeTimer = setTimeout(() => { closeTimer = null; teardown() }, holdMs)
-}
-
-/* ---------- 内容变化监听（锚点跟着重算） ---------- */
 function observeContent() {
   disconnectObserver()
   if (!bodyEl.value || typeof ResizeObserver === 'undefined') return
@@ -296,7 +208,61 @@ function disconnectObserver() {
   if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null }
 }
 
-/* ---------- 把手拖拽 ---------- */
+function beginOpen() {
+  clearTimeout(closeTimer)
+  closeTimer = null
+  rendered.value = true
+  closing.value = false
+  lockPage()
+
+  nextTick(() => {
+    const el = panelNode()
+    if (!props.modelValue || !el) return
+    el.focus({ preventScroll: true })
+    /* 先量锚点：打开落在「全内容」这一档（立即落位，随 frame 一起弹入）。 */
+    refreshAnchors()
+    const full = anchorList.value[anchorList.value.length - 1] || 0.9
+    setHeight(full, { mode: 'jump', silent: true })
+    observeContent()
+    /* 首帧量到的 scrollHeight 可能还没算完（字体 / 图片 / 插槽），下一帧再校一次。 */
+    requestAnimationFrame(() => {
+      if (!props.modelValue) return
+      refreshAnchors()
+      const settled = anchorList.value[anchorList.value.length - 1] || full
+      if (Math.abs(settled * viewportHeight() - heightPx.value) > 1) {
+        setHeight(settled, { mode: 'jump', silent: true })
+      }
+    })
+    open.value = true
+  })
+}
+
+function teardown() {
+  rendered.value = false
+  open.value = false
+  closing.value = false
+  dragging.value = false
+  disconnectObserver()
+  unlockPage()
+}
+
+function beginClose() {
+  clearTimeout(closeTimer)
+  closeTimer = null
+  if (!rendered.value) { teardown(); return }
+
+  closing.value = true
+  open.value = false
+
+  /* frame 退场弹簧 + 遮罩淡出取更长者 + 缓冲后卸载。 */
+  const exitMs = getSpringConfig('exit').duration * 1000
+  const scrimMs = prefersReducedMotion() ? 0 : (props.scrim ? SCRIM_FADE : 0)
+  const holdMs = Math.max(exitMs, scrimMs) + CLOSE_BUFFER
+
+  closeTimer = setTimeout(() => { closeTimer = null; teardown() }, holdMs)
+}
+
+/* ---------- 把手拖拽（指针驱动跟手，松手弹簧吸附带初速度） ---------- */
 let dragStartY = 0
 let dragStartHeight = 0
 let dragLastY = 0
@@ -319,8 +285,9 @@ function onHandleMove(event) {
   if (!dragging.value) return
   const dy = event.clientY - dragStartY
   /* 向上拖 = 变高，向下拖 = 变矮；允许拖到最低锚点之下表达关闭意图。 */
-  const next = dragStartHeight - dy
-  heightPx.value = Math.max(0, Math.round(next))
+  const next = Math.max(0, Math.round(dragStartHeight - dy))
+  heightPx.value = next
+  heightMv.set(next)
   dragVelocity = (event.clientY - dragLastY) / Math.max(1, event.timeStamp - dragLastT)
   dragLastY = event.clientY
   dragLastT = event.timeStamp
@@ -334,12 +301,9 @@ function onHandleUp() {
   const lowest = list[0] || 0.2
   const highest = list[list.length - 1] || lowest
   const current = heightPx.value / vp
-  /* 速度限幅：合成事件 / 高采样率下 velocity 可能异常大，
-     不限幅会把投射量算成整屏，吸附直接跳到端点。 */
+  /* 速度限幅：合成事件 / 高采样率下 velocity 可能异常大。 */
   const clampedVelocity = Math.max(-3, Math.min(3, dragVelocity))
-  /* 关闭意图：必须真的拖到最低锚点之下足够多（位移门槛），
-     或者「已经明显低于最低锚点」且向下快甩 —— 两个条件都要求
-     位置先越界，避免正常小幅下拉被误判成关闭。 */
+  /* 关闭意图：位置先越界（位移门槛，或明显低于最低锚点 + 向下快甩）。 */
   const belowBy = lowest - current
   const dismissByDistance = heightPx.value < lowest * vp - DISMISS_PX
   const dismissByFling = clampedVelocity > 0.9 && belowBy > 0.06
@@ -347,16 +311,20 @@ function onHandleUp() {
     close()
     return
   }
-  /* 投射：位移 + 速度 * 时长，但投射量限制在 ±12% 视口内，
-     然后吸附到最近的锚点。 */
+  /* 投射：位移 + 速度 * 时长（±12% 视口），吸附到最近锚点；
+     吸附动画带真实初速度（px/s），甩动方向延续松手势头。 */
   const projection = Math.max(-0.12, Math.min(0.12, (-clampedVelocity * FLING_MS) / vp))
   const projected = Math.min(highest, Math.max(lowest, current + projection))
-  setHeight(nearestAnchor(current, projected))
+  const target = nearestAnchor(current, projected)
+  setHeight(target, {
+    mode: 'spring',
+    velocity: -clampedVelocity * 1000
+  })
 }
 
 watch(() => props.modelValue, value => {
   if (value) beginOpen()
-  else if (rendered.value || paintedOpen) beginClose()
+  else if (rendered.value) beginClose()
 }, { immediate: true })
 
 watch(() => props.anchors, () => { if (open.value) refreshAnchors() }, { deep: true })
@@ -365,7 +333,6 @@ document.addEventListener('keydown', onKeydown)
 
 onBeforeUnmount(() => {
   clearTimeout(closeTimer)
-  cancelFrames()
   disconnectObserver()
   unlockPage()
   document.removeEventListener('keydown', onKeydown)
@@ -391,46 +358,46 @@ onBeforeUnmount(() => {
         @click="closeOnBackdrop && close()"
       ></div>
 
-      <div
+      <!-- 外层 frame 只做纵向位移：sheet 弹簧进、exit 弹簧出。 -->
+      <motion.div
         class="ui-sheet-frame"
-        :class="{ 'is-open': open, 'is-closing': closing, 'is-dragging': dragging }"
+        :initial="FRAME_HIDDEN"
+        :animate="open ? FRAME_SHOWN : FRAME_HIDDEN"
+        :transition="getSpringConfig(open ? 'sheet' : 'exit')"
       >
-      <section
-        ref="panel"
-        class="ui-sheet-panel"
-        :class="{ 'is-dragging': dragging, 'no-scrim': !scrim }"
-        :style="{ height: heightPx + 'px' }"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="title"
-        tabindex="-1"
-      >
-        <div
-          ref="handleEl"
-          class="ui-sheet-handle"
-          :class="{ 'is-grabbing': dragging }"
-          aria-hidden="true"
-          @pointerdown="onHandleDown"
-          @pointermove="onHandleMove"
-          @pointerup="onHandleUp"
-          @pointercancel="onHandleUp"
-        ></div>
-        <header ref="headEl" class="ui-sheet-head">
-          <h2>{{ title }}</h2>
-          <!-- 已经有可拖拽的把手：不再额外放关闭键。收起靠 拖把手 / 点遮罩 / Esc。 -->
-        </header>
-        <div ref="bodyEl" class="ui-sheet-body">
-          <slot />
-        </div>
-        <footer v-if="$slots.footer" ref="footerEl" class="ui-sheet-footer">
-          <slot name="footer" />
-        </footer>
-      </section>
-      <!-- 弹簧裙边：在视口下方多出一段（半屏高）同色面板。正常状态完全被
-           .ui-sheet-root 的 overflow: hidden 裁掉；活泼模式弹簧上冲、面板下沿
-           离开视口底时，这段裙边把缺口补上，不会露出页面背景。 -->
-      <span class="ui-sheet-skirt" aria-hidden="true"></span>
-      </div>
+        <motion.section
+          ref="panel"
+          class="ui-sheet-panel"
+          :class="{ 'no-scrim': !scrim }"
+          :style="{ height: heightMv }"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="title"
+          tabindex="-1"
+        >
+          <div
+            ref="handleEl"
+            class="ui-sheet-handle"
+            :class="{ 'is-grabbing': dragging }"
+            aria-hidden="true"
+            @pointerdown="onHandleDown"
+            @pointermove="onHandleMove"
+            @pointerup="onHandleUp"
+            @pointercancel="onHandleUp"
+          ></div>
+          <header ref="headEl" class="ui-sheet-head">
+            <h2>{{ title }}</h2>
+          </header>
+          <div ref="bodyEl" class="ui-sheet-body">
+            <slot />
+          </div>
+          <footer v-if="$slots.footer" ref="footerEl" class="ui-sheet-footer">
+            <slot name="footer" />
+          </footer>
+        </motion.section>
+        <!-- 弹簧裙边：活泼模式弹簧上冲、面板下沿离开视口底时补住缺口。 -->
+        <span class="ui-sheet-skirt" aria-hidden="true"></span>
+      </motion.div>
     </div>
   </Teleport>
 </template>
@@ -455,23 +422,14 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 .ui-sheet-veil.is-static { pointer-events: none; }
-/* 外层 frame 只做纵向位移（含弹簧回弹），面板与裙边一起移动。 */
+/* 外层 frame 的位移由 motion 驱动（y: 105% ↔ 0），这里只管布局。 */
 .ui-sheet-frame {
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: 480px;
-  transform: translateY(105%);
   will-change: transform;
-  transition: transform var(--t-sheet);
 }
-.ui-sheet-frame.is-open { transform: none; }
-.ui-sheet-frame.is-closing {
-  will-change: transform;
-  transition: transform var(--t-exit);
-}
-/* 拖拽中彻底禁用过渡，位移完全跟手。 */
-.ui-sheet-frame.is-dragging { transition: none; }
 
 .ui-sheet-panel {
   position: relative;
@@ -485,14 +443,9 @@ onBeforeUnmount(() => {
   border-radius: calc(28px * var(--radius-scale)) calc(28px * var(--radius-scale)) 0 0;
   overflow: hidden;
   outline: none;
-  /* 高度吸附走 view：位移由外层 frame 负责。 */
-  transition: height var(--t-view), box-shadow var(--t-fade);
 }
-.ui-sheet-panel.is-closing { transition: height var(--t-exit); }
-.ui-sheet-panel.is-dragging { transition: none; }
 
-/* 视口下方的「弹簧裙边」：约半屏高，正常状态被 root 裁掉，
-   活泼模式上冲时补住面板下沿与视口底之间的缝。 */
+/* 视口下方的「弹簧裙边」：约半屏高，正常状态被 root 裁掉。 */
 .ui-sheet-skirt {
   position: absolute;
   z-index: 0;
@@ -504,9 +457,6 @@ onBeforeUnmount(() => {
   border-left: var(--border-w) solid var(--outline-variant);
   border-right: var(--border-w) solid var(--outline-variant);
   pointer-events: none;
-}
-/* 无背景版给一点离地阴影，保证与内容的分层仍然可读。 */
-.ui-sheet-panel.no-scrim {
 }
 .ui-sheet-handle {
   padding: 10px 0 4px;
@@ -567,13 +517,5 @@ onBeforeUnmount(() => {
   padding: 10px 20px calc(18px + env(safe-area-inset-bottom));
   border-top: var(--border-w) solid var(--outline-variant);
   background: color-mix(in oklab, var(--surface-container-high) 92%, transparent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ui-sheet-panel,
-  .ui-sheet-frame {
-    transition-duration: .01ms !important;
-    transition-delay: 0ms !important;
-  }
 }
 </style>

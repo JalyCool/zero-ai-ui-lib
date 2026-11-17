@@ -1,22 +1,21 @@
 /* ============================================================
-   形变窗口（motion-v 评估版）
+   形变窗口（motion-v 版）
    状态机与 CSS 版（core/morphWindow.js）完全一致：
    占位块保布局、收起途中可打断、滚动/缓存立即回落文档流。
-   唯一区别：位移引擎从「响应式 style.value + CSS transition 令牌」
-   换成 motion 的 animate() 弹簧（getSpringConfig 的场景参数）。
+   位移引擎换成 MotionValue：animate(mv, target, config) 从当前值
+   续接（可打断），change 监听把数值写进响应式 style.value，
+   消费组件照旧绑定 :style="style"（消费方元素无须是 motion 组件）。
 
-   引擎切换的三个要点：
-   · 飞行中 WAAPI 动画的优先级高于 inline style，style.value 只是
-     「静止姿态」；每段动画结束时把 style.value 同步到终值，
-     Vue 状态与真实渲染才不会漂移。
-   · 动画句柄要持有并在 finishClose / 打断时 stop() —— 不停掉的话
-     fill 残效会把元素钉在旧位置。
-   · motion 的 animate() 起点自动取元素当前渲染值（含 fill），
-     所以「从当前位置续接」不需要任何手工起点计算。
+   ⚠️ 消费方注意：浮动元素的 CSS 里不要再给 left/top/width/height
+   配 transition——引擎逐帧写 style，CSS 过渡会叠加成拖影。
+
+   单位：getSpringConfig 的 duration 是秒（animate()/组件路径）；
+   MotionValue 路径（animateSingleValue）经 animateMotionValue 归一化，
+   同样收秒，见 ANIMATION_MIGRATION.md。
    ============================================================ */
 import { nextTick, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue'
 import { toFixedBox } from './fixedBox'
-import { animate, getSpringConfig, prefersReducedMotion } from '../composables/useMotion'
+import { animate, getSpringConfig, prefersReducedMotion, useMotionValue } from '../composables/useMotion'
 
 export const MORPH_MARGIN = 16
 
@@ -36,9 +35,64 @@ export function useMorphWindow(options) {
   let borderX = 0
   let borderY = 0
 
-  /* 在飞的动画句柄：几何（left/top/width/height）与压缩（scale）。 */
-  let boxControls = null
-  let scaleControls = null
+  /* 几何 MotionValue：动画驱动数值，change 监听同步进 style.value。 */
+  const boxLeft = useMotionValue(0)
+  const boxTop = useMotionValue(0)
+  const boxWidth = useMotionValue(0)
+  const boxHeight = useMotionValue(0)
+  const boxScale = useMotionValue(1)
+
+  let controls = []
+
+  function syncStyle() {
+    style.value = {
+      left: boxLeft.get() + 'px',
+      top: boxTop.get() + 'px',
+      width: boxWidth.get() + 'px',
+      height: boxHeight.get() + 'px',
+      transform: boxScale.get() === 1 ? 'none' : `scale(${boxScale.get().toFixed(4)})`
+    }
+  }
+  boxLeft.on('change', syncStyle)
+  boxTop.on('change', syncStyle)
+  boxWidth.on('change', syncStyle)
+  boxHeight.on('change', syncStyle)
+  boxScale.on('change', syncStyle)
+
+  function stopControls() {
+    controls.forEach(control => control.stop?.())
+    controls = []
+  }
+
+  /* 把几何从当前值弹到目标（可打断）；reduced-motion 直接跳变。 */
+  function animateBoxTo(box, config) {
+    stopControls()
+    if (prefersReducedMotion()) {
+      boxLeft.jump(box.left)
+      boxTop.jump(box.top)
+      boxWidth.jump(box.width)
+      boxHeight.jump(box.height)
+      boxScale.jump(1)
+      syncStyle()
+      return
+    }
+    controls = [
+      animate(boxLeft, box.left, config),
+      animate(boxTop, box.top, config),
+      animate(boxWidth, box.width, config),
+      animate(boxHeight, box.height, config)
+    ]
+  }
+
+  function animateScaleTo(value, config) {
+    if (prefersReducedMotion()) {
+      boxScale.jump(value)
+      syncStyle()
+      return
+    }
+    const control = animate(boxScale, value, config)
+    return control
+  }
 
   /* 还原未缩放的小数矩形：offsetWidth 是取整的，直接用会让收起后的
      尺寸与真实布局尺寸差 1px，收尾时跳一下。这里按当前 transform 反解。 */
@@ -103,11 +157,6 @@ export function useMorphWindow(options) {
     return closedBox
   }
 
-  function stopAnimations() {
-    if (boxControls) { boxControls.stop(); boxControls = null }
-    if (scaleControls) { scaleControls.stop(); scaleControls = null }
-  }
-
   function clearTimers() {
     if (shrinkTimer) clearTimeout(shrinkTimer)
     if (closeTimer) clearTimeout(closeTimer)
@@ -115,27 +164,9 @@ export function useMorphWindow(options) {
     closeTimer = null
   }
 
-  function boxToStyle(box) {
-    return {
-      left: box.left + 'px',
-      top: box.top + 'px',
-      width: box.width + 'px',
-      height: box.height + 'px'
-    }
-  }
-
-  function animateBoxTo(node, box, config) {
-    stopAnimations()
-    if (prefersReducedMotion()) return null
-    boxControls = animate(node, boxToStyle(box), config)
-    return boxControls
-  }
-
   /* 收起被打断：取消卸载，直接长回展开态。 */
   function interruptOpen() {
     clearTimers()
-    stopAnimations()
-    compressed.value = false
     if (!floating.value || !openedBox) {
       closing.value = false
       open.value = false
@@ -143,14 +174,11 @@ export function useMorphWindow(options) {
       return
     }
     closing.value = false
+    compressed.value = false
     floating.value = true
-    /* inline 先落终值：WAAPI 从当前位置续接到终值，中断不重播。 */
-    style.value = { ...openedBox }
-    const node = surfaceEl()
-    if (node && !prefersReducedMotion()) {
-      boxControls = animate(node, openedBox, getSpringConfig('expand'))
-      boxControls.then?.(() => { if (open.value) style.value = { ...openedBox } })
-    }
+    /* animate 从当前值续接到展开框，中断不重播。 */
+    animateBoxTo(openedBox, getSpringConfig('expand'))
+    animateScaleTo(1, getSpringConfig('feedback'))
     open.value = true
     options.onOpened?.()
   }
@@ -158,8 +186,7 @@ export function useMorphWindow(options) {
   /* 立即回到文档流：用于收起途中页面滚动、或视图被缓存的情况。 */
   function finishClose(notify = true) {
     clearTimers()
-    /* 先停动画再清 inline：fill 残效会把元素钉在旧位置。 */
-    stopAnimations()
+    stopControls()
     const wasVisible = floating.value || open.value
     closing.value = false
     open.value = false
@@ -214,9 +241,14 @@ export function useMorphWindow(options) {
     const innerH = Math.max(1, rect.height - borderY * 2)
     mountPlaceholder(rect)
 
-    // 先把按钮尺寸写成显式像素：motion 的起点从这里解析。
+    // 先把按钮尺寸写成显式像素（MotionValue 跳变落位，无动画）。
     const startBox = toFixedBox(node, { left: rect.left, top: rect.top, width: rect.width, height: rect.height })
-    style.value = boxToStyle(startBox)
+    boxLeft.jump(startBox.left)
+    boxTop.jump(startBox.top)
+    boxWidth.jump(startBox.width)
+    boxHeight.jump(startBox.height)
+    boxScale.jump(1)
+    syncStyle()
     viewStyle.value = {
       width: innerW + 'px',
       height: innerH + 'px'
@@ -229,27 +261,17 @@ export function useMorphWindow(options) {
 
     // 阶段一：输入框先按下收缩（feedback 弹簧，可被后续动画随时接管）。
     compressed.value = true
-    if (el && !prefersReducedMotion()) {
-      scaleControls = animate(el, { scale: 0.95 }, getSpringConfig('feedback'))
-    }
+    animateScaleTo(0.95, getSpringConfig('feedback'))
 
     shrinkTimer = setTimeout(() => {
       shrinkTimer = null
       if (!floating.value) return
       compressed.value = false
       const openBox = toFixedBox(node, { left, top, width, height })
-      openedBox = boxToStyle(openBox)
-      /* inline 与 WAAPI 同步落终值：动画接管飞行，inline 管静止姿态。 */
-      style.value = { ...openedBox }
-      if (el && !prefersReducedMotion()) {
-        stopAnimations()
-        /* scale 从压缩态续接回 1；几何走 expand 弹簧。 */
-        scaleControls = animate(el, { scale: 1 }, getSpringConfig('feedback'))
-        boxControls = animate(el, openedBox, getSpringConfig('expand'))
-        boxControls.then?.(() => {
-          if (open.value) style.value = { ...openedBox }
-        })
-      }
+      openedBox = { left: openBox.left, top: openBox.top, width: openBox.width, height: openBox.height }
+      /* 几何走 expand 弹簧；scale 从压缩态续接回 1（feedback）。 */
+      animateBoxTo(openedBox, getSpringConfig('expand'))
+      animateScaleTo(1, getSpringConfig('feedback'))
       open.value = true
       options.onOpened?.()
     }, prefersReducedMotion() ? 0 : 110)
@@ -262,7 +284,6 @@ export function useMorphWindow(options) {
       return
     }
     clearTimers()
-    stopAnimations()
 
     const anchor = currentAnchor()
     closing.value = true
@@ -276,15 +297,8 @@ export function useMorphWindow(options) {
     let exitMs = 0
     if (anchor) {
       const closeBox = toFixedBox(surfaceEl(), anchor)
-      const target = boxToStyle(closeBox)
-      if (el && !prefersReducedMotion()) {
-        /* inline 先落终值；WAAPI 从当前位置飞回去（可被打断续接）。 */
-        style.value = { ...target }
-        boxControls = animate(el, target, getSpringConfig('exit'))
-        exitMs = getSpringConfig('exit').duration * 1000
-      } else {
-        style.value = { ...target }
-      }
+      animateBoxTo(closeBox, getSpringConfig('exit'))
+      exitMs = getSpringConfig('exit').duration * 1000
     }
 
     closeTimer = setTimeout(() => {
