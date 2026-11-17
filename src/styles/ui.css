@@ -376,8 +376,24 @@ button {
 .ui-segmented button.is-disabled:active { transform: none; }
 
 /* ---------- 图标：leading 在前端 / top 在文字上方 ---------- */
-.ui-segmented__icon { display: grid; place-items: center; flex-shrink: 0; }
-.ui-segmented__icon svg { width: 18px; height: 18px; }
+/* 图标统一容器：leading 与 top 都进这个圆角底，
+   底色随选中态平滑过渡，SVG 不再裸露在按钮里 */
+.ui-segmented__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--on-surface) 6%, transparent);
+  color: inherit;
+  transition: background var(--t-fade), color var(--t-fade), transform var(--t-pop);
+}
+.ui-segmented__icon svg { width: 17px; height: 17px; }
+.ui-segmented button.is-active .ui-segmented__icon {
+  background: color-mix(in oklab, var(--on-primary) 18%, transparent);
+}
+.ui-segmented.is-icon-top .ui-segmented__icon { width: 30px; height: 30px; border-radius: 9px; }
 .ui-segmented__text { overflow: hidden; text-overflow: ellipsis; }
 
 /* 图标在文字上方：改成纵向卡片，图标成为视觉主体。 */
@@ -390,6 +406,14 @@ button {
 
 /* ---------- 多行：装不下时自动切网格 ---------- */
 /* 一行里滑动的指示器换行后会跨行乱跑，所以多行时让「选中项自己填底色」。 */
+/* 多行：最多 maxRows 行（默认 3），超出在控件内纵向滚动。
+   行高 = 按钮高度 + 网格 gap，所以上限 = rows * (按钮高 + gap) - gap。 */
+.ui-segmented.is-multiline {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  max-height: calc(var(--seg-max-rows, 3) * (var(--seg-row-h, 38px) + 4px) - 4px);
+}
 .ui-segmented.is-multiline {
   display: grid;
   grid-template-columns: repeat(var(--seg-cols, 3), minmax(0, 1fr));

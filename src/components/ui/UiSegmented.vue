@@ -20,7 +20,9 @@ const props = defineProps({
   /* 多行时单个选项的最小宽度（px）；0 = 按图标位置自动取。 */
   minItemWidth: { type: Number, default: 0 },
   /* 手动指定每行列数（0 = 自动按内容宽度算）。多行能力本身一直保留。 */
-  columns: { type: Number, default: 0 }
+  columns: { type: Number, default: 0 },
+  /* 多行时最多显示几行（默认 3），超出后在控件内纵向滚动 */
+  maxRows: { type: Number, default: 3 }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -154,7 +156,7 @@ function pick(option) {
         'is-icon-top': iconPlacement === 'top',
         'is-icon-only': !showLabels && hasIcons
       }"
-      :style="{ '--seg-cols': columns }"
+      :style="{ '--seg-cols': columns, '--seg-max-rows': maxRows }"
       role="group"
     >
       <span
@@ -175,6 +177,8 @@ function pick(option) {
         :disabled="!!option.disabled"
         @click="pick(option)"
       >
+        <!-- 图标统一套一层容器（leading 也进容器）：圆角底 + 平滑过渡，
+             不再让原始 SVG 裸露在按钮里 -->
         <span v-if="option.icon" class="ui-segmented__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" v-html="option.icon"></svg>
         </span>

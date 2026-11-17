@@ -17,104 +17,105 @@ const emit = defineEmits(['update:open', 'open', 'close'])
 
 /* ============================================================
    通用形变容器：「按钮点一下切换成一个组件」。
-   这是形变语言的泛用形态 —— 不再局限于「按钮变成输入框」：
    · 外壳只做几何过渡（宽高 / 圆角 / 底色），走 view 弹簧；
    · 收起态 = 一个按钮（#trigger 可换成任意内容）；
    · 展开态 = 默认插槽里的任何组件从模糊中浮现（内容替换语言），
      作用域带 close，点外部 / Esc 收起，收起途中可打断。
-   尺寸靠实测：收起量按钮、量内容，所以任何内容都不会被裁。
+   尺寸靠实测：收起量按钮、展开量内容。
+   关键：**按钮的自然尺寸只在收起态记录**，展开态一律不覆盖，
+   否则收起时会拿展开后的宽度当按钮宽度（就是「收不回去」的根因）。
    ============================================================ */
 
 const rootEl = ref(null)
 const triggerEl = ref(null)
 const bodyEl = ref(null)
-const inner = { w: 0, h: 0 }
-const outer = { w: 0, h: 0 }
+/* 按钮自然尺寸（只在收起态更新，且初始化后不再被展开态污染） */
+const trigger = { w: 0, h: 0 }
+/* 内容自然尺寸（展开态更新） */
+const content = { w: 0, h: 0 }
 const size = ref({ w: 0, h: 0 })
-const shadow = ref(false)
 const localOpen = ref(!!props.open)
 const isOpen = () => (props.open === undefined ? localOpen.value : props.open)
 
 let observer = null
 
-function measure() {
-  if (!rootEl.value) return
-  /* 收起态尺寸：按钮本体。展开态 trigger 被 min-width:100% 拉到外壳宽度，
-     那时不能刷新 outer，否则收起时按钮尺寸被外壳污染。 */
-  if (!isOpen() && triggerEl.value) {
-    outer.w = triggerEl.value.offsetWidth
-    outer.h = triggerEl.value.offsetHeight
-  }
-  /* 内容自然尺寸：body 平时被外壳裁剪，量之前临时放开成 max-content。 */
+/* 量按钮真实尺寸：只在收起态量（展开态按钮被拉伸，量出来是外壳宽度） */
+function measureTrigger() {
+  const el = triggerEl.value
+  if (!el) return
+  const prevWidth = el.style.width
+  const prevHeight = el.style.height
+  /* 展开态按钮被 CSS 拉满，量之前临时还原成内容宽度 */
+  el.style.width = 'max-content'
+  el.style.height = 'auto'
+  trigger.w = el.offsetWidth
+  trigger.h = el.offsetHeight
+  el.style.width = prevWidth
+  el.style.height = prevHeight
+}
+
+/* 量内容自然尺寸：平时被外壳裁剪，量之前临时放开 */
+function measureContent() {
   const body = bodyEl.value
-  if (body) {
-    const prevWidth = body.style.width
-    const prevHeight = body.style.height
-    body.style.width = 'max-content'
-    body.style.height = 'max-content'
-    inner.w = body.offsetWidth
-    inner.h = body.offsetHeight
-    body.style.width = prevWidth
-    body.style.height = prevHeight
-  }
-  applySize()
+  if (!body) return
+  const prevWidth = body.style.width
+  const prevHeight = body.style.height
+  body.style.width = 'max-content'
+  body.style.height = 'max-content'
+  content.w = body.offsetWidth
+  content.h = body.offsetHeight
+  body.style.width = prevWidth
+  body.style.height = prevHeight
 }
 
 function applySize() {
   if (isOpen()) {
     size.value = {
-      w: Math.max(outer.w, inner.w, props.minWidth),
-      h: Math.max(outer.h, inner.h, props.minHeight)
+      w: Math.max(trigger.w, content.w, props.minWidth),
+      h: Math.max(trigger.h, content.h, props.minHeight)
     }
   } else {
-    size.value = { w: outer.w, h: outer.h }
+    size.value = { w: trigger.w, h: trigger.h }
   }
 }
 
-/* 内容尺寸变化（例如插槽里是输入框 / 网格）时重新量。 */
+function measure() {
+  if (!rootEl.value) return
+  if (!isOpen()) measureTrigger()
+  measureContent()
+  applySize()
+}
+
 function observeBody() {
   if (observer) observer.disconnect()
   if (!bodyEl.value || typeof ResizeObserver === 'undefined') return
   observer = new ResizeObserver(() => {
-    outer.w = triggerEl.value ? triggerEl.value.offsetWidth : outer.w
-    outer.h = triggerEl.value ? triggerEl.value.offsetHeight : outer.h
-    /* 内容变化时重新量自然尺寸（量法本身会临时放开宽高）。 */
-    const body = bodyEl.value
-    if (!body) return
-    const prevWidth = body.style.width
-    const prevHeight = body.style.height
-    body.style.width = 'max-content'
-    body.style.height = 'max-content'
-    inner.w = body.offsetWidth
-    inner.h = body.offsetHeight
-    body.style.width = prevWidth
-    body.style.height = prevHeight
-    applySize()
+    /* 展开态内容变化：只重量内容，不动按钮尺寸 */
+    if (isOpen()) {
+      measureContent()
+      applySize()
+    }
   })
   observer.observe(bodyEl.value)
-  if (triggerEl.value) observer.observe(triggerEl.value)
 }
 
 function setOpen(value) {
   if (props.open === undefined) localOpen.value = value
   emit('update:open', value)
-  value ? emit('open') : emit('close')
+  if (value) emit('open')
+  else emit('close')
   if (value) {
-    nextTick(() => { measure(); observeBody() })
+    /* 展开：先量内容，按钮尺寸沿用收起态记录的 */
+    nextTick(() => { measureContent(); applySize(); observeBody() })
   } else {
-    /* 收起：立刻回到按钮自然尺寸（inner 尺寸保留，下次展开免重测）。 */
-    applySize()
+    /* 收起：先量按钮（此时已经回到收起态布局），再缩回按钮尺寸 */
+    nextTick(() => { measureTrigger(); applySize() })
   }
 }
 
 function toggle() {
   if (props.disabled) return
-  const next = !isOpen()
-  setOpen(next)
-  if (next) {
-    /* 展开后再量一次：内容刚可见时才有真实尺寸 */
-    nextTick(() => { measure(); observeBody() })
-  }
+  setOpen(!isOpen())
 }
 
 function close() { setOpen(false) }
@@ -136,13 +137,15 @@ document.addEventListener('keydown', onKeydown)
 
 watch(() => props.open, value => {
   if (value === undefined) return
-  if (value) nextTick(() => { measure(); observeBody() })
+  if (value) nextTick(() => { measureContent(); applySize(); observeBody() })
+  else nextTick(() => { measureTrigger(); applySize() })
 })
 
-/* 首帧后量一次：收起态尺寸 = 按钮本体。 */
+/* 首帧：量按钮（收起态尺寸 = 按钮本体） */
 onMounted(() => {
   nextTick(() => {
-    measure()
+    measureTrigger()
+    applySize()
     observeBody()
   })
 })
@@ -207,54 +210,43 @@ defineExpose({ open: () => setOpen(true), close, measure })
 .ui-morph-panel.is-open:focus-within { border-color: var(--primary); }
 .ui-morph-panel.is-disabled { opacity: .42; }
 
+/* 收起态：按钮占满外壳；展开态：按钮淡出、不再吃点击 */
 .ui-morph-panel__trigger {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  /* 始终按按钮内容取自然尺寸：展开态 trigger 淡出，不需要铺满。 */
-  width: max-content;
-  height: max-content;
-  padding: 8px 14px;
+  gap: 6px;
+  width: auto;
   border: 0;
-  background: transparent;
-  color: var(--on-surface);
-  font-size: var(--fs-small);
-  font-weight: var(--w-label);
-  white-space: nowrap;
+  background: none;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
-  transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-feedback);
+  transition: opacity var(--t-fade), filter var(--t-fade);
 }
-.ui-morph-panel__trigger:hover { background: var(--surface-container-high); }
-.ui-morph-panel__trigger:active { transform: scale(var(--press-scale)); }
 .ui-morph-panel.is-open .ui-morph-panel__trigger {
   opacity: 0;
-  filter: blur(8px);
+  filter: blur(6px);
   pointer-events: none;
+  user-select: none;
 }
 
+/* 展开态内容：从模糊中浮现 */
 .ui-morph-panel__body {
   position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-.ui-morph-panel__content {
-  height: 100%;
-  padding: 10px 12px;
+  left: 0;
+  top: 0;
+  min-width: 100%;
+  pointer-events: none;
   opacity: 0;
   filter: blur(10px);
-  transform: translateY(6px);
-  pointer-events: none;
   transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-panel);
+  transform: scale(.98);
 }
-.ui-morph-panel.is-open .ui-morph-panel__content {
+.ui-morph-panel.is-open .ui-morph-panel__body {
+  pointer-events: auto;
   opacity: 1;
   filter: blur(0);
   transform: none;
-  pointer-events: auto;
-  transition-delay: 90ms;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .ui-morph-panel__content { transition-delay: 0ms; filter: none; }
-}
+.ui-morph-panel__content { display: flex; align-items: center; gap: 8px; }
 </style>

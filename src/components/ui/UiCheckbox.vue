@@ -4,18 +4,21 @@ defineProps({
   label: { type: String, default: '' },
   description: { type: String, default: '' },
   /* 删除线变体：勾选后一条线从左往右划过文字 */
-  strike: { type: Boolean, default: false }
+  strike: { type: Boolean, default: false },
+  /* 单个禁用 */
+  disabled: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue'])
 </script>
 
 <template>
-  <label class="ui-check" :class="{ 'is-strike': strike, 'is-on': modelValue }">
+  <label class="ui-check" :class="{ 'is-strike': strike, 'is-on': modelValue, 'is-disabled': disabled }">
     <input
       type="checkbox"
       :checked="modelValue"
-      @change="emit('update:modelValue', $event.target.checked)"
+      :disabled="disabled"
+      @change="!disabled && emit('update:modelValue', $event.target.checked)"
     >
     <span class="ui-check__box" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
@@ -50,6 +53,9 @@ const emit = defineEmits(['update:modelValue'])
 .ui-check.is-strike.is-on .ui-check__label::after { transform: scaleX(1); opacity: .78; }
 .ui-check.is-strike.is-on .ui-check__label { color: var(--on-surface-variant); }
 .ui-check.is-strike.is-on .ui-check__desc { text-decoration: line-through; text-decoration-thickness: 1px; opacity: .6; }
+
+.ui-check.is-disabled { opacity: .45; cursor: not-allowed; }
+.ui-check.is-disabled .ui-check__label { color: var(--on-surface-variant); }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-check.is-strike .ui-check__label::after { transition-duration: .01ms; }
