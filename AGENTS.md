@@ -460,4 +460,27 @@ npm run build:lib    # 库产物 -> dist/
 
 发布新版本需要人工确认（改 `package.json` 的 `version` → `npm publish`），不要自动执行。
 
+# 演示应用的结构（本仓库的 src/views/）
+
+演示应用**不是组件清单页**——清单页只当参考。真实场景按业务分屏，每个组件都在某个真实场景里被用过：
+
+| 路由 | 文件 | 场景 | 承载的组件族 |
+| --- | --- | --- | --- |
+| `/home` | `HomeView` | 今日要点轮播 + 快捷入口 + 步数 / 心率 / 睡眠 / 指标（可展开成子路由） | 展开卡片族、轮播、图表 |
+| `/chat` | `ChatView` | 与 Zero 的对话：Markdown 正文、@提及、流式回复、输入区形变 | Chat 组件族、渐进模糊、Markdown |
+| `/activity` | `ActivityView` | 运动记录：类型筛选、批量多选、划开式行、删除确认 | 列表交互族、表单、模态 |
+| `/trends` | `TrendsView` | 时间范围 + 指标切换 + 图表全家桶 + 分栏 + 步骤流 + 虚拟列表 | 可视化族、布局族 |
+| `/profile` | `ProfileView` | 偏好设置：表单、开关、步进器、滑块、评分、颜色、树、表格、时间线 | 设置类组件族 |
+| `/lab` | `LabView` | 输入型与展示型组件的实验台：验证码、拖放、代码、schema、终端、导航 | 输入 / 展示族 |
+
+**三个审计脚本**（仓库根目录，改完跑一遍）：
+
+```bash
+node audit-imports.cjs   # 模板里用到的 <UiXxx> 是否都在本文件 import 了
+node audit-props.cjs     # 静态属性的值与组件声明的 prop 类型是否匹配
+node audit-scene.cjs     # 有哪些组件还没进入真实场景页
+```
+
+前两个不是可选的：Vue 遇到未导入的组件**只告警不报错**，页面直接白屏；prop 类型不符同样只是告警，很容易被刷过去的警告淹没。
+
 > **skill 随包分发**：npm 包内自带 `skills/zero-ai-ui/SKILL.md`（速查版约定）与 `AGENTS.md`（完整规范）。消费端的 AI Agent 先加载 SKILL.md / AGENTS.md 再动手，就不会发明样式或踩已知坑；两个文件随包一起更新。

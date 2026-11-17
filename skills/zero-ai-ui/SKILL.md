@@ -44,6 +44,7 @@ createApp(App).mount('#app')
 18. **对话流用 Chat 组件族**：`UiChatThread`（自带滚动 + 贴底 + 跟随）+ `UiChatMessage`（assistant 无气泡 / user 右上收窄 / agent 左上收窄，收窄角指向说话人）+ `UiChatSystemLine`（0.4 不透明度的活动行 / 状态行）。**正文走 MarkdownView**（`content` + `mention-resolver`），`@名字` 由它渲染成 `UiAvatarTag`（`reveal` 入场：头像弹出 + 标签左→右展开）——不要另写 mention 组件，也不要给消息头像加圆形底或裁切。
 19. **页面顶 / 底渐变模糊用 `UiProgressiveBlur`**：N 层 backdrop-filter + 软边 mask，模糊向内线性衰减；全部 pointer-events:none，不会挡住滚动内容。
 20. **不要手写应用外壳**：`ZeroApp` 已经内建 `#scrollArea` + 顶底溢出模糊 + TabBar 占位 + 居中限宽；局部滚动区用 `ZeroScroll`。这两个是「约定优于配置」的入口——新项目包一层就有正确的滚动与边缘模糊，不要逐页再配 `UiProgressiveBlur`，也不要自己写 `overflow-y:auto` 容器。
+21. **改完跑审计脚本**：`node audit-imports.cjs`（模板组件未导入 = 白屏，Vue 只告警）、`node audit-props.cjs`（prop 类型不符 = 一条容易被刷过去的警告）、`node audit-scene.cjs`（还有哪些组件没进真实场景）。演示应用按业务分屏（home / chat / activity / trends / profile / lab），不是组件清单页。
 17. **Markdown 用 MarkdownView**：需要 @ 提及时传 `mentions` + `mentionResolver`，返回 `{ username, showname, type: 'normal'|'agent', image, shape }`，自动渲染成 UiAvatarTag。
 
 ## 组件速查（完整 99 个见 AGENTS.md 第 2 节）
