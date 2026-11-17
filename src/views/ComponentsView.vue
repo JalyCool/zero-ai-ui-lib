@@ -6,7 +6,7 @@ import {
   MarkdownView, UiLink,
   UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
-  UiText, UiToolCallChip, UiTooltipGroup,
+  UiText, UiTooltipGroup,
   UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
   UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
   UiRingSlider, UiSchemaForm, UiSearchField, UiSegmented, UiSelect, UiSkeleton,
@@ -260,14 +260,6 @@ const search = ref('')
 const rotateIndex = ref(0)
 const rotatingPhrases = ['已同步 3 项记录', '今天比昨天多走 1800 步', '连续 7 天达标', '下周目标：每天 8000 步']
 
-const toolStatus = ref('running')
-let toolTimer = 0
-function runTool(demo) {
-  clearTimeout(toolTimer)
-  toolStatus.value = 'running'
-  toolTimer = setTimeout(() => { toolStatus.value = demo === 'error' ? 'error' : 'success' }, 2600)
-}
-
 const statusStep = ref('none')
 /* null = 没有实际进度（转圈）；数字 = 实际进度 0~1 */
 const statusProgress = ref(null)
@@ -355,12 +347,17 @@ const tooltipItems = [
   { label: '设置', tip: '训练目标与提醒', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 3l1.4 2.5 2.8-.7 1.1 2.7 2.7 1.1-.7 2.8L21 12l-1.7 2.6.7 2.8-2.7 1.1-1.1 2.7-2.8-.7L12 21l-1.4-2.5-2.8.7-1.1-2.7-2.7-1.1.7-2.8L3 12l1.7-2.6-.7-2.8 2.7-1.1 1.1-2.7 2.8.7z"/>' }
 ]
 const swipeLog = ref('尚未操作')
+/* 向左划露出右侧操作；向右划露出左侧操作 */
 const swipeActions = [
   { label: '置顶', tone: 'neutral', icon: '<path d="M12 4v16M6 10l6-6 6 6"/>' },
   { label: '删除', tone: 'danger', icon: '<path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/>' }
 ]
-function onSwipeAction({ action, full }) {
-  swipeLog.value = full ? `整行划到底：${action.label}` : `点击操作：${action.label}`
+const swipeLeftActions = [
+  { label: '完成', tone: 'success', icon: '<path d="M5 13l4 4L19 7"/>' }
+]
+/* commit 事件带 { action, full }；action 事件只带 action */
+function onSwipeCommit({ action, full }) {
+  swipeLog.value = (full ? '划到底执行：' : '点击执行：') + action.label
 }
 
 const cardItems = [
@@ -1377,17 +1374,6 @@ watch(activeSection, id => {
           <span class="lib-cell__note">打字机逐字符进场（透明度 + 模糊，另有淡入 / 升起两档），光标四档；掠光有柔和与金属两档；渐变有扫过 / 漂移 / 锥形三种。</span>
         </div>
         <div class="lib-cell">
-          <span class="lib-cell__label">工具调用胶囊 <small>ToolCallChip</small></span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiToolCallChip name="search_web" detail="q=运动记录" :status="toolStatus" :expected="2.6" />
-            <div class="lib-cell__stage">
-              <UiButton size="sm" variant="tonal" @click="runTool('success')">重跑（成功）</UiButton>
-              <UiButton size="sm" variant="outline" @click="runTool('error')">重跑（失败）</UiButton>
-            </div>
-          </div>
-          <span class="lib-cell__note">填充随计时擦过；成功补满转绿，失败转红并抖动。</span>
-        </div>
-        <div class="lib-cell">
           <span class="lib-cell__label">状态标记（状态机） <small>StatusMark</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <div class="lib-cell__stage">
@@ -1437,13 +1423,19 @@ watch(activeSection, id => {
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">划开式列表行 <small>SwipeRow</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiSwipeRow :actions="swipeActions" :once="true" @action="onSwipeAction">
+            <UiSwipeRow :actions="swipeActions" :left-actions="swipeLeftActions" full-swipe collapse-on-action @commit="onSwipeCommit">
               <div class="lib-row">
                 <b>晨跑 5.2 公里</b>
                 <span>32 分钟 · 268 kcal</span>
               </div>
             </UiSwipeRow>
-            <span class="lib-muted">{{ swipeLog }}（向左划开露出操作，划到底直接执行最后一个）</span>
+            <UiSwipeRow :actions="swipeActions" :left-actions="swipeLeftActions" @commit="onSwipeCommit">
+              <div class="lib-row">
+                <b>力量训练</b>
+                <span>上肢 · 4 组（不开划到底）</span>
+              </div>
+            </UiSwipeRow>
+            <span class="lib-muted">{{ swipeLog }}（向左划 = 右侧操作，向右划 = 左侧操作；第一行开了划到底，执行后整行折叠消失）</span>
           </div>
         </div>
         <div class="lib-cell lib-cell--span">
@@ -1478,7 +1470,7 @@ watch(activeSection, id => {
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiButton variant="fuse" :undo-window="4200" @click="buttonLog = 'fuse 点击'" @commit="buttonLog = 'fuse 已落定'" @undo="buttonLog = 'fuse 已撤销'">删除记录</UiButton>
             <UiButton variant="hold" :hold-time="1100" @confirm="buttonLog = 'hold 已确认'">按住确认</UiButton>
-            <UiButton variant="fuse" fuse-position="bottom" :undo-window="3600" @click="buttonLog = 'fuse 底部进度条'">保险丝 · 底部反向进度</UiButton>
+
             <UiButton variant="slide" :slide-threshold="56" :loading="slideLoading" @confirm="startSlide">滑动发布</UiButton>
             <span class="lib-muted">{{ buttonLog }}</span>
           </div>

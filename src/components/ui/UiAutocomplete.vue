@@ -165,7 +165,10 @@ async function openMenu(byKeyboard = false) {
     openedBox = fixedStyle({ left: Math.round(left), top: Math.round(top), width: rect.width, height: targetH })
     surface.value = { ...openedBox }
     open.value = true
-    active.value = filtered.value.length ? 0 : -1
+    /* 展开时把高亮落在「当前已选中的那一项」上，而不是永远回到第一项 ——
+       重新展开时用户一眼能看到现在的值在列表哪里。 */
+    const chosen = filtered.value.findIndex(o => String(o.label) === String(props.modelValue) || String(o.value) === String(props.modelValue))
+    active.value = chosen >= 0 ? chosen : (filtered.value.length ? 0 : -1)
     nextTick(() => {
       if (panelInput.value) panelInput.value.focus({ preventScroll: true })
       if (byKeyboard) scrollActive()
@@ -390,7 +393,7 @@ onBeforeUnmount(() => {
               type="button"
               role="option"
               :aria-selected="index === active"
-              :class="{ 'is-active': index === active }"
+              :class="{ 'is-active': index === active, 'is-chosen': String(option.label) === String(modelValue) || String(option.value) === String(modelValue) }"
               @mousedown.prevent="choose(option)"
               @mouseenter="active = index"
             >
@@ -592,6 +595,18 @@ onBeforeUnmount(() => {
   transition: background var(--t-fade), color var(--t-fade);
 }
 .ui-auto__list button.is-active { background: var(--surface-container-low); color: var(--primary); }
+/* 已选中的项：右侧勾 + 主色文字，重新展开时一眼看到当前值 */
+.ui-auto__list button.is-chosen { color: var(--primary); font-weight: var(--w-strong); }
+.ui-auto__list button.is-chosen::after {
+  content: '';
+  width: 12px;
+  height: 7px;
+  margin-left: auto;
+  flex-shrink: 0;
+  border-left: 2px solid var(--primary);
+  border-bottom: 2px solid var(--primary);
+  transform: rotate(-45deg) translateY(-3px);
+}
 .ui-auto__option-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ui-auto__list small { flex-shrink: 0; color: var(--on-surface-variant); font-size: var(--fs-micro); }
 .ui-auto__empty { padding: 12px 10px; color: var(--on-surface-variant); font-size: var(--fs-tiny); text-align: center; }

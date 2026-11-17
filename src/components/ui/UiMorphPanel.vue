@@ -120,9 +120,10 @@ function toggle() {
 
 function close() { setOpen(false) }
 
+/* 测量失败（0）时不写变量：CSS 回退 auto，组件不会塌成 0 宽 0 高 */
 const shellStyle = () => ({
-  '--mp-w': size.value.w + 'px',
-  '--mp-h': size.value.h + 'px'
+  '--mp-w': size.value.w > 0 ? size.value.w + 'px' : 'auto',
+  '--mp-h': size.value.h > 0 ? size.value.h + 'px' : 'auto'
 })
 
 function onDocPointer(event) {

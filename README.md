@@ -66,7 +66,7 @@ const options = [
 
 导航：`UiTabBar`（移动端贴底铺满整宽、桌面端贴左竖排铺满整高，两套定位互斥不冲突）
 
-动效与手势：`UiRotatingText`（循环短语）、`UiText`（打字机 / 掠光 / 流动渐变）、`UiStatusMark`、`UiToolCallChip`、`UiCodeSlots`、`UiScrubField`、`UiSwipeRow`、`UiStepFlow`、`UiTooltipGroup`、`UiCardGroup`（8 种形态）
+动效与手势：`UiRotatingText`（循环短语）、`UiText`（打字机 / 掠光 / 流动渐变）、`UiStatusMark`、`UiCodeSlots`、`UiScrubField`、`UiSwipeRow`、`UiStepFlow`、`UiTooltipGroup`、`UiCardGroup`（8 种形态）
 
 交互基座：`UiMorphPanel`（泛用「按钮 ⇄ 任意组件」形变容器）、`UiWheel`（通用多列波轮基座，时间 / 日期波轮共用）
 

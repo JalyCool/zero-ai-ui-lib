@@ -112,13 +112,40 @@ const parts = ref(splitParts(current.value))
 const hourItems = Array.from({ length: 24 }, (_, i) => pad(i))
 const minuteItems = Array.from({ length: 60 }, (_, i) => pad(i))
 
+/* 列级联边界：min/max 先拆成时分秒，再按「上层列已定值」算出每列的合法区间。
+   例：min = 09:30:15 —— 时列 ≥ 09；时列 = 09 时分列 ≥ 30；时 = 09 分 = 30 时秒列 ≥ 15。 */
+function boundsFor(level) {
+  const lo = toSeconds(props.min)
+  const hi = toSeconds(props.max)
+  const cur = [Number(parts.value.h || 0), Number(parts.value.m || 0), Number(parts.value.s || 0)]
+  const pick = (bound, side) => {
+    if (bound === null) return null
+    const b = [Math.floor(bound / 3600), Math.floor((bound % 3600) / 60), bound % 60]
+    /* 逐层比较上层已定值：相等就继续看下一层。
+       min 侧：界在该层 < 当前（已脱离下界）→ 本层自由 0；界 > 当前（非法态）→ 钉到界值。
+       max 侧：界 > 当前（没顶到上限）→ 本层自由 59；界 < 当前 → 钉到界值。 */
+    for (let i = 0; i < level; i += 1) {
+      if (b[i] === cur[i]) continue
+      if (side === 'min') return b[i] < cur[i] ? 0 : b[i]
+      return b[i] > cur[i] ? 59 : b[i]
+    }
+    return b[level]
+  }
+  const minV = pick(lo, 'min')
+  const maxV = pick(hi, 'max')
+  return { min: minV === null ? undefined : minV, max: maxV === null ? undefined : maxV }
+}
+
 const columns = computed(() => {
-  const list = [{ items: hourItems, value: parts.value.h, label: '小时', separator: props.precision !== 'h' ? ':' : '' }]
+  const hour = boundsFor(0)
+  const list = [{ items: hourItems, value: parts.value.h, label: '小时', separator: props.precision !== 'h' ? ':' : '', min: hour.min, max: hour.max }]
   if (props.precision !== 'h') {
-    list.push({ items: minuteItems, value: parts.value.m, label: '分钟', separator: props.precision === 's' ? ':' : '' })
+    const minute = boundsFor(1)
+    list.push({ items: minuteItems, value: parts.value.m, label: '分钟', separator: props.precision === 's' ? ':' : '', min: minute.min, max: minute.max })
   }
   if (props.precision === 's') {
-    list.push({ items: minuteItems, value: parts.value.s, label: '秒' })
+    const second = boundsFor(2)
+    list.push({ items: minuteItems, value: parts.value.s, label: '秒', min: second.min, max: second.max })
   }
   return list
 })
@@ -203,7 +230,7 @@ watch(() => props.precision, () => {
         'is-floating': floating,
         'is-compressed': compressed
       }"
-      :style="style"
+      :style="{ ...style, '--time-value-w': precision === 's' ? '8.2ch' : precision === 'h' ? '2.6ch' : '5.4ch' }"
     >
       <div class="ui-time__view ui-morph__view" :style="viewStyle">
         <button
@@ -252,6 +279,8 @@ watch(() => props.precision, () => {
             :interactive="open"
             @change="onWheelChange"
           />
+          <!-- min / max 已折算进每列的级联界（column.min / column.max），
+               波轮据此禁用越界项并把滚动钉在合法范围 -->
 
           <div
             v-if="normalizedPresets.length"
@@ -373,8 +402,10 @@ watch(() => props.precision, () => {
 .ui-time__icon svg { width: 17px; height: 17px; }
 .ui-time__value {
   flex: 1;
-  /* 预留最宽形态「00:00:00」的宽度：precision 在 h/m/s 之间切换时输入框不抖动 */
-  min-width: 8.2ch;
+  /* 按精度预留该精度最宽形态的宽度（h=「00」、m=「00:00」、s=「00:00:00」）：
+     同一精度内数值变化不抖。只给 min-width，不给 width——
+     定宽会在窄容器里把「09:00:00」截成「09:00:」 */
+  min-width: var(--time-value-w, 5.4ch);
   text-align: left;
   font-size: var(--fs-small);
   font-family: var(--font-numeric);

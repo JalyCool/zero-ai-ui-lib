@@ -692,8 +692,10 @@ onBeforeUnmount(() => {
 .ui-select__glide {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  /* 与 panel-inner 的 6px 内间距对齐：之前 left/right 归 0，
+     高亮块盖穿 padding 贴面板边缘，看起来像面板没有左右内间距 */
+  left: 6px;
+  right: 6px;
   z-index: 0;
   border-radius: calc(10px * var(--radius-scale));
   background: var(--surface-container-low);

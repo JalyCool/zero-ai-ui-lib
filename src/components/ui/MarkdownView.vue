@@ -222,7 +222,7 @@ watch(() => props.content, () => {
     const before = shownText.get(id)
     if (before === undefined) {
       /* 整块第一次出现：整段都算新内容 */
-      fresh.set(id, text)
+      fresh.set(id, { text, whole: true })
     } else {
       const beforeChars = Array.from(before)
       const afterChars = Array.from(text)
@@ -239,17 +239,31 @@ watch(() => props.content, () => {
   freshChunks.value = fresh
 }, { immediate: true })
 
-/* 渲染完成后把最终高度缓存成 min-height（高度只增不减，不会抖） */
+/* 渲染完成后把高度缓存成 min-height：增长时不缩（下方内容不被顶得上下跳）。
+   但内容变短 = 新一轮流式从头开始，此时上一轮全文的高度必须清零 ——
+   流式中根本不知道总长度，占着旧全文高度就是错的。 */
 watch(freshChunks, async () => {
   if (!props.streaming) return
   await nextTick()
   const el = rootEl.value
-  if (el && el.offsetHeight > reserveHeight.value) reserveHeight.value = el.offsetHeight
+  if (!el) return
+  const h = el.offsetHeight
+  if (h > reserveHeight.value) {
+    reserveHeight.value = h
+  } else if (h < reserveHeight.value * 0.6) {
+    /* 明显变短（重新开播）：跟着缩，不留大片空白 */
+    reserveHeight.value = h
+  }
 })
 
-/* 给新增文字打上 rise。
-   新增的那一段可能落在块里的任意深度（段落的直接文本、列表项、表格单元格…），
-   所以先算「这个块总共新增了哪些字」，再从末尾往前把对应长度的文本包起来。 */
+/* ---------- 流式进场：滑动窗口逐字 ----------
+   旧实现的毛病：整段新增文字包在一个 span 里，下一帧这段被并进 head 纯文本，
+   动画播到一半直接落定 —— 看起来就是「字跳出来」。
+   新实现：块末尾 K 个字符各包一个 span，key = 块内绝对索引（字符身份稳定）。
+   新字进来窗口滑动，出窗的字符动画早已播完（K 按最长出字速度覆盖 240ms），
+   并回纯文本时没有任何视觉跳变。 */
+const WINDOW_CHARS = 40   /* ~5 帧（8 字 / 70ms）的窗口，动画 240ms 足够播完 */
+
 function withStreaming(tree) {
   if (!props.streaming) return tree
   const typeCount = new Map()
@@ -260,117 +274,68 @@ function withStreaming(tree) {
     const seq = typeCount.get(type) || 0
     typeCount.set(type, seq + 1)
     const id = type + "#" + seq
-    const fresh = freshChunks.value.get(id)
-    if (!fresh) return child
-    /* 从块末尾倒数 fresh.length 个字符开始包：deepMark 递归找到那个位置 */
-    let remaining = fresh
-    const nextChildren = markTail(child.children, remaining)
-    return h(child.type, { ...child.props, class: [child.props.class, "ui-md-streaming"].filter(Boolean).join(" ") }, nextChildren)
+    const entry = freshChunks.value.get(id)
+    if (!entry) return child
+    if (entry.whole) {
+      /* 整块第一次出现：块级进场（stream-effect），块内文字不再逐字 */
+      return h(child.type, {
+        ...child.props,
+        class: [child.props.class, "ui-md-fresh", "is-fresh-" + props.streamEffect].filter(Boolean).join(" ")
+      }, child.children)
+    }
+    return h(child.type, { ...child.props }, windowTail(child.children, id))
   })
 }
 
-/* 每包一段新文字取一个全局递增 key：保证是全新 DOM 节点，animation 必然重播。 */
-let freshSeq = 0
-
-/* 递归地把「末尾 n 个字符」包进 rise。
-   坑：新增文本可能跨越节点边界（普通文本 + <strong> 里各一部分），
-   span 必须插在被替换文本的**原位置**，不能 append 到数组末尾 ——
-   否则文字顺序会乱（「好」跑到 strong 后面）。 */
-function markTail(children, fresh) {
-  if (!Array.isArray(children) || !children.length || !fresh.length) return children
-  const out = children.slice()
-  let need = Array.from(fresh).length
-  for (let i = out.length - 1; i >= 0 && need > 0; i -= 1) {
-    const node = out[i]
-    const isText = typeof node === "string" || typeof node === "number"
-    if (isText) {
-      const text = String(node)
-      const chars = Array.from(text)
-      /* 这一段能吃掉的新增字符数 */
-      const take = Math.min(chars.length, need)
-      const head = chars.slice(0, chars.length - take).join("")
-      const tail = chars.slice(chars.length - take).join("")
-      /* span 插回这个文本节点原来的位置。
-         key 必须带内容而不是索引：每帧新增段不同 → key 不同 → Vue 判定是新节点
-         → DOM 真正重新插入 → CSS animation 才会重新播。用索引 key 时节点被复用，
-         动画只在第一次插入播一遍，之后就「直接闪现、一点动画都没有」。 */
-      out.splice(i, 1, head, h("span", { class: "ui-md-fresh-text is-rise", key: "fresh-" + (freshSeq += 1) }, tail))
-      need -= take
-      continue
+/* 把「最后一个文本位置」的末尾窗口字符包成逐字 span（递归找最后一个有文本的节点） */
+function windowTail(children, blockId) {
+  if (!Array.isArray(children)) return children
+  /* 找最后一个文本落点（字符串 / 字符串 children 的 vnode / 数组 / 嵌套 vnode） */
+  for (let i = children.length - 1; i >= 0; i -= 1) {
+    const node = children[i]
+    if (typeof node === "string" && node.length) {
+      const out = children.slice()
+      out[i] = wrapWindow(node, blockId, i)
+      return out
     }
-    /* h('code', {}, '文本') / h('strong', {}, '文本')：children 是字符串的 vnode。
-       之前这种节点会被整段跳过（既不是 string 也不是数组 children），
-       行内代码在段落末尾时新字完全没有动画。这里当文本处理但包回原标签。 */
-    if (node && typeof node.children === "string" && node.children.length) {
-      const chars = Array.from(node.children)
-      const take = Math.min(chars.length, need)
-      const head = chars.slice(0, chars.length - take).join("")
-      const tail = chars.slice(chars.length - take).join("")
-      const wrap = inner => h(node.type, { ...node.props }, inner)
-      out.splice(i, 1,
-        head ? wrap(head) : null,
-        wrap(h("span", { class: "ui-md-fresh-text is-rise", key: "s-" + (freshSeq += 1) }, tail)))
-      need -= take
-      continue
-    }
-    /* renderInline 的产物是「数组的数组」：段落末尾的 child 本身就是数组。
-       之前只认 string 和 VNode，数组直接被跳过 —— 这就是「新字没有任何动画」的根因。 */
     if (Array.isArray(node)) {
-      const flatLen = Array.from(flatText(node)).length
-      if (flatLen === 0) continue
-      if (flatLen >= need) {
-        out.splice(i, 1, markTail(node, fresh))
+      if (flatText(node)) {
+        const out = children.slice()
+        out[i] = windowTail(node, blockId)
         return out
       }
-      out.splice(i, 1, markAll(node))
-      need -= flatLen
       continue
     }
-    if (node && Array.isArray(node.children)) {
-      const flatLen = Array.from(flatText(node.children)).length
-      if (flatLen === 0) continue
-      if (flatLen >= need) {
-        /* 新增全在这个子节点内部：递归进去，仍然插在原位 */
-        out.splice(i, 1, h(node.type, { ...node.props, key: node.key }, markTail(node.children, fresh)))
-        return out
-      }
-      /* 整个子节点都是新增的：全标动作 */
-      out.splice(i, 1, h(node.type, { ...node.props, key: node.key }, markAll(node.children)))
-      need -= flatLen
+    if (node && typeof node.children === "string" && node.children.length) {
+      const out = children.slice()
+      out[i] = h(node.type, { ...node.props }, wrapWindow(node.children, blockId, i))
+      return out
+    }
+    if (node && Array.isArray(node.children) && flatText(node.children)) {
+      const out = children.slice()
+      out[i] = h(node.type, { ...node.props, key: node.key }, windowTail(node.children, blockId))
+      return out
     }
   }
-  return out
+  return children
 }
-/* 整段都算新增：所有文本节点都包 rise */
-function markAll(children) {
-  if (!Array.isArray(children)) return children
-  return children.map((node, i) => {
-    if (typeof node === "string" && node.trim()) {
-      return h("span", { class: "ui-md-fresh-text is-rise", key: "all-" + (freshSeq += 1) }, node)
-    }
-    if (typeof node === "string") return node
-    if (Array.isArray(node)) return markAll(node)
-    if (node && Array.isArray(node.children)) {
-      return h(node.type, { ...node.props, key: node.key }, markAll(node.children))
-    }
-    return node
-  })
-}
-/* 把 VNode 子树拍平成文本，用于算块标识 */
-function flatText(children) {
-  if (!Array.isArray(children)) return ""
-  return children.map(c => {
-    if (typeof c === "string" || typeof c === "number") return String(c)
-    if (Array.isArray(c)) return flatText(c)
-    /* h('code', {}, '文本') 这类 vnode 的 children 是字符串，不是数组：
-       漏算它会让 markTail 的新增长度错位，把不该动的内容也包上动画。 */
-    if (c && typeof c.children === "string") return c.children
-    if (c && typeof c.children === "number") return String(c.children)
-    if (c && Array.isArray(c.children)) return flatText(c.children)
-    /* children 是单个 VNode（wrap 出来的 span）也要能算进去 */
-    if (c && c.children && typeof c.children === "object" && c.children.type) return flatText([c.children])
-    return ""
-  }).join("")
+
+/* 单段文本的末尾窗口：head 纯文本 + 每字一个 span（key 带块 id 与绝对索引，稳定身份） */
+function wrapWindow(text, blockId, slot) {
+  const chars = Array.from(text)
+  const from = Math.max(0, chars.length - WINDOW_CHARS)
+  const head = chars.slice(0, from).join("")
+  const nodes = []
+  if (head) nodes.push(head)
+  for (let j = from; j < chars.length; j += 1) {
+    nodes.push(h("span", {
+      class: "ui-md-fresh-text is-rise",
+      /* key 含块 id + 字符在块内的序号：字符首次入窗时节点插入 → 动画播一次；
+         之后每帧 key 不变 → 节点保留 → 动画自然播完，不会被并回文本打断 */
+      key: blockId + "@" + slot + "." + j
+    }, chars[j]))
+  }
+  return nodes
 }
 const Root = () => {
   if (!props.content || !props.content.trim()) return null

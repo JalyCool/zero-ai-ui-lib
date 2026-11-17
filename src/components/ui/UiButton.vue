@@ -13,7 +13,6 @@ const props = defineProps({
 
   /* ---- fuse ---- */
   undoWindow: { type: Number, default: 4000 },
-  fusePosition: { type: String, default: 'outline' },   /* outline = 烧一圈边；bottom = 底部引线 */
   doneLabel: { type: String, default: '已完成' },
   undoLabel: { type: String, default: '撤销' },
   settle: { type: String, default: 'reset' },           /* reset = 烧完回 idle；stay = 停在已完成 */
@@ -48,8 +47,6 @@ const emit = defineEmits(['click', 'confirm', 'commit', 'undo', 'done'])
    SVG 的 width/height 属性不认 calc()，rx 给大数会变成椭圆，
    所以这里实测按钮尺寸与 border-radius，生成圆角矩形 path。 */
 const rootEl = ref(null)
-const rim = ref({ w: 0, h: 0, r: 0, d: '' })
-let rimObserver = null
 
 function roundedRectPath(w, h, r) {
   const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2))
@@ -71,21 +68,9 @@ function roundedRectPath(w, h, r) {
   ].join(' ')
 }
 
-function measureRim() {
-  const el = rootEl.value
-  if (!el) return
-  const rect = el.getBoundingClientRect()
-  const style = getComputedStyle(el)
-  const radius = parseFloat(style.borderTopLeftRadius) || 0
-  rim.value = { w: Math.round(rect.width), h: Math.round(rect.height), r: radius, d: roundedRectPath(rect.width, rect.height, radius) }
-}
+
 
 onMounted(() => {
-  measureRim()
-  if (typeof ResizeObserver !== 'undefined' && rootEl.value) {
-    rimObserver = new ResizeObserver(() => measureRim())
-    rimObserver.observe(rootEl.value)
-  }
 })
 
 const isFuse = computed(() => props.variant === 'fuse')
@@ -228,7 +213,6 @@ function slideReset() {
 onBeforeUnmount(() => {
   clearTimeout(holdTimer)
   cancelAnimationFrame(holdRaf)
-  if (rimObserver) rimObserver.disconnect()
 })
 
 function onClick(event) {
@@ -298,18 +282,9 @@ defineExpose({
         <span class="ui-btn__label">{{ doneLabel }}</span>
       </span>
 
-      <svg
-        v-if="fusePosition === 'outline'"
-        class="ui-btn__rim"
-        :viewBox="'0 0 ' + rim.w + ' ' + rim.h"
-        :width="rim.w"
-        :height="rim.h"
-        aria-hidden="true"
-      >
-        <path :d="rim.d" pathLength="1" @transitionend="onFuseEnd" />
-      </svg>
+      <!-- 保险丝只有一种倒计时：与按住确认同语言的实心进度条、方向相反（满 -> 0）。
+           idle 期间整条不显示（opacity 0），点击上膛后才淡入并开始缩。 -->
       <span
-        v-else
         class="ui-btn__fuse-line"
         :class="fillDirection === 'up' ? 'is-up' : ''"
         aria-hidden="true"
@@ -419,53 +394,28 @@ defineExpose({
 .ui-btn--fuse.is-settled .ui-btn__face--idle { opacity: 0; }
 .ui-btn--fuse.is-settled .ui-btn__face--settled { opacity: 1; transform: none; }
 
-/* 烧边：outline 用 pathLength=1 的 rect，dashoffset 0 → -1 烧一整圈。
-   时长直接等于撤销窗口，所以「边烧完」与「可撤销结束」是同一刻。 */
-/* 用实测宽高做 svg 尺寸（不要 100% 拉伸，也不要 preserveAspectRatio=none：
-   一旦 viewBox 与实际尺寸不一致，圆角会被拉成椭圆、描边粗细也会不均）。 */
-.ui-btn__rim {
-  position: absolute;
-  left: 0;
-  top: 0;
-  pointer-events: none;
-  overflow: visible;
-  opacity: 0;
-  transition: opacity 140ms ease;
-}
-/* 保险丝只在「已上膛」期间出现，平时不应该看得见。 */
-.ui-btn--fuse.is-armed .ui-btn__rim { opacity: 1; }
-.ui-btn__rim path {
-  fill: none;
-  stroke: var(--ui-warning, #b45309);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-}
-.ui-btn--fuse.is-armed .ui-btn__rim path {
-  stroke-dashoffset: -1;
-  transition: stroke-dashoffset var(--undo-window) linear;
-}
-/* 倒计时进度：与「按住确认」同一套语言（实心填充条），方向相反 ——
-   从铺满缩回 0，表示撤销窗口正在关闭。 */
 /* 保险丝的倒计时进度条：与 hold 同一套实心填充，但方向相反 ——
-   hold 是「从 0 涨到满」，这里是「从满缩到 0」，都铺满整颗按钮的实心底。 */
+   hold 是「从 0 涨到满」，这里是「从满缩到 0」，铺满整颗按钮的实心底。
+   关键：idle 时整条 opacity 0（不显示），点击上膛后才淡入再开始缩，
+   否则未点击就铺着一条满进度，视觉上像已经触发过。 */
 .ui-btn__fuse-line {
   position: absolute;
   inset: 0;
   background: color-mix(in oklab, var(--ui-warning, #b45309) 32%, transparent);
   transform-origin: left center;
   transform: scaleX(1);
+  opacity: 0;
   pointer-events: none;
+  transition: opacity var(--t-fade);
 }
 .ui-btn__fuse-line.is-up { transform-origin: bottom center; }
 .ui-btn--fuse.is-armed .ui-btn__fuse-line {
+  opacity: 1;
   transform: scaleX(0);
-  transition: transform var(--undo-window) linear;
+  transition: transform var(--undo-window) linear, opacity 140ms ease;
 }
 .ui-btn--fuse.is-armed .ui-btn__fuse-line.is-up {
   transform: scaleY(0);
-  transition: transform var(--undo-window) linear;
 }
 
 /* ---------- hold ---------- */
@@ -572,8 +522,7 @@ defineExpose({
   .ui-btn__face,
   .ui-btn__slide-handle,
   .ui-btn__hold-fill { transition-duration: .01ms !important; }
-  .ui-btn--fuse.is-armed .ui-btn__rim rect,
-  .ui-btn--fuse.is-armed .ui-btn__fuse-line { transition-duration: var(--undo-window) linear !important; }
+    .ui-btn--fuse.is-armed .ui-btn__fuse-line { transition-duration: var(--undo-window) linear !important; }
   .ui-btn__slide-spin { animation: none; }
 }
 </style>

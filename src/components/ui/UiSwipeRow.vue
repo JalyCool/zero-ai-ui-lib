@@ -1,12 +1,14 @@
-<script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+﻿<script setup>
+import { computed, onBeforeUnmount, ref } from 'vue'
 
 const props = defineProps({
-  /* [{ id?, label, tone?: 'neutral'|'danger', icon?: SVG 标记 }] */
+  /* 右侧操作（向左划露出）：[{ id?, label, tone?: 'neutral'|'danger'|'success', icon?: SVG 标记 }] */
   actions: { type: Array, default: () => [] },
-  /* 拖过多少像素算「打开」 */
+  /* 左侧操作（向右划露出）：同样格式。两边都配了就是双向滑动。 */
+  leftActions: { type: Array, default: () => [] },
+  /* 拖过多少比例算「打开」 */
   threshold: { type: Number, default: 0.42 },
-  /* 划到底直接执行最后一个操作（往往是删除）——默认关闭，需要显式开启 */
+  /* 划到底直接执行该方向最后一个操作——默认关闭 */
   fullSwipe: { type: Boolean, default: false },
   /* 操作后整行折叠消失 */
   collapseOnAction: { type: Boolean, default: false },
@@ -16,32 +18,33 @@ const props = defineProps({
 const emit = defineEmits(['action', 'commit', 'open-change'])
 
 /* ============================================================
-   划开式列表行（按 react-bits 的 SwipeRow 手法移植）
-   状态机：idle → committing（松手越过整行阈值）→ collapsing（收起）
-   · 位移 x 跟手，越界走橡皮筋；
-   · spread 是「抽屉展开度」：打开时执行层整体铺开，关闭时收回；
-   · landed 是「提交块落位」：越过整行阈值时，最后一个操作会从轨道
-     右端长出来、跟随手指（像把卡片推到终点），松手即提交；
-   · committing 后按 collapse 过渡收掉高度 / 外边距 / 透明度，交给父级删数据。
+   划开式列表行（双侧操作）
+   状态机：idle -> committing（划到底）-> collapsing（收起）
+   · x < 0 = 向左划，露出右侧操作；x > 0 = 向右划，露出左侧操作；
+   · 越界橡皮筋、松手按位移 + 速度吸附；
+   · fullSwipe：越过本侧轨道后再推 64px，落定块从该侧长出来，
+     松手整行滑出 + 折叠；
+   · 指针捕获不吞行内点击（拖过吞 click，纯点按转发）。
    ============================================================ */
 
 const rootEl = ref(null)
 const surfaceEl = ref(null)
 const railEl = ref(null)
+const leftRailEl = ref(null)
 const phase = ref('idle')
 const open = ref(false)
+const side = ref('right')
 const x = ref(0)
-const spread = ref(0)
 const landed = ref(0)
 const dragging = ref(false)
 
-const actionsWidth = computed(() => props.actions.length * 76)
+const rightWidth = computed(() => props.actions.length * 76)
+const leftWidth = computed(() => props.leftActions.length * 76)
+
 let pointerId = null
 let startX = 0
 let startOffset = 0
 let hist = []
-/* 本次按压是否真的发生了拖动（>4px）——决定松手后浏览器补发的
-   click 是吞掉（拖过）还是转发给真正被点的元素（纯点按）。 */
 let moved = false
 
 function velocityOf() {
@@ -65,9 +68,7 @@ function onDown(event) {
   moved = false
   hist = [{ x: event.clientX, t: event.timeStamp }]
   dragging.value = true
-  capture(pointerId)
-  /* 拖动期间关掉过渡，保证跟手。 */
-  setStyle(0, false)
+  setStyle(false)
 }
 
 function onMove(event) {
@@ -76,23 +77,29 @@ function onMove(event) {
   if (Math.abs(dx) > 4) moved = true
   if (event.cancelable) event.preventDefault()
   let next = startOffset + dx
-  /* 只往左推；往右是橡皮筋。 */
-  const limit = actionsWidth.value
-  if (next > 0) next = Math.min(16, next * 0.28)
-  const fullPoint = limit + 64
-  if (next < -fullPoint) next = -fullPoint - Math.min(24, (-next - fullPoint) * 0.3)
+  const towardRight = next < 0
+  const limit = towardRight ? rightWidth.value : leftWidth.value
+  if (Math.abs(next) > limit) {
+    const over = Math.abs(next) - limit
+    if (props.fullSwipe && limit > 0) {
+      /* 越过本侧轨道：fullSwipe 下最多再推 64px，之后橡皮筋 */
+      const capped = Math.min(over, 64 + Math.max(0, over - 64) * 0.3)
+      next = (towardRight ? -1 : 1) * (limit + capped)
+    } else {
+      next = (towardRight ? -1 : 1) * (limit + Math.min(16, over * 0.28))
+    }
+  }
   x.value = next
   hist.push({ x: event.clientX, t: event.timeStamp })
   while (hist.length > 2 && event.timeStamp - hist[0].t > 90) hist.shift()
-  spread.value = Math.min(1, Math.max(0, -next / Math.max(1, limit)))
-  landed.value = props.fullSwipe ? Math.min(1, Math.max(0, (-next - limit) / 64)) : 0
-  setStyle(0, false)
+  side.value = next < 0 ? 'right' : 'left'
+  const activeLimit = next < 0 ? rightWidth.value : leftWidth.value
+  landed.value = props.fullSwipe ? Math.min(1, Math.max(0, (Math.abs(next) - activeLimit) / 64)) : 0
+  setStyle(false)
 }
 
 /* 指针捕获会把松手后浏览器补发的 click 重定向到 surface：
-   · 拖过（moved）→ 吞掉，否则刚划开的操作条会被立即收起；
-   · 纯点按（!moved）→ 用 elementsFromPoint 找回真正被点的元素，
-     把 click 转发回去，行内按钮 / 复选框等不会被捕获吃掉。 */
+   拖过 -> 吞掉；纯点按 -> elementsFromPoint 找回真正被点的元素转发。 */
 function handleCapturedClick(clientX, clientY, wasDragged) {
   const surface = surfaceEl.value
   if (!surface) return
@@ -103,10 +110,10 @@ function handleCapturedClick(clientX, clientY, wasDragged) {
     if (wasDragged || props.disabled) return
     if (typeof document.elementsFromPoint !== 'function') return
     const stack = document.elementsFromPoint(clientX, clientY)
-    const rail = railEl.value
+    const rails = [railEl.value, leftRailEl.value].filter(Boolean)
     const real = stack.find(el =>
       el !== surface
-      && !(rail && rail.contains(el))
+      && !rails.some(rail => rail.contains(el))
       && !(el.closest && el.closest('.ui-swipe-row__commit')))
     if (real) {
       real.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
@@ -122,15 +129,19 @@ function onUp(event) {
   dragging.value = false
   try { surfaceEl.value && surfaceEl.value.releasePointerCapture && surfaceEl.value.releasePointerCapture(event.pointerId) } catch (error) { /* 忽略 */ }
   handleCapturedClick(event.clientX, event.clientY, moved)
-  const fullPoint = actionsWidth.value + 64
+  const towardRight = x.value < 0
+  const activeLimit = towardRight ? rightWidth.value : leftWidth.value
 
-  if (props.fullSwipe && x.value <= -fullPoint + 6) {
-    commit(props.actions[props.actions.length - 1], true, velocity)
+  /* 划到底：越过本侧轨道 + 64px，执行该方向最后一个操作 */
+  if (props.fullSwipe && activeLimit > 0 && Math.abs(x.value) >= activeLimit + 64 - 6) {
+    const list = towardRight ? props.actions : props.leftActions
+    commit(list[list.length - 1], true, velocity)
     return
   }
 
-  const ratio = actionsWidth.value ? -x.value / actionsWidth.value : 0
-  const shouldOpen = ratio > props.threshold || (velocity < -0.35 && ratio > 0.12)
+  const ratio = activeLimit ? Math.abs(x.value) / activeLimit : 0
+  const flick = towardRight ? velocity < -0.35 : velocity > 0.35
+  const shouldOpen = activeLimit > 0 && (ratio > props.threshold || (flick && ratio > 0.12))
   if (shouldOpen) {
     open.value = true
     settle(true, velocity)
@@ -141,56 +152,66 @@ function onUp(event) {
   landed.value = 0
 }
 
-/* 吸附：用过渡到目标，速度作为方向加成。 */
 function settle(target, velocity) {
-  const limit = actionsWidth.value
-  const to = target ? -limit : 0
+  const to = target ? (side.value === 'right' ? -rightWidth.value : leftWidth.value) : 0
   x.value = to
-  spread.value = target ? 1 : 0
   const el = surfaceEl.value
   if (el) {
-    /* 吸附曲线跟气质走：活泼模式会过冲一下。 */
-    const spring = getComputedStyle(document.documentElement).getPropertyValue('--spring-pop').trim() || 'cubic-bezier(.22,1.2,.36,1)'
+    const spring = getComputedStyle(document.documentElement).getPropertyValue('--spring-pop').trim() || 'cubic-bezier(.34,1.4,.64,1)'
     el.style.transition = 'transform ' + (target ? 360 : 300) + 'ms ' + spring
     el.style.transform = 'translate3d(' + to + 'px,0,0)'
   }
-  if (railEl.value) {
-    railEl.value.style.transition = 'opacity 200ms ease, transform 260ms cubic-bezier(.22,1.2,.36,1)'
-    railEl.value.style.transform = 'translate3d(' + (target ? 0 : limit) + 'px,0,0)'
-  }
-  emit('open-change', target)
+  applyRails(true)
+  emit('open-change', target ? side.value : false)
 }
 
-function setStyle(_, animate) {
+/* 双侧轨道：按当前位移算各自露出量 */
+function applyRails(animate) {
+  const shownRight = Math.max(0, -x.value)
+  const shownLeft = Math.max(0, x.value)
+  const right = railEl.value
+  const left = leftRailEl.value
+  if (right) {
+    right.style.transition = animate ? 'transform 260ms cubic-bezier(.22,1.2,.36,1), opacity 200ms ease' : 'none'
+    right.style.transform = 'translate3d(' + (rightWidth.value - shownRight) + 'px,0,0)'
+    right.style.opacity = String(rightWidth.value ? Math.min(1, shownRight / rightWidth.value) : 0)
+  }
+  if (left) {
+    left.style.transition = animate ? 'transform 260ms cubic-bezier(.22,1.2,.36,1), opacity 200ms ease' : 'none'
+    left.style.transform = 'translate3d(' + (shownLeft - leftWidth.value) + 'px,0,0)'
+    left.style.opacity = String(leftWidth.value ? Math.min(1, shownLeft / leftWidth.value) : 0)
+  }
+}
+
+function setStyle(animate) {
   const el = surfaceEl.value
   if (!el) return
   el.style.transition = animate ? '' : 'none'
   el.style.transform = 'translate3d(' + x.value + 'px,0,0)'
-  if (railEl.value) {
-    railEl.value.style.transition = 'none'
-    railEl.value.style.transform = 'translate3d(' + (actionsWidth.value - Math.max(0, -x.value)) + 'px,0,0)'
-    railEl.value.style.opacity = String(0.4 + 0.6 * spread.value)
-  }
+  applyRails(animate)
 }
 
 function commit(action, viaFull, velocity = 0) {
   if (!action || phase.value !== 'idle') return
   phase.value = 'committing'
   landed.value = 1
-  const limit = actionsWidth.value
-  x.value = -(limit + 64)
+  const towardRight = x.value <= 0
+  const limit = towardRight ? rightWidth.value : leftWidth.value
+  const full = limit + 64
+  x.value = towardRight ? -full : full
   const el = surfaceEl.value
   if (el) {
     el.style.transition = 'transform 240ms cubic-bezier(.23,1,.32,1)'
     el.style.transform = 'translate3d(' + x.value + 'px,0,0)'
   }
+  applyRails(true)
   emit('commit', { action, full: viaFull })
   emit('action', action)
   if (props.collapseOnAction || viaFull) {
     phase.value = 'collapsing'
     const root = rootEl.value
     if (root) {
-      root.style.transition = 'height 220ms cubic-bezier(.23,1,.32,1), margin 220ms cubic-bezier(.23,1,.32,1), opacity 220ms ease'
+      root.style.transition = 'height 220ms cubic-bezier(.23,1,.32,1) 120ms, margin 220ms cubic-bezier(.23,1,.32,1) 120ms, opacity 180ms ease 120ms'
       root.style.height = root.offsetHeight + 'px'
       requestAnimationFrame(() => {
         root.style.height = '0px'
@@ -208,31 +229,38 @@ function onAction(action) {
   commit(action, false)
 }
 
-/* 点击行内容：打开时先收起，不触发业务点击。 */
 function onSurfaceClick(event) {
   if (phase.value !== 'idle') return
   if (open.value) {
     open.value = false
+    landed.value = 0
     settle(false, 0)
     event.preventDefault()
     event.stopPropagation()
   }
 }
 
-watch(() => props.actions.length, () => { if (!props.actions.length) settle(false, 0) })
+function close() {
+  if (!open.value && x.value === 0) return
+  open.value = false
+  landed.value = 0
+  settle(false, 0)
+}
+defineExpose({ close })
+
 onBeforeUnmount(() => { pointerId = null })
 </script>
-
 <template>
-  <div ref="rootEl" class="ui-swipe-row" :class="[`is-${phase}`, { 'is-open': open, 'is-dragging': dragging }]">
-    <div ref="railEl" class="ui-swipe-row__rail" :aria-hidden="open ? 'false' : 'true'">
+  <div ref="rootEl" class="ui-swipe-row" :class="['is-' + phase, { 'is-open': open, 'is-dragging': dragging }]">
+    <!-- 左侧轨道：向右划露出 -->
+    <div v-if="leftActions.length" ref="leftRailEl" class="ui-swipe-row__rail ui-swipe-row__rail--left" :aria-hidden="open && side === 'left' ? 'false' : 'true'">
       <button
-        v-for="(action, index) in actions"
-        :key="action.label + index"
+        v-for="(action, index) in leftActions"
+        :key="'l' + action.label + index"
         type="button"
         class="ui-swipe-row__action"
-        :class="[`is-${action.tone || 'neutral'}`, { 'is-landed': landed > 0.6 && index === actions.length - 1 }]"
-        :tabindex="open ? 0 : -1"
+        :class="['is-' + (action.tone || 'neutral'), { 'is-landed': landed > 0.6 && index === leftActions.length - 1 }]"
+        :tabindex="open && side === 'left' ? 0 : -1"
         @click.stop="onAction(action)"
       >
         <span v-if="action.icon" class="ui-swipe-row__icon" aria-hidden="true">
@@ -240,10 +268,32 @@ onBeforeUnmount(() => { pointerId = null })
         </span>
         <span class="ui-swipe-row__label">{{ action.label }}</span>
       </button>
-      <!-- 划到底的提交块：跟随手指从右端长出来 -->
-      <span class="ui-swipe-row__commit" :style="{ width: (landed * 64).toFixed(1) + 'px' }" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.4 4.4L19 7" /></svg>
+    </div>
+
+    <!-- 右侧轨道：向左划露出 -->
+    <div v-if="actions.length" ref="railEl" class="ui-swipe-row__rail" :aria-hidden="open && side === 'right' ? 'false' : 'true'">
+      <button
+        v-for="(action, index) in actions"
+        :key="action.label + index"
+        type="button"
+        class="ui-swipe-row__action"
+        :class="['is-' + (action.tone || 'neutral'), { 'is-landed': landed > 0.6 && index === actions.length - 1 }]"
+        :tabindex="open && side === 'right' ? 0 : -1"
+        @click.stop="onAction(action)"
+      >
+        <span v-if="action.icon" class="ui-swipe-row__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" v-html="action.icon"></svg>
+        </span>
+        <span class="ui-swipe-row__label">{{ action.label }}</span>
+      </button>
+      <span v-if="fullSwipe && side === 'right'" class="ui-swipe-row__commit" :style="{ width: (landed * 64).toFixed(1) + 'px' }" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7" /></svg>
       </span>
+    </div>
+
+    <!-- 左侧提交块 -->
+    <div v-if="fullSwipe && leftActions.length" class="ui-swipe-row__commit ui-swipe-row__commit--left" :style="{ width: (side === 'left' ? landed * 64 : 0).toFixed(1) + 'px' }" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7" /></svg>
     </div>
 
     <div
@@ -255,7 +305,7 @@ onBeforeUnmount(() => { pointerId = null })
       @pointercancel="onUp"
       @click="onSurfaceClick"
     >
-      <slot :close="() => { open = false; settle(false, 0) }" />
+      <slot :close="close" />
     </div>
   </div>
 </template>
@@ -273,8 +323,9 @@ onBeforeUnmount(() => { pointerId = null })
   inset: 0 0 0 auto;
   display: flex;
   align-items: stretch;
-  will-change: transform;
+  will-change: transform, opacity;
 }
+.ui-swipe-row__rail--left { inset: 0 auto 0 0; }
 .ui-swipe-row__action {
   display: flex;
   flex-direction: column;
@@ -292,12 +343,11 @@ onBeforeUnmount(() => { pointerId = null })
 }
 .ui-swipe-row__action:active { transform: scale(.96); }
 .ui-swipe-row__action.is-danger { background: var(--error); color: var(--on-error, #fff); }
+.ui-swipe-row__action.is-success { background: var(--ui-success, #15803d); color: #fff; }
 .ui-swipe-row__action.is-landed { background: color-mix(in oklab, var(--error) 84%, #000); }
 .ui-swipe-row__icon { display: grid; place-items: center; }
 .ui-swipe-row__icon svg { width: 18px; height: 18px; }
 .ui-swipe-row__label { white-space: nowrap; }
-
-/* 提交块：越过整行阈值后从右端展开，越推越宽。 */
 .ui-swipe-row__commit {
   display: grid;
   place-items: center;
@@ -306,8 +356,13 @@ onBeforeUnmount(() => { pointerId = null })
   color: #fff;
   transition: width 120ms cubic-bezier(.23,1,.32,1);
 }
+.ui-swipe-row__commit--left {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  z-index: 2;
+  background: color-mix(in oklab, var(--ui-success, #15803d) 70%, #000);
+}
 .ui-swipe-row__commit svg { width: 20px; height: 20px; flex-shrink: 0; }
-
 .ui-swipe-row__surface {
   position: relative;
   z-index: 1;

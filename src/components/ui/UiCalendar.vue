@@ -35,7 +35,13 @@ const innerView = ref(props.view)
 watch(() => props.view, value => { innerView.value = value })
 const activeView = computed(() => (props.switchable ? innerView.value : props.view))
 
+/* 视图深度：年 = 宏观(0)，月 / 周 / 日程 = 细(1)。
+   切换方向决定 ZoomTo 用推近还是拉远那组过渡类。 */
+const VIEW_DEPTH = { year: 0, month: 1, week: 1, agenda: 1 }
+const zoomBack = ref(false)
+const calTransition = computed(() => (zoomBack.value ? 'cal-zoom-back' : 'cal-view'))
 function pickView(value) {
+  zoomBack.value = VIEW_DEPTH[value] < VIEW_DEPTH[activeView.value]
   innerView.value = value
   emit('update:view', value)
 }
@@ -124,11 +130,15 @@ function pickCell(item) {
   emit('select', { date: item.iso, events: item.events })
 }
 
-/* 年视图点某月：回到月视图并跳到该月（下钻） */
+/* 年视图点某月：回到月视图并跳到该月（下钻：强制推近方向） */
 function pickMonth(item) {
   const next = new Date(cursor.value.getFullYear(), item.month, 1)
   cursor.value = next
-  if (props.switchable) pickView('month')
+  if (props.switchable) {
+    zoomBack.value = false
+    innerView.value = 'month'
+    emit('update:view', 'month')
+  }
   emit('update:modelValue', next.getFullYear() + '-' + pad(next.getMonth() + 1))
 }
 
@@ -158,7 +168,7 @@ function pickAgenda(row) {
       >{{ v.label }}</button>
     </div>
 
-    <Transition name="cal-view" mode="out-in">
+    <Transition :name="calTransition" mode="out-in">
       <!-- 年视图 -->
       <div v-if="activeView === 'year'" key="year" class="ui-calendar__months">
         <button
@@ -292,10 +302,15 @@ function pickAgenda(row) {
 .ui-calendar__row i.is-danger { background: var(--error); }
 .ui-calendar__empty { padding: 24px 0; text-align: center; color: var(--on-surface-variant); font-size: var(--fs-small); }
 
-/* 视图切换：内容替换语言（旧内容模糊淡出、新内容从模糊浮入） */
-.cal-view-enter-active, .cal-view-leave-active {
+/* 视图切换 = 精细度改变：ZoomTo。
+   下钻（年 -> 月 -> 日）：旧层放大淡出、新层从缩小放大落定；
+   拉远（日 -> 月 -> 年）方向相反，由 cal-zoom-back 组承担。 */
+.cal-view-enter-active, .cal-view-leave-active,
+.cal-zoom-back-enter-active, .cal-zoom-back-leave-active {
   transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-panel);
 }
-.cal-view-enter-from { opacity: 0; filter: blur(8px); transform: scale(.98); }
-.cal-view-leave-to { opacity: 0; filter: blur(8px); transform: scale(1.02); }
+.cal-view-enter-from { opacity: 0; filter: blur(10px); transform: scale(.72); }
+.cal-view-leave-to { opacity: 0; filter: blur(10px); transform: scale(1.35); }
+.cal-zoom-back-enter-from { opacity: 0; filter: blur(10px); transform: scale(1.35); }
+.cal-zoom-back-leave-to { opacity: 0; filter: blur(10px); transform: scale(.72); }
 </style>

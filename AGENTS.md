@@ -114,7 +114,7 @@ import {
   UiCodeEditor, UiTerminalOutput, UiTagInput, UiKeyValueEditor, UiSchemaForm,
   UiDataTable, UiTreeView, UiVirtualList, UiFileDropzone,
   UiMorphPanel, UiWheel, UiCodeImage, UiTabBar, confirmDialog,
-  UiRotatingText, UiText, UiStatusMark, UiToolCallChip, UiCodeSlots, UiScrubField,
+  UiRotatingText, UiText, UiStatusMark, UiCodeSlots, UiScrubField,
   UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots,
   UiSideNav, MarkdownView, normalizeIconName,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
@@ -129,24 +129,23 @@ import {
 | `UiAvatar` / `UiAvatarGroup` | 头像 + 头像组：`name` 取首字母、`src` 支持 base64 data URL / 在线地址、`status` 在线点。Group 叠放（后一个压前一个、surface 色描环、悬停抬起），`size` 统一给组内头像设置尺寸（单项自己写了以单项为准），`max` 超出折叠成 **+N** |
 | `UiAgentAvatar` | 智能体头像：`shape` 传**内置 key**（`AGENT_SHAPES` 注册表：circle / squircle / triangle / diamond / hexagon / flower / tilt / star / sparkle / scallop，来自 111×1312 精灵图逐个归一化；也可传纯剪影 SVG）+ `color`，组件自动上色、白 30% 外圈描边（paint-order: stroke）、**SVG 根 overflow visible 不裁头像**，并叠加**两只同尺寸的圆角矩形眼**（四角同半径 = 宽度一半，直接写宽 / 高 / 圆角属性，不用 scale，不会被拉成椭圆）。眼睛由状态机驱动：`state` = idle / listening / thinking / happy / confused / surprised / sleepy / speaking，**任意状态→任意状态都是同一组参数（开合 / 眼距 / 高度）的弹簧过渡**，没有硬切。三条硬规则：**不旋转**（没有 tilt / 视线角度，只有位移）、**尺寸零随机**（挂载即按状态落位，开合不含噪声项，眨眼两眼同步——同一闭合度，不会出现一睁一闭的大小差）、**两眼成组位移**（注视偏移对两眼同值，永远等大）。**默认眼位（-0.4, -1.15）与注视压缩 0.37 / 微摆 0.34 均为调节台实测固化值**，注视可移动范围 ±1.8 单位 × 1.6 / 1.2 倍。生命层（呼吸 3–5s、随机眨眼快闭慢开过冲 1.02，**眨眼两眼完全同步**）永远在，注意力层（微扫视每 2–5s 换目标常驻；`gaze="mouse"` 才跟随指针，**默认不跟随鼠标**；`gaze="point"` 由 UsingDevice 自动设置）叠加其上；闭眼是一条宽度略增的细线不消失；`eyesY` 调眼睛基准高度（三角脸往下调），`level` 给说话状态接外部音量包络（给了才调制开合），`animated=false` 摆静止姿势。**UsingDevice 设备使用变体（归本体，不单列组件）**：`device` = laptop / phone / none，设备底图（`src/assets/agent` 的 Figma 3D 导出）放在 AI **右下方**，眼睛自动看向设备中心——电脑**左右轻扫**、手机**上下轻点**；手是纯白圆：电脑一只敲击手（连续敲键盘），手机两只——持机手**固定在手机前方**（z 在设备之上），滑动手沿滑动轨迹来回——**每条腿 300~500ms、ease-in-out 速度曲线（起步加速 / 中段快 / 收尾减速）**；回合制调度（确定性 hash）：滑动 / **滑到设备左侧（滑动手的自然一侧）不在屏幕上的区域悬停等一等，跟呼吸轻浮动** / **双击屏幕两下**（两处短促按压带回弹）；`deviceColor` 替换底图 **#FF00FF 占位**（multiply 混色，**禁用 #000000，最深 #444444；#FFFFFF = 原色**；空 = 纯白 W 版）；位置 / 大小 / 手位 / 眼参数可调（`deviceDx / deviceDy / deviceScale / handScale / laptopHandDx·Dy / holdDx·Dy / swipeStartX·Y / swipeEndX·Y / gazeScale / gazeWobbleAmp / eyesOffsetX·Y`）；**动态手（敲击 / 滑动）在设备下层，持机手在设备上层**；设备层抗锯齿只用**透明 outline**（div + 内层 svg 都要；translateZ / backface-visibility 会破坏 3D 场景，禁用）。默认位来自 140px 调节台实测（laptop dx .279 dy .30 scale 1；phone dx .421 dy .429 scale .62 holdDx .316 swipe 起点 .557/.686 终点 .55/.95），示例库「调设备位置」页面滑块调完一键复制属性标签 |
 | `UiAvatarTag` | 头像标签：左侧探出一枚头像（**本体优先用标准 `UiAvatar` 或 `UiAgentAvatar` 渲染**：`agent` + `agent-shape` / `agent-color` / `agent-state` 让药丸里是一颗会眨眼看设备写代码的智能体头像；`src` / 首字母走 UiAvatar；`icon` 仍为任意 SVG 无遮罩）+ 右侧药丸文字；`src` 按 `shape`（circle / squircle / square / hexagon / diamond / blob）裁成不同形状，`icon` 直接放任意 SVG 标记 —— **图标模式不套任何遮罩 / 裁切**，保留 SVG 自身形状；`icon-view-box` 可自定义（品牌图标多半不是 24×24），`size` sm / md / lg；药丸底色上下各内缩 **1px**、头像与组件盒同高，所以头像天然探出底色 1px（对齐 Frame 11）；`accent` 给药丸底色 10% 品牌色、文字用压暗后的品牌色 |
-| `UiSegmented` | `v-model` + `options`（`{ label, value, disabled?, icon? }`）；`label` 在左上角，`layout="one-line"` 标签与控件同行；`icon-placement="leading\|top"`（图标在文字前端 / 上方卡片式）、`show-labels="false"` 只留图标、`auto-multiline`（默认开）在**真实内容宽度**放不下时切成网格多行——列数用 canvas measureText 量文字宽度算，不靠猜固定最小宽度；控件本身 `width:100%`，避免「量一次→变窄→再量更窄」的收缩循环 |
+| `UiSegmented` | `v-model` + `options`（`{ label, value, disabled?, icon? }`）；`label` 在左上角，`layout="one-line"` 标签与控件同行；`icon-placement="leading\|top"`（图标在文字前端 / 上方卡片式）、`show-labels="false"` 只留图标、`auto-multiline`（默认开）在**真实内容宽度**放不下时切成网格多行——列数用 canvas measureText 量文字宽度算，不靠猜固定最小宽度；控件本身 `width:100%`，避免「量一次→变窄→再量更窄」的收缩循环；多行网格列数按**中位数宽度 + 容器 6 等分密度下限**算（长标签省略号截断，不会把整排挤成 2 个巨格），`max-rows`（默认 3）按实测行高限高、超出内部滚动 |
 | `UiStepper` | `v-model` 数字 + `unit` `min` `max` `step`；`size`(sm/md/lg/xl)、`controls`(sides/bottom)、`roll`(standard/reverse)、`fieldLabel` |
 | `UiSelect` | 自绘下拉：`v-model` + `:options="[{ label, value, icon?, disabled? }]"`；点输入框原地展开成列表；`icon-placement="leading\|top"`——leading 图标在文字前端（列表行布局不变，选中项图标也会显示在字段里），top 把面板变成图标卡片网格；`disabled` 整体禁用，单项 `disabled` 可见不可选；**`multiple` 多选模式**：`v-model` 为数组，勾选不收回面板，字段里显示已选标签摘要（列显隐等场景直接复用它） |
 | `UiSlider` | `v-model`；`stops` 数组或 `snapCount` 等分 → 拖动跟手、松手弹簧吸附；`@snap="({index, value}) => …"`；刻度：`show-scale` + `major-ticks`（大刻度区间数）+ `minor-ticks`（大刻度间的小刻度份数）+ `precision`（小数位）。刻度在轨道上方、短浅线，小刻度短大刻度长；数值只在最小值 / 最大值（无刻度时）或大刻度位置显示；`show-bubble` 拖拽时把手上方浮当前值；弹簧参数收进 `spring` 对象（`{ stiffness, dampingRatio, flingTime, rubber, maxOverscroll }`）；拖拽越界有**橡皮筋**（rubber 衰减 + 最多越界 6% 量程）；松手**惯性有触发阈值**——甩出速度 ≥ 0.8 × 量程 / 秒才做惯性预测，慢松手原地落定，阻尼默认 1.05 略过阻尼；旧的 5 个独立 props 已废弃仍兼容 |
-| `UiDatePicker` / `UiTimePicker` | `v-model` 字符串（`YYYY-MM-DD` / `HH:mm[:ss]`）；贴着输入框展开，不压暗背景；`UiTimePicker` 有 `precision`（h/m/s）决定波轮字段数 |
+| `UiDatePicker` / `UiTimePicker` | `v-model` 字符串；贴着输入框展开，不压暗背景；`UiTimePicker` 有 `precision`（h/m/s）决定波轮字段数，`min` / `max`（默认无限制）**级联到每一列**（min=09:30:15 时 时列>=9、时=9 时 分列>=30），越界的行禁用且滚动被钉在合法范围（推不动）；`UiDatePicker` 有 `precision`（day / month / year）+ 三级状态机：顶部**年、月可点击往宏观走**（镜头拉远），网格点击往细走（镜头推近，ZoomTo 缩放 + 模糊过渡）；年视图按 10 年一页；**非终点层级的格子两种语义**——单击 = 下钻、再点已高亮项 = 选中本层提交；必须选到最终精度才关闭；回传值按精度是 `YYYY` / `YYYY-MM` / `YYYY-MM-DD`（显示与解析都按对应精度，不会跳回今天）；`min` / `max` 之外的日期直接禁用 |
 | `UiCodeImage` | 2~3 项用分段控件（跨族时图标在上、仅 2 项跨族时只留图标不显示文字）、4 项及以上一律用带图标的下拉框。切换动画的方向按「目标相对当前位置」动态决定（目标在后往正方向进、在前往反方向进），进场层先按新方向落位、下一帧再滑回原位；用下拉切换时轴改为纵向（上下滑入滑出），分段 / 图标切换保持横向；仅两个跨族（一维/二维）选项时图标模式不再显示文字标签（图标已说明族差别）。children 直接传文本：<`CodeImage type="qrcode">https://…</`CodeImage>；`type` 字符串或数组（数组 = 可切换码制组，<=3 用 Segmented、>3 用下拉；跨一维/二维用图标区分，同族用文字标签）；一维码渲染后把固有宽高转成 viewBox，长条码不会再撑出画布；`options` 按码制传参 `{ qrcode: { errorCorrectionLevel: 'H' }, ean13: { flat: true } }`，未传的走默认、未知键忽略不崩溃；内容不合规的选项可见但禁用、自动切到可用项；全部不可用走降级候选（二维码兜底），仍无解渲染空状态。校验 / 参数 / 降级规则全部集中在 `core/codeFormats`，组件内不硬编码码制规则 |
 | `UiRotatingText` | 循环短语：`phrases` + `transition="rotate|flip|slide"`；进场层从进入方向的偏转 + 位移 + 模糊里出现，离场层反向散去，方向随前后顺序切换；`pause-on-hover` 默认开 |
 | `UiText` | 文字动效包装器：`variant="type"` 打字机（`cps` 节奏、逐字符进场 `type-effect="blur|fade|rise"`、**`reserve` 提前占位**——没有光标时默认开启，用不可见完整文本撑开最终高度，逐字进场不把下方内容顶得抖；`streaming` 开启后内容增长时只给新增片段播一次进场（`stream-effect`），不重播整段 —— 默认 blur 就是**透明度 + 模糊**渐变、光标四档 `bar|block|underscore|character`、`loop` 会先逐字删除再重打）、`shiny` 掠光（`sheen="soft|chrome"`）、`gradient` 流动渐变（`sweep|mesh|conic` + `colors`） |
 | `UiStatusMark` | 任务状态标记（仅受控），五个状态：`none`（只有底部一段空槽，上半部分什么都没有）/ `pending`（整圈虚线待命）/ `progress`（**分两种**：`progress` 是数字 → 弧长 = 实际进度、静止不转；`progress=null` → 一小段弧匀速转圈，表示没有实际进度）/ `done`（弧收满 + 勾抽笔）/ `failed`（弧淡出 + 叉抽笔）。全部由同一圈描边用 dasharray 连续过渡，任意两态互转不闪；圆环旋转原点只由 SVG `rotate(-90 12 12)` 提供，不要再写 CSS `transform-origin`（会被应用两次导致整体偏移） |
-| `UiToolCallChip` | 工具调用胶囊（仅受控）：`name` `detail` `status="running|success|error"` `expected`（秒）；运行中填充按耗时擦过、右侧计时器跳动，成功补满转绿、失败转红抖动 |
 | `UiCodeSlots` | 一次性验证码（按 react-bits CodeSlots 手法）：每个数字**独立落位**（透明度 + 模糊 + 上移 + 缩放，spring 曲线），粘贴按 `cascade`（默认 20ms）逐位错开；**当前输入位直接整格填充主色容器**（不再有独立光标线），空位 / 错误态时强调，成功后洗色时自动收起；`status="success"` 洗色从中间展开 + 数字下沉 + 勾升起，`status="error"` 从后往前逐位抽走再清空；键盘可完全操作（数字 / 退格删前一位 / Delete 删本位 / 方向键 / Home / End），原生 input 负责焦点与 `autocomplete="one-time-code"` |
 | `UiScrubField` | 可拖数字：横向拖动改值（`pixels-per-range` 定灵敏度），越界走橡皮筋松手弹回；不拖直接点击切换成输入框；方向键可微调 |
-| `UiSwipeRow` | 划开式列表行：`actions` 露在右侧，拖拽跟手、按位移 + 速度吸附；`fullSwipe`（默认**关闭**）开启后继续划到底直接执行最后一个操作（往往是删除，列表场景慎开）；`once` 触发后自动收回。指针捕获不吞行内点击：纯点按会用 elementsFromPoint 转发回真正被点的元素，拖过则吞掉浏览器补发的 click，不会刚划开就被收起 |
+| `UiSwipeRow` | 划开式列表行（**双侧操作**）：`actions` 露在右侧（向左划）、`leftActions` 露在左侧（向右划），拖拽跟手、按位移 + 速度吸附；`fullSwipe`（默认**关闭**）开启后越过本侧轨道再推 64px 直接执行该侧最后一个操作，落定块从该侧长出、整行滑出折叠（列表删除场景慎开）；`collapseOnAction` 操作后整行折叠消失；`@commit` 回传 `{ action, full }`、`@action` 回传裸 action（两者语义不同，别混用）；作用域插槽带 `close()` 程序化收起。指针捕获不吞行内点击：纯点按用 elementsFromPoint 转发回真正被点的元素，拖过则吞掉补发的 click |
 | `UiStepFlow` | 多步流程：`steps` + `v-model` 索引；指示器是一块绝对定位的薄条，靠 transform 在轨道上滑到当前格位，面板内容按方向滑入并模糊；`orientation="horizontal|vertical"` |
 | `UiTooltipGroup` | 提示词组：冷态第一次悬停要等 `wait`（默认 520ms），打开过一次后在 `warm-window` 内兄弟项瞬时打开；气泡只渲染一个，跟着当前项移动 |
 | `UiCardGroup` | 卡片组，**每种形态都可拖拽 / 点击 / 方向键**，松手有惯性或吸附；`variant` 8 种形态：`gallery` 横向平铺循环、`circular` 3D 圆环（拖拽惯量 + 吸附）、`depth` Z 轴轨道（拖拽 / 键盘 / 自动推进）、`wall` 透视墙漂移 + 悬停抬起、`scroll-stack` 滚动压栈、`stack` 牌堆拖甩点、`swap` 定时 / 甩动轮换、`bounce` 扇形弹入。吸附与惯性用真弹簧求解（`core/springPhysics`：place 220/26、settle 300/30、tuck 240/28、fling 650/42），松手速度会作为初速度注入，所以甩得快冲得远、落点干净；gallery 拖拽后按速度惯性再吸到最近格位并循环，圆环拖动带惯性吸附到最近格位，depth 拖过阈值换卡并回弹归零，wall 持续漂移且可拖动，牌堆可拖 / 甩 / 点且甩出的牌绕到最下面，bounce 拖动改展开角度、悬停或选中扶正；卡池 / 选中 / 拖拽 / 键盘共用一套 |
 | `UiTabBar` | `:items` 传 `{ value, label, icon }`（icon 是 24x24 viewBox 内的 SVG 标记），`v-model` + `@change`；移动端贴底横排、背景铺满整屏宽度（tab 各自上限 96px），桌面端贴左竖排、背景铺满整个高度、tab 从顶部固定间距往下排 |
-| `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；时间 / 日期波轮都基于它 |
+| `UiWheel` | 通用波轮基座：`:columns` 为 `[{ items, value, separator?, label?, min?, max? }]`，列数与分隔符自定义；高亮块固定居中、数字层移动、140ms 吸附；**列级 `min` / `max` 把越界行禁用并把滚动钉在合法范围**——有限制时滚不出界；首次展开先定位再画景深（ready 闸门），不会整列糊住 |
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起 |
 | `UiModal` | `v-model`；插槽 `#header` / `#title` / 默认 / `#footer`，作用域都带 `close`；遮罩压暗 + 5px 模糊 |
 | `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽；**把手可拖拽**：拖把手实时改高度（跟手、禁 transition），松手按位移 + 速度吸附锚点；`anchors` 默认随 `scrim`：无背景版 `[0.2, 0.6]`、有背景版 `[0.6]`（压暗背景不放 20% 档）+ 自动追加「全内容」档，全内容不足 60% 时 60% 档不出现；拖到最低锚点之下直接关闭；面板外还有一段约 **50dvh 的「弹簧裙边」**（`.ui-sheet-skirt`，正常被 root 裁掉），活泼模式上冲、面板下沿离开视口底时用它补住缺口，不会露出页面背景；`scrim=false` 为无背景版（不压暗不模糊，但透明拦截层 + Esc + 锁滚动 + aria-modal 的模态性质保持） |
@@ -189,7 +188,7 @@ import {
 | `UiNavigationMenu` | `items` 为 `[{ label, value, children? }]`；悬停 / 聚焦展开子面板，`@select` 回传子项 |
 | `UiGrid` | `min` 最小列宽 + `gap`；auto-fill 按容器宽度自动决定列数，不写断点 |
 | `UiRow` / `UiCol` | 12 栅格：Row 是 `repeat(12, minmax(0, 1fr))` 的 grid，Col 只负责 `grid-column: span N`；`span` / `offset` 加 `sm md lg` 覆盖，Row 管 `gap` `align` `justify`。gap 由轨道间距承担，span 怎么组合都不会撑破容器 |
-| `UiSplitter` | `v-model` 占比（0~1；误传 20 / 80 这类百分数会自动换算）；`direction` 横向 / 纵向，`#first` 与默认插槽分居两侧，拖分隔条实时改比例；第一面板只占「总长 - 分隔条」的份额，分隔条固定宽度，永远不会把容器撑出滚动条 |
+| `UiSplitter` | `v-model` 占比（0~1；误传 20 / 80 这类百分数会自动换算）；`direction` 横向 / 纵向，`#first` 与默认插槽分居两侧，拖分隔条实时改比例；第一面板只占「总长 - 分隔条」的份额，分隔条固定宽度，永远不会把容器撑出滚动条；**吸附（可选开启）**：`snap-count` 等分或 `stops` 指定点位，松手弹到最近分段值（拖动零过渡跟手、松手走 view 弹簧） |
 | `UiScrollArea` | `max-height` / `height` + `shadows`；自定义滚动条，贴边时出现渐隐阴影 |
 | `UiContextMenu` | 包住任意内容，右键 / 长按弹 `items`（`value tone icon shortcut divider`） |
 | `UiCommandPalette` | `v-model` 开关 + `items`；输入过滤、上下键移动、Enter 执行，Esc 关闭 |
@@ -197,20 +196,20 @@ import {
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
 | `UiKbd` | `keys` 字符串或数组，`size` sm / md |
 | `UiIcon` | `name` **先查库内 ICONS 注册表，未命中则按 Iconify 名字渲染**（`pack:icon` / `pack/icon` / `pack--icon` / `i-pack:icon` 都自动归一化成 `pack:icon`），`size`（像素或 `1em` 内联用）`filled` `stroke-width` `label` |
-| `UiCalendar` | `v-model` 日期 + `events`（按 ISO 日期给数组）；`view` month / week |
-| `UiTimeline` | `items` 为 `[{ title, time?, text?, tone? }]` |
-| `UiCarousel` | `items` + `v-model` 索引；`autoplay` `interval` `loop` `height`，可拖拽翻页；轨道走 view 弹簧，非当前页缩小 / 变暗 / 轻模糊；翻页指示器引用独立的 `UiPagerDots` |
+| `UiCalendar` | `v-model` 日期 + `events`（按 ISO 日期给数组）；`view` **month / week / year / agenda** 四种视图（`switchable` 显示切换器）：年视图 12 个月总览点月**下钻**、日程视图按日期列事件；切换 = 精细度改变的 **ZoomTo**（下钻推近 scale .72 到 1、拉远反向，配模糊） |
+| `UiTimeline` | `items` 为 `[{ title, time?, text?, tone? }]`；`time-position`="left" 时时间排在**竖线的左侧**（独立列、右对齐贴线），默认 `right` 在标题行右侧，`none` 不显示 |
+| `UiCarousel` | `items` + `v-model` 索引；`autoplay` `interval` `loop` `height`，可拖拽翻页；轨道走 view 弹簧，非当前页缩小 / 变暗 / 轻模糊；翻页指示器引用独立的 `UiPagerDots`；**两种回环变体 `loop-mode`**：`cycle` = 最后一张点下一张**回到第一张的位置**（倒带）；`infinite` = 首尾克隆衔接，最后一张的下一张**从右边划进来**（永远同向延伸，过渡播完在克隆位无感瞬移归位）；**手动翻页（箭头 / 圆点 / 拖动）重置自动计时器**；圆角在卡片不在外层视口 |
 | `UiPagerDots` | 独立翻页指示器：`total` + `v-model` 当前页，`clickable` `size="sm\|md"`；当前页是拉长的胶囊，轮播 / 卡片组 / 任何分页视图都能引用 |
 | `UiMarquee` | `text` `speed` `direction` `gap` `pause-on-hover` |
 | `UiLink` | 文字链接（参照 Nuxt UI）：默认 primary 无下划线、悬停才出；`href` 外链自动带 ↗ 角标 + `target=_blank rel=noopener`；`tone` primary / muted / danger，`underline` 常显下划线，`disabled`；`to` 传应用内路由 |
-| `MarkdownView` | Markdown 渲染器（marked 解析 → DOM 树 → Vue 元素，不用 v-html，天然防注入）：标题 / 强调 / 列表 / 引用 / 表格 / 代码全部走库令牌。**内联图标**（`icons` 默认开）支持 `pack:icon`、`pack/icon`、`pack--icon`、`i-pack:icon` 四种裸写法与 `::pack:icon::` 显式标记（显式优先）；**本地注册表（registerIcons）优先于 Iconify**；代码块与行内代码是字面量不解析。**@ 提及**（`mentions` 开启）渲染成 `UiAvatarTag` 药丸，`mentionResolver(username)` 返回 `{ username, showname, type: 'normal'\|'agent', image, shape }`；`tagSize` 控制药丸尺寸。**流式更新**（`streaming`）：**按「块内已渲染文本的前缀」做增量** —— 记住每块上次的文本，只给超出前缀的那一段打上 `is-rise`（上浮 + 模糊渐现），同一块里文字增长时不会整块重播；块身份用「标签名 + 同类序号」（**不含文本**，含文本就会每帧变身份退化成整块重播）；新增段可能跨越节点边界（普通文本 + `<strong>` 各一部分），span 必须插在被替换文本的**原位置**，否则文字顺序会乱；整块首次出现时才整段进场（`stream-effect` rise / blur / fade）。同时缓存上次渲染高度作 `min-height` 预留，逐块长出来时下方内容不会被顶得上下跳。链接统一渲染成 `UiLink`，代码块带语言图标 + 语言名头部条 |
+| `MarkdownView` | Markdown 渲染器（marked 解析 → DOM 树 → Vue 元素，不用 v-html，天然防注入）：标题 / 强调 / 列表 / 引用 / 表格 / 代码全部走库令牌。**内联图标**（`icons` 默认开）支持 `pack:icon`、`pack/icon`、`pack--icon`、`i-pack:icon` 四种裸写法与 `::pack:icon::` 显式标记（显式优先）；**本地注册表（registerIcons）优先于 Iconify**；代码块与行内代码是字面量不解析。**@ 提及**（`mentions` 开启）渲染成 `UiAvatarTag` 药丸，`mentionResolver(username)` 返回 `{ username, showname, type: 'normal'\|'agent', image, shape }`；`tagSize` 控制药丸尺寸。**流式更新**（`streaming`）：**滑动窗口逐字进场**——每块记住上次已渲染文本，块末尾最多 40 个字符各包一个 `is-rise` span（上浮 + 模糊渐现 220ms），新字进来窗口滑动、出窗字符动画早已播完并回纯文本，没有跳变；span 的 key 是全局递增序号（内容 / 索引 key 都会让 Vue 复用节点、CSS animation 不重播 = 字直接闪现）；块身份用「标签名 + 同类序号」（不含文本）；整块首次出现才整段进场（`stream-effect`）；`min-height` 预留只随增长抬高，**内容变短（新一轮流式）自动收缩**——流式时不知道总长，占着旧全文高度是错的。|
 
 通用约定：所有浮层都能点外部收起、按 Esc 收起；`items` 形如 `[{ value, label, description?, tone? }]`。
 
 ## 3. 交互约定（照抄即可，别自己发明）
 
 - **按下必收缩**：可展开按钮按下时 `scale(.97)`，松手才展开；长按保持收缩态。
-- **动作按钮三个变体**（`UiButton`）：`fuse` 点一下进入已完成，烧边从按钮**真实圆角**起笔（用实测尺寸生成圆角矩形 path，不能用 SVG `rect` + `calc()` + 超大 rx，那会变成椭圆），烧完落定、期间可撤销；`hold` 按住填充上涨，抬手过早就缩回，涨满才确认；`slide` 拖滑块过阈值确认，跑动时只有把手转圈（不再叠加通用 spinner），完成后把手回到最左铺满成整颗药丸。
+- **动作按钮三个变体**（`UiButton`）：`fuse` 点一下进入「可撤销」，倒计时用与 `hold` 同语言的**实心进度条、方向相反**（铺满 → 缩回 0，线性烧完 `undo-window`）；进度条 **idle 期间完全不显示，点击后才淡入**（未触发就铺满进度是错的）；烧完落定；`hold` 按住填充上涨（纯色实心条，**没有前端圆球 / 光晕 / 渐变**），抬手过早就缩回，涨满才确认；`slide` 拖滑块过阈值确认，跑动时只有把手转圈（不再叠加通用 spinner），完成后把手回到最左铺满成整颗药丸。
 - **图标的两种放法**：`leading`（文字前端，布局完全不变）与 `top`（文字上方，卡片网格）；分段与下拉都支持，图标标记统一用 24x24 viewBox 内的 SVG 内容。`UiSegmented` 单行装不下会自动转多行网格，多行布局下取消滑动指示器、改由选中项自己填底色（指示器跨行会乱跑）。
 - **内容替换**：旧内容留在原位 `opacity→0 + blur(8px)`，新内容从 `blur(10px)` 浮现；外壳只做几何（宽高/圆角/底色）过渡。
 - **可打断**：`UiToolMenu` / `UiFloatingMenu` / `UiSelect` / `UiDatePicker` / `UiTimePicker` 在收起动画途中再次点击，会直接反向长回展开态。
@@ -218,7 +217,7 @@ import {
 - **数字滑轨**（`UiStepper`）：旧值按「新旧值大小关系」方向滑出并模糊，新值从反向滑入，位移量随变化量缩放；单位不滚动、与数字底部对齐；到上下限再点有轻微「碰壁」回弹。
 - **滚轮**（`UiWheel`，时间 / 日期波轮共用）：高亮块固定在中间不动，点击和滑动移动的是背后的数字层；字段数量由列配置决定。
 - **按钮 ⇄ 组件的形变泛用化**：`UiMorphPanel` 把「点一下切换成另一个组件」做成通用容器，不再局限于「按钮变输入框」；`UiSearchField` 也走同一语言（图标平移到尾部作动作按钮）。
-- **状态类组件一律受控**：`UiToolCallChip` / `UiStatusMark` / `UiStepFlow` 的状态由外部传入，组件只负责把动效衔接好，不自己猜业务阶段。
+- **状态类组件一律受控**：`UiStatusMark` / `UiStepFlow` 的状态由外部传入，组件只负责把动效衔接好，不自己猜业务阶段。
 - **确认统一走 `confirmDialog`**：应用里不要再调 `window.confirm`，样式断层且阻塞；`await` 拿到布尔结果即可。
 - **返回只有一种写法**：Tab 用 replace、展开用 push、收起用 back()（动画播完再退），见 4.5。
 - **弧线宽度只有两档**：`--arc-stroke-thin`(10) / `--arc-stroke-bold`(12)，圆环族与仪表盘族共用，配合 `non-scaling-stroke` 保证宽度是 CSS 像素、与组件尺寸无关。

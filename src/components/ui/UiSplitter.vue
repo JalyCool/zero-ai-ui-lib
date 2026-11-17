@@ -148,6 +148,10 @@ onBeforeUnmount(() => { pointerId = null; dragging.value = false })
 .ui-splitter.is-vertical .ui-splitter__handle span { width: 26px; height: 3px; }
 .ui-splitter__handle:hover span, .ui-splitter.is-dragging .ui-splitter__handle span { background: var(--primary); }
 .ui-splitter.is-dragging { user-select: none; }
+/* 面板尺寸：拖动时零过渡（跟手），松手后（吸附到分段值 / stops）走 view 弹簧 ——
+   之前吸附是瞬间跳过去的，没有任何动画 */
+.ui-splitter__pane { transition: flex-basis var(--t-view), height var(--t-view); }
+.ui-splitter.is-dragging .ui-splitter__pane { transition: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-splitter__handle, .ui-splitter__handle span { transition-duration: .01ms; }

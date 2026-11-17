@@ -74,10 +74,17 @@ function go(next, user = true) {
   else value = Math.min(total - 1, Math.max(0, next))
   if (value === index.value) return
   index.value = value
-  /* infinite：轨道索引 = 真实索引 + 1（前面多一张克隆） */
+  /* infinite：轨道索引 = 真实索引 + 1（前面多一张克隆）。
+     走到克隆位要等**过渡播完**再无动画瞬移归位 —— 提前跳会把动画打断。
+     cycle：slot = 真实索引，最后一张点下一张直接倒回第一张的位置。 */
   slot.value = isInfinite.value ? value + 1 : value
-  if (isInfinite.value) requestAnimationFrame(() => setTimeout(normalizeSlot, 0))
   if (user) { emit('update:modelValue', value); emit('change', value) }
+}
+
+/* 轨道过渡结束：infinite 模式下检查是否停在克隆位 */
+function onTrackEnd() {
+  if (dragging.value || noTransition.value) return
+  normalizeSlot()
 }
 /* 手动翻页（箭头 / 圆点 / 拖动）都要重置自动播放计时，
    否则刚点完可能立刻被计时器抢走下一张。 */
@@ -132,13 +139,12 @@ watch(() => props.modelValue, value => {
   if (value === index.value) return
   index.value = value
   slot.value = isInfinite.value ? value + 1 : value
-  if (isInfinite.value) requestAnimationFrame(() => setTimeout(normalizeSlot, 0))
 })
 </script>
 <template>
   <div class="ui-carousel" :class="{ 'is-dragging': dragging }" :style="{ '--h': height + 'px' }" @mouseenter="pauseAuto" @mouseleave="startAuto">
     <div class="ui-carousel__viewport">
-      <div ref="trackEl" class="ui-carousel__track" :style="style"
+      <div ref="trackEl" class="ui-carousel__track" :style="style" @transitionend.self="onTrackEnd"
         @pointerdown="onDown" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp">
         <div
           v-for="(entry, i) in slides"

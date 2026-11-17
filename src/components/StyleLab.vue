@@ -5,7 +5,7 @@ import { PRESET_COLORS } from '../core/theme'
 import { getMotionTone, setMotionTone } from '../core/motionTone'
 import {
   UiButton, UiCheckbox, UiChip, UiColorPicker, UiSegmented, UiSelect, UiSlider,
-  UiStatusMark, UiSwitch, UiText, UiToolCallChip
+  UiStatusMark, UiSwitch, UiText
 } from './ui'
 
 /* ============================================================
@@ -34,8 +34,7 @@ const previewOptions = [
   { label: '开关', value: 'switch' },
   { label: '状态标记', value: 'status' },
   { label: '滑轨', value: 'slider' },
-  { label: '文字动效', value: 'text' },
-  { label: '工具调用胶囊', value: 'tool' }
+  { label: '文字动效', value: 'text' }
 ]
 
 const schemeOptions = [
@@ -123,11 +122,8 @@ watch(fontScale, value => document.documentElement.style.setProperty('--font-sca
         <template v-else-if="previewPick === 'slider'">
           <UiSlider v-model="previewSlider" label="滑轨" unit="%" class="style-lab__slider" />
         </template>
-        <template v-else-if="previewPick === 'text'">
-          <UiText variant="type" type-effect="blur" :text="'逐字进场预览 · 透明度 + 模糊'" :cps="14" :loop="true" />
-        </template>
         <template v-else>
-          <UiToolCallChip name="search_web" detail="q=样式测试" status="success" :expected="2" />
+          <UiText variant="type" type-effect="blur" :text="'逐字进场预览 · 透明度 + 模糊'" :cps="14" :loop="true" />
         </template>
       </div>
     </section>

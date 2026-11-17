@@ -50,10 +50,6 @@ declare const UiRotatingText: DefineComponent<{
   phrases?: string[]; interval?: number; transition?: 'rotate' | 'flip' | 'slide'
   pauseOnHover?: boolean; paused?: boolean
 }, AnyProps, unknown>
-declare const UiToolCallChip: DefineComponent<{
-  name?: string; detail?: string; status?: 'running' | 'success' | 'error'
-  expected?: number; showTime?: boolean
-}, AnyProps, unknown>
 declare const UiTooltipGroup: DefineComponent<{
   items?: { label: string; tip: string }[]; wait?: number; warmWindow?: number; linger?: number
 }, AnyProps, unknown>
@@ -502,7 +498,7 @@ export {
   UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
   UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
   UiCardGroup, UiCodeSlots, UiRotatingText, UiScrubField, UiStatusMark,
-  UiStepFlow, UiSwipeRow, UiText, UiToolCallChip, UiTooltipGroup,
+  UiStepFlow, UiSwipeRow, UiText, UiTooltipGroup,
   UiRating, UiRingProgress, UiRingSlider, UiRollNumber, UiSchemaForm,
   UiSearchField, UiSelect, UiSegmented, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,
   UiStepper, UiSwitch, UiTabBar, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,

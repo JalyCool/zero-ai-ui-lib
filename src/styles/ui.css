@@ -415,8 +415,20 @@ button {
 }
 .ui-segmented.is-multiline button {
   min-height: 44px;
+  max-height: 64px;
+  overflow: hidden;
   background: var(--surface-container);
   border: var(--border-w) solid transparent;
+}
+/* 多行网格里文字必须自己收缩：min-width 0 + block，否则长标签把格子撑到巨大、
+   文字又被 overflow 吃掉，就出现「只剩图标的大方块」 */
+.ui-segmented.is-multiline .ui-segmented__text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ui-segmented.is-multiline button.is-active {
   background: var(--primary);

@@ -191,8 +191,8 @@ watch(() => props.modelValue, value => {
   align-items: center;
   justify-content: flex-start;
   flex: 0 0 auto;
-  /* 容纳 "~12h30m30s" 这类最长文本 */
-  min-width: 5.4em;
+  /* 两端字段已按精度定宽，中列只容常见读数即可（最长 ~12h30m30s 会自然撑开） */
+  min-width: 3.6em;
   padding-top: 2px;
 }
 /* 时长文本超出也不换行，避免把箭头挤下去 */

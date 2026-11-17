@@ -79,13 +79,29 @@ function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1)
 }
 
+/* 兼容三种精度回传的值：'YYYY-MM-DD' / 'YYYY-MM' / 'YYYY'。
+   之前只认完整日期，precision=year 提交 "2026" 后 parseDate 返回 null，
+   字段显示直接跳回今天 —— 这就是「精度改变之后无法选择」的根因。 */
 function parseDate(value) {
   if (typeof value !== 'string') return null
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (!match) return null
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-  return Number.isNaN(date.getTime()) ? null : date
+  const full = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (full) {
+    const date = new Date(Number(full[1]), Number(full[2]) - 1, Number(full[3]))
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  const month = /^(\d{4})-(\d{2})$/.exec(value)
+  if (month) return new Date(Number(month[1]), Number(month[2]) - 1, 1)
+  const year = /^(\d{4})$/.exec(value)
+  if (year) return new Date(Number(year[1]), 0, 1)
+  return null
 }
+/* 回传值的精度（决定字段显示成什么） */
+const valuePrecision = computed(() => {
+  const v = current.value
+  if (/^\d{4}$/.test(v)) return 'year'
+  if (/^\d{4}-\d{2}$/.test(v)) return 'month'
+  return 'day'
+})
 
 /* ---------------- 三级视图状态机：日 → 月 → 年 ---------------- */
 /* precision 决定「哪一级是终点」：
@@ -94,6 +110,9 @@ function parseDate(value) {
    year  → 年网格里点某年即完成（补 01-01）。 */
 const viewMode = ref('days')
 const yearPage = ref(0)
+/* 切换方向：'in' = 下钻（更细），'back' = 上钻（更宏观）；决定用哪组过渡类 */
+const navBack = ref(false)
+const viewTransition = computed(() => (navBack.value ? 'date-view-back' : 'date-view'))
 
 const minDate = computed(() => parseDate(props.min))
 const maxDate = computed(() => parseDate(props.max))
@@ -130,42 +149,69 @@ const yearCells = computed(() => Array.from({ length: 10 }, (_, i) => yearPageSt
 /* 月视图：当前 viewDate 所在年的 12 个月 */
 const monthCells = computed(() => Array.from({ length: 12 }, (_, i) => i))
 
+/* 顶栏点击 = 往宏观走（日 -> 月 -> 年）：镜头拉远 */
 function enterMonths() {
+  navBack.value = true
   viewMode.value = 'months'
 }
 function enterYears() {
+  navBack.value = true
   yearPage.value = Math.floor(viewDate.value.getFullYear() / 10)
   viewMode.value = 'years'
 }
+/* 网格下钻 = 往细走（年 -> 月 -> 日）：镜头推近 */
 function backToDays() {
+  navBack.value = false
   viewMode.value = 'days'
 }
 function backToMonths() {
+  navBack.value = false
   viewMode.value = 'months'
 }
 
-/* 选月：precision=month 直接完成；否则进入该月的日视图 */
+/* 选月：precision=month 直接完成；否则进入该月的日视图。
+   「已高亮再点 = 选中本层」：precision=day 时第一次点某月只是下钻预览，
+   想直接选这个月（不指定日）再点一次同一格即提交。 */
 function selectMonth(month) {
   const year = viewDate.value.getFullYear()
   const next = new Date(year, month, 1)
-  if (props.precision === 'month') {
+  const alreadyHere = viewMode.value === 'months'
+    && year === selectedDate.value.getFullYear() && month === selectedDate.value.getMonth()
+  if (props.precision === 'month' || alreadyHere) {
     viewDate.value = next
+    /* precision=day 但用户点了「选中本层」：提交到月粒度 */
+    if (props.precision !== 'month' && props.precision !== 'year') {
+      current.value = year + '-' + pad(month + 1)
+      emit('update:modelValue', current.value)
+      closeWindow()
+      return
+    }
     commitDate(next)
     return
   }
   viewDate.value = next
+  navBack.value = false
   viewMode.value = 'days'
 }
 
-/* 选年：precision=year 直接完成；否则进入月视图 */
+/* 选年：precision=year 直接完成；否则进入该年的月视图。
+   与选月同规则：再点已高亮的年份 = 选中本层（提交到年粒度）。 */
 function selectYear(year) {
   const next = new Date(year, viewDate.value.getMonth(), 1)
-  if (props.precision === 'year') {
+  const alreadyHere = viewMode.value === 'years' && year === selectedDate.value.getFullYear()
+  if (props.precision === 'year' || alreadyHere) {
     viewDate.value = next
+    if (props.precision !== 'year') {
+      current.value = String(year)
+      emit('update:modelValue', current.value)
+      closeWindow()
+      return
+    }
     commitDate(next)
     return
   }
   viewDate.value = next
+  navBack.value = false
   viewMode.value = 'months'
 }
 
@@ -213,6 +259,12 @@ function dayOffsetFromToday(date) {
    · 需要折行时在「年」之后断开，月日尽量保持同一行
      （年与月日是两个 nowrap 的 inline-block，放不下才整体换行）。 */
 function splitDisplay(date) {
+  /* 年 / 月精度：只显示到对应层级，不补「1日」 */
+  if (valuePrecision.value === 'year') return { year: '', monthDay: date.getFullYear() + '年' }
+  if (valuePrecision.value === 'month') {
+    const sameYear = date.getFullYear() === todayDate().getFullYear()
+    return { year: sameYear ? '' : date.getFullYear() + '年', monthDay: (date.getMonth() + 1) + '月' }
+  }
   const label = RELATIVE_LABELS[dayOffsetFromToday(date)]
   if (label) return { year: '', monthDay: label }
   const monthDay = `${date.getMonth() + 1}月${date.getDate()}日`
@@ -364,7 +416,7 @@ watch(() => props.modelValue, value => {
 
           <!-- 三套网格叠在同一格：切换时旧视图模糊淡出、新视图从模糊浮入 -->
           <div class="ui-date__stage">
-            <Transition name="date-view">
+            <Transition :name="viewTransition">
               <!-- 日 -->
               <div v-if="viewMode === 'days'" key="days" class="ui-date__pane">
                 <div class="ui-date__weekdays" aria-hidden="true">
@@ -398,7 +450,12 @@ watch(() => props.modelValue, value => {
                     type="button"
                     :tabindex="open ? 0 : -1"
                     :disabled="!monthSelectable(viewDate.getFullYear(), month)"
-                    :class="{ 'is-selected': viewDate.getFullYear() === selectedDate.getFullYear() && month === selectedDate.getMonth() }"
+                    :class="{
+                      'is-selected': viewDate.getFullYear() === selectedDate.getFullYear() && month === selectedDate.getMonth(),
+                      /* 终点层（precision=month）= 选中语义；否则 = 下钻语义 */
+                      'is-final': precision === 'month',
+                      'is-drill': precision !== 'month'
+                    }"
                     @click="selectMonth(month)"
                   >{{ month + 1 }}月</button>
                 </div>
@@ -413,7 +470,11 @@ watch(() => props.modelValue, value => {
                     type="button"
                     :tabindex="open ? 0 : -1"
                     :disabled="!yearSelectable(year)"
-                    :class="{ 'is-selected': year === selectedDate.getFullYear() }"
+                    :class="{
+                      'is-selected': year === selectedDate.getFullYear(),
+                      'is-final': precision === 'year',
+                      'is-drill': precision !== 'year'
+                    }"
                     @click="selectYear(year)"
                   >{{ year }}</button>
                 </div>
@@ -603,11 +664,19 @@ watch(() => props.modelValue, value => {
 /* 三套视图叠在同一格：切换时旧视图模糊淡出、新视图从模糊浮入 */
 .ui-date__stage { position: relative; min-height: 232px; }
 .ui-date__pane { display: flex; flex-direction: column; gap: 2px; }
+/* ZoomTo：精度层级切换 = 一次镜头推拉。
+   下钻（年 -> 月 -> 日）：旧层向「里」放大模糊淡出，新层从缩小状态放大落定；
+   上钻（点顶栏年 / 月往宏观走）：方向反过来。 */
 .date-view-enter-active, .date-view-leave-active {
   transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
 }
-.date-view-enter-from { opacity: 0; transform: scale(.96); filter: blur(8px); }
-.date-view-leave-to { opacity: 0; transform: scale(1.03); filter: blur(8px); }
+.date-view-enter-from { opacity: 0; transform: scale(.72); filter: blur(10px); }
+.date-view-leave-to { opacity: 0; transform: scale(1.35); filter: blur(10px); }
+.date-view-back-enter-active, .date-view-back-leave-active {
+  transition: opacity var(--t-fade), transform var(--t-panel), filter var(--t-fade);
+}
+.date-view-back-enter-from { opacity: 0; transform: scale(1.35); filter: blur(10px); }
+.date-view-back-leave-to { opacity: 0; transform: scale(.72); filter: blur(10px); }
 .date-view-leave-active { position: absolute; inset: 0; }
 
 /* 顶部三段标题：年 / 月 可点，当前这一级高亮 */
@@ -650,6 +719,21 @@ watch(() => props.modelValue, value => {
 .ui-date__months button:hover { background: var(--surface-container-high); }
 .ui-date__months button:active { transform: scale(var(--press-scale)); }
 .ui-date__months button.is-selected { background: var(--primary); color: var(--on-primary); }
+/* 非终点层级：格子是「下钻」语义，右上角一个向内放大角标提示还能继续深入 */
+.ui-date__months button.is-drill::before {
+  content: '';
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-top: 1.5px solid currentColor;
+  opacity: .4;
+}
+.ui-date__months button { position: relative; }
+/* 终点层级的选中态更重：实心主色 */
+.ui-date__months button.is-final.is-selected { background: var(--primary); }
 .ui-date__months button:disabled { opacity: .34; cursor: not-allowed; }
 
 .ui-date__grid {

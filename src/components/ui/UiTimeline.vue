@@ -9,12 +9,12 @@ const props = defineProps({
 <template>
   <ol class="ui-timeline" :class="'is-time-' + timePosition">
     <li v-for="(item, index) in items" :key="item.title + index" class="ui-timeline__item" :class="`is-${item.tone || 'primary'}`">
+      <!-- 时间在左：排在竖线**左侧**（时间 → 竖线 → 内容），右对齐贴线 -->
+      <time v-if="timePosition === 'left' && item.time" class="ui-timeline__time">{{ item.time }}</time>
       <span class="ui-timeline__rail" aria-hidden="true">
         <span class="ui-timeline__dot"></span>
         <span v-if="index < items.length - 1" class="ui-timeline__line"></span>
       </span>
-      <!-- 时间放左侧：独立一列，右对齐贴着轨道 -->
-      <time v-if="timePosition === 'left' && item.time" class="ui-timeline__time">{{ item.time }}</time>
       <div class="ui-timeline__body">
         <div class="ui-timeline__head">
           <b>{{ item.title }}</b>

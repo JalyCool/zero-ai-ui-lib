@@ -112,10 +112,18 @@ function measure() {
   if (!available) { columns.value = count; isMultiline.value = false; return }
   const gap = 3
   const inner = Math.max(0, available - 6 - (count - 1) * gap)
-  /* 单个选项的自然宽度上限：最多占一半宽，否则一个长标签会把整排挤压成一列。 */
+  /* 列数按「中位数宽度」而不是最宽标签算：
+     一个超长标签会把整排挤成 2 列巨格（图标巨大、文字被截），
+     中位数让多数格子保持第一行那种密度，个别长标签省略号截断。 */
+  const sorted = naturalWidths.value.slice().sort((a, b) => a - b)
+  const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 64
   const cap = Math.max(props.minItemWidth || 0, available * 0.46)
-  const widest = Math.min(cap, Math.max.apply(null, naturalWidths.value.concat([props.minItemWidth || 0])))
-  const fits = Math.max(1, Math.floor((inner + gap) / (widest + gap)))
+  /* 密度下限：格子最窄也不窄于「容器 6 等分」——
+     长标签在这个宽度里省略号截断，而不是把整排挤成 2 个巨格。
+     （单行短标签布局不受影响：fits 本来就到 count 就封顶。） */
+  const minDensity = available / 6 - gap
+  const unit = Math.min(cap, Math.max(minDensity, median))
+  const fits = Math.max(1, Math.floor((inner + gap) / (unit + gap)))
   const cols = Math.min(count, Math.max(1, fits))
   columns.value = cols
   isMultiline.value = cols < count

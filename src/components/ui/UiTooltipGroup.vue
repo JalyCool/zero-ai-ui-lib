@@ -169,8 +169,10 @@ onBeforeUnmount(() => { clearTimeout(openTimer); clearTimeout(closeTimer) })
   line-height: 1.45;
   pointer-events: none;
   white-space: pre-line;
-  /* 暖态在兄弟触发器之间切换时，气泡平滑滑过去（不是瞬移） */
-  transition: transform var(--t-panel), opacity var(--t-fade), filter var(--t-fade);
+  /* 暖态在兄弟触发器之间切换时，气泡平滑滑过去（不是瞬移）：
+     位置写在内联 left/top 上，所以 left/top 也必须有过渡，否则 transform 过渡了位置照样跳 */
+  transition: transform var(--t-panel), left var(--t-panel), top var(--t-panel),
+              opacity var(--t-fade), filter var(--t-fade);
 }
 .ui-tip-enter-active,
 .ui-tip-leave-active { transition: opacity var(--t-fade), transform var(--t-pop), filter var(--t-fade); }

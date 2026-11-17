@@ -12,7 +12,10 @@ const props = defineProps({
   /* 离中心越远越模糊（景深），并轻微降低不透明度 */
   distanceBlur: { type: Boolean, default: true },
   /* 最远行的模糊半径上限（px） */
-  maxBlur: { type: Number, default: 3.4 }
+  maxBlur: { type: Number, default: 3.4 },
+  /* 可选范围（含端点）：与列 items 同类型的原始值；null = 不限制 */
+  min: { type: [String, Number], default: null },
+  max: { type: [String, Number], default: null }
 })
 
 const emit = defineEmits(['change'])
@@ -35,6 +38,27 @@ function setColumnEl(el, index) {
   if (el) columnEls.value[index] = el
 }
 
+/* 范围判定（列级）：优先列自己的 min / max（由时间 / 日期选择器按当前上层
+   列的值算出的级联界），回退全局 props。列值能转数字就按数字比。 */
+function outOfRange(value, column) {
+  const lo = column && column.min !== undefined ? column.min : props.min
+  const hi = column && column.max !== undefined ? column.max : props.max
+  if (lo === null && hi === null && !column) return false
+  if (lo === undefined && hi === undefined) return false
+  const asNum = v => { const n = Number(v); return Number.isFinite(n) ? n : null }
+  const a = asNum(value)
+  const nlo = lo === null || lo === undefined ? null : asNum(lo)
+  const nhi = hi === null || hi === undefined ? null : asNum(hi)
+  if (a !== null && (nlo !== null || nhi !== null)) {
+    if (nlo !== null && a < nlo) return true
+    if (nhi !== null && a > nhi) return true
+    return false
+  }
+  const s = String(value)
+  if (lo !== null && lo !== undefined && s < String(lo)) return true
+  if (hi !== null && hi !== undefined && s > String(hi)) return true
+  return false
+}
 function itemValue(item) {
   if (item && typeof item === 'object') return item.value
   return item
@@ -90,8 +114,32 @@ function schedulePaint(index) {
   blurFrame = requestAnimationFrame(() => { blurFrame = 0; paintBlur(index) })
 }
 
+/* 列的可滚上下界：第一个 / 最后一个「在范围内」的项居中时的 scrollTop。
+   有限制的波轮不允许滚到限制之外——越界立即钉回边界。 */
+function clampColumnScroll(index) {
+  const column = columnEls.value[index]
+  if (!column) return false
+  const buttons = Array.from(column.querySelectorAll('button[data-value]'))
+  const config = props.columns[index]
+  const allowed = buttons.filter(b => !outOfRange(b.dataset.value, config))
+  if (!allowed.length) return false
+  const centerOf = b => b.offsetTop - (column.clientHeight - b.offsetHeight) / 2
+  const lo = Math.max(0, centerOf(allowed[0]))
+  const hi = centerOf(allowed[allowed.length - 1])
+  const top = column.scrollTop
+  if (top < lo - 1 || top > hi + 1) {
+    column.scrollTo({ top: Math.min(hi, Math.max(lo, top)), behavior: 'auto' })
+    return true
+  }
+  return false
+}
+
 function onScroll(index) {
   schedulePaint(index)
+  if (props.min !== null || props.max !== null) {
+    /* 拖动越界：立刻拉回，跟手表现为「推不动」 */
+    if (clampColumnScroll(index)) { clearTimeout(timers[index]); return }
+  }
   clearTimeout(timers[index])
   timers[index] = setTimeout(() => {
     const raw = centeredValue(index)
@@ -105,6 +153,7 @@ function onScroll(index) {
 
 function select(index, item) {
   const value = itemValue(item)
+  if (outOfRange(value, props.columns[index])) return
   scrollToValue(index, value)
   requestAnimationFrame(() => paintBlur(index))
   emit('change', { index, value })
@@ -163,7 +212,8 @@ defineExpose({ scrollAll, scrollToValue })
           :data-value="String(itemValue(item))"
           :aria-selected="String(itemValue(item)) === String(column.value)"
           :tabindex="interactive ? 0 : -1"
-          :class="{ 'is-selected': String(itemValue(item)) === String(column.value) }"
+          :class="{ 'is-selected': String(itemValue(item)) === String(column.value), 'is-out': outOfRange(itemValue(item), column) }"
+          :aria-disabled="outOfRange(itemValue(item), column) ? 'true' : undefined"
           @click="select(index, item)"
         >
           {{ item && typeof item === 'object' ? String(item.label ?? item.value) : String(item) }}
@@ -235,6 +285,8 @@ defineExpose({ scrollAll, scrollToValue })
   transition: color var(--t-fade), background var(--t-fade), transform var(--t-feedback);
 }
 .ui-wheel__column button { will-change: filter, opacity; }
+/* 越界项：淡出且不可点（paintBlur 的 opacity 会被 !important 覆盖） */
+.ui-wheel__column button.is-out { opacity: .2 !important; pointer-events: none; }
 .ui-wheel__column button:hover { background: color-mix(in oklab, var(--surface) 46%, transparent); color: var(--on-surface); }
 .ui-wheel__column button:active { transform: scale(.96); }
 /* 落在高亮块里的那一项：不带底色，只换颜色和字重。 */
