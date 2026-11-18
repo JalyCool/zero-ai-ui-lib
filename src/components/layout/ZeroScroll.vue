@@ -15,7 +15,9 @@ const props = defineProps({
   /* 贴边处最大模糊（px） */
   fadeBlur: { type: Number, default: 7 },
   /* 层数：4~6 足够平滑，越多合成成本越高 */
-  fadeLayers: { type: Number, default: 12 },
+  fadeLayers: { type: Number, default: 8 },
+  /* 精度：soft 过渡最柔但层与采样最多；high 为标准档（更省） */
+  fadePrecision: { type: String, default: 'high' },
   /* 染色：默认 surface，向内渐隐到透明 */
   fadeTint: { type: String, default: 'var(--surface)' },
   fadeTintStrength: { type: Number, default: 0.8 },
@@ -90,6 +92,7 @@ defineExpose({
         :height="fade"
         :max-blur="fadeBlur"
         :layers="fadeLayers"
+        :precision="fadePrecision"
         :tint="fadeTint"
         :tint-strength="fadeTintStrength"
         :visible="canScrollUp"
@@ -105,6 +108,7 @@ defineExpose({
         placement="bottom"
         :max-blur="fadeBlur"
         :layers="fadeLayers"
+        :precision="fadePrecision"
         :tint="fadeTint"
         :tint-strength="fadeTintStrength"
         :visible="canScrollDown"

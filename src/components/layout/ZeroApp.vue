@@ -18,7 +18,9 @@ const props = defineProps({
   /* 顶 / 底淡出带高度（px）；0 = 关闭 */
   fade: { type: Number, default: 84 },
   fadeBlur: { type: Number, default: 7 },
-  fadeLayers: { type: Number, default: 12 },
+  fadeLayers: { type: Number, default: 8 },
+  /* soft 过渡最柔但层数最多；high 标准档，性能更好 */
+  fadePrecision: { type: String, default: 'high' },
   fadeTint: { type: String, default: 'var(--surface)' },
   fadeTintStrength: { type: Number, default: 0.8 }
 })
@@ -74,7 +76,14 @@ function nextTickBar() {
 onBeforeUnmount(() => { if (barRo) barRo.disconnect() })
 
 /* 底部固定层高度：实测优先，fallback 用 tabbarSpace */
+/* 底部固定层高度：只有移动端（横排 TabBar）才有意义。
+   桌面端的 TabBar 是贴左竖排、height:100dvh —— 拿它当底边高度会把
+   底部渐变模糊撑成整屏。 */
+const isDesktop = () => typeof window !== 'undefined' &&
+  window.matchMedia && window.matchMedia('(min-width: 900px)').matches
+
 const tabBarInset = computed(() => {
+  if (isDesktop()) return 0
   if (slots && slots.tabbar) return barHeight.value
   return props.tabbarSpace
 })
@@ -110,6 +119,7 @@ defineExpose({
       :fade="fade"
       :fade-blur="fadeBlur"
       :fade-layers="fadeLayers"
+      :fade-precision="fadePrecision"
       :fade-tint="fadeTint"
       :fade-tint-strength="fadeTintStrength"
       :bottom-inset="tabBarInset"
