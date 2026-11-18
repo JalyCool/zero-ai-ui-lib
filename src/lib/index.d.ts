@@ -482,12 +482,13 @@ declare const UiMenu: DefineComponent<{ variant?: 'floating' | 'tool' | 'context
 declare const AppHead: DefineComponent<{ title?: string; sub?: string; fuseHeight?: number; showLogoInFuse?: boolean; fuseOnly?: boolean }, AnyProps, unknown>
 declare const useHeadFuse: (defaultEl: any) => { fused: any; attach: () => void; detach: () => void; measureInline: (el: any) => void; bind: (el: any) => void }
 declare const setPageHeadActions: (renderFn: ((...args: any[]) => any) | null) => void
+declare const setPageHeadAfter: (renderFn: ((...args: any[]) => any) | null) => void
 declare const setPageHeadCenter: (renderFn: ((...args: any[]) => any) | null) => void
 declare const useSurfaceTier: (target: any, options?: { minStep?: number }) => { tierVars: any; resolve: () => void }
 
 /* ---------- components ---------- */
 export {
-  UiChart, UiMenu, AppHead, useHeadFuse, setPageHeadActions, setPageHeadCenter, useSurfaceTier,
+  UiChart, UiMenu, AppHead, useHeadFuse, setPageHeadActions, setPageHeadAfter, setPageHeadCenter, useSurfaceTier,
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiCommandPalette, UiTour, UiPopover, UiKbd, UiLink, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
   UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiModal, UiSideNav, MarkdownView, normalizeIconName,

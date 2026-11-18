@@ -170,11 +170,6 @@ onBeforeUnmount(() => {
         <!-- 融合条（fixed，滚过头才淡入）：底色就是顶部渐变模糊带本身。
              按钮与默认态共享同一组插槽 —— 页面注入的动作会出现在全局按钮旁边。 -->
         <AppHead fuse-only :title="meta.title || ''">
-          <template #leading>
-            <button v-if="canBack" class="icon-btn" aria-label="返回" title="返回" @click.stop="goBack">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-          </template>
           <template #actions>
             <component :is="pageActionsComp" />
             <button class="icon-btn" aria-label="打开命令面板" title="⌘K" @click.stop="openPalette">
@@ -184,17 +179,13 @@ onBeforeUnmount(() => {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
             </button>
           </template>
+          <template v-if="pageAfterComp" #after><component :is="pageAfterComp" /></template>
         </AppHead>
       </template>
 
       <!-- 默认态大标题：在页面流内随内容滚走。同一组动作再渲染一次，
            所以「页面按钮 + 全局按钮」永远并排、不会各画一套头。 -->
       <AppHead :title="meta.title || ''" :sub="pageSub || ''">
-        <template #leading>
-          <button v-if="canBack" class="icon-btn" aria-label="返回" title="返回" @click.stop="goBack">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-        </template>
         <template #actions>
           <component :is="pageActionsComp" />
           <button class="icon-btn" aria-label="打开命令面板" title="⌘K" @click.stop="openPalette">
@@ -204,6 +195,7 @@ onBeforeUnmount(() => {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           </button>
         </template>
+        <template v-if="pageAfterComp" #after><component :is="pageAfterComp" /></template>
       </AppHead>
 
       <div id="viewRoot">

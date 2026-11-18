@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted, ref, useSlots } from 'vue'
+import { computed, onMounted, ref, useSlots } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useHeadFuse } from '../../composables/useHeadFuse'
 
 const props = defineProps({
@@ -20,6 +21,13 @@ const props = defineProps({
 })
 
 const $slots = useSlots()
+const route = useRoute()
+const router = useRouter()
+
+/* 第二级页面（tab 内的子页）默认在最左侧放返回按钮 */
+const canBack = computed(() => !!(route.meta.tab && route.name !== route.meta.tab))
+function goBack() { router.back() }
+
 const defaultEl = ref(null)
 const { fused, attach, measureInline } = useHeadFuse(defaultEl)
 
@@ -35,11 +43,15 @@ onMounted(() => {
     v-if="fuseOnly"
     class="app-head__fuse"
     :class="{ 'is-visible': fused }"
-    :style="{ height: fuseHeight + 'px' }"
+    :style="{ minHeight: fuseHeight + 'px' }"
   >
     <div class="app-head__row">
       <div class="app-head__side app-head__side--l">
-        <slot name="leading" />
+        <slot name="leading">
+          <button v-if="canBack" class="icon-btn" aria-label="返回" title="返回" @click.stop="goBack">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+        </slot>
       </div>
       <Transition name="app-head-fade">
         <div v-if="fused" class="app-head__center">
@@ -52,6 +64,8 @@ onMounted(() => {
         <slot name="actions" />
       </div>
     </div>
+    <!-- 第二行：分区切换这类横向操作，滚动前后都钉在头上 -->
+    <div v-if="$slots.after" class="app-head__after"><slot name="after" /></div>
   </div>
 
   <!-- 默认态：在页面流内，随内容滚走 -->
@@ -63,7 +77,11 @@ onMounted(() => {
   >
     <div class="app-head__row">
       <div class="app-head__side app-head__side--l">
-        <slot name="leading" />
+        <slot name="leading">
+          <button v-if="canBack" class="icon-btn" aria-label="返回" title="返回" @click.stop="goBack">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+        </slot>
       </div>
       <div class="app-head__spacer" />
       <div class="app-head__side app-head__side--r">
@@ -80,6 +98,8 @@ onMounted(() => {
         <slot name="sub">{{ sub }}</slot>
       </p>
     </div>
+    <!-- 第二行：与融合条共用同一份内容，滚上去之后仍在头部 -->
+    <div v-if="$slots.after" class="app-head__after"><slot name="after" /></div>
   </div>
 </template>
 
@@ -123,18 +143,25 @@ onMounted(() => {
   opacity: .75;
 }
 
-/* ---------- 融合条（fixed，滚过头才出现） ---------- */
+/* ---------- 融合条（钉在内容区顶部，滚过头才出现） ----------
+   absolute 而不是 fixed：它排在 ZeroScroll 的 #edge-top 容器里，
+   那个容器就是**内容列**的宽度 —— 桌面端不会横跨过去盖住竖排 TabBar
+   （fixed 相对视口定位，会把整条拉满屏）。 */
 .app-head__fuse {
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 0;
   top: 0;
   z-index: 55;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: flex-end;
   visibility: hidden;
   pointer-events: none;
 }
+/* 第二行：给分区切换这类横向操作；与第一行一起被融合带包住 */
+.app-head__after { width: 100%; margin-top: 8px; }
+.app-head__default .app-head__after { padding-left: 2px; }
 .app-head__fuse.is-visible { visibility: visible; pointer-events: auto; }
 /* 融合底：与 ZeroScroll 的模糊带叠加的一层极淡竖向渐变（对应设计稿
    上滑态的白→透明带），让常驻按钮像是从页面里长出来而不悬在内容上。 */
@@ -152,7 +179,8 @@ onMounted(() => {
 }
 .app-head__fuse .app-head__row {
   width: 100%;
-  padding: 0 2px;
+  /* 不加内边距：容器宽度已由 --scroll-pad-* 对齐内容盒 */
+  padding: 0;
   margin-bottom: 14px;
 }
 .app-head__center {

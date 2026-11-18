@@ -22,10 +22,10 @@ const props = defineProps({
   /* 内容内边距：直接传给滚动元素 */
   padding: { type: String, default: '' },
   /* ============================================================
-     底部固定层高度（px）：TabBar / 悬浮输入条这类 fixed 覆盖层的高度。
-     >0 时底部模糊带与 #edge-bottom 插槽都**抬升到固定层之上** ——
-     模糊带以固定层的顶边为底边，不再被 TabBar 盖住一截。
-     ZeroApp 会把 TabBar 高度自动传进来；独立使用时手动传。
+     底部固定层高度（px）：TabBar / 悬浮输入条这类覆盖层的高度。
+     0 = 贴容器底、用 fade 作带高；>0 = 底部渐变模糊带**高度取该值**
+     （正好是固定层那一条），贴在容器底边 —— TabBar 透明地坐在模糊里。
+     ZeroApp 实测 TabBar 高度后传进来；独立使用时手动传。
      ============================================================ */
   bottomInset: { type: Number, default: 0 }
 })
@@ -44,7 +44,8 @@ const props = defineProps({
 
    #edge-top / #edge-bottom 插槽：渲染在模糊层**上方**的固定内容
    （返回栏、悬浮标题、输入条……），与模糊带同一坐标系，
-   bottomInset > 0 时底部插槽贴在固定层之上而不是容器底。
+   bottomInset > 0 时底部渐变模糊带的高度 = 该值，贴容器底边；
+   #edge-bottom 也贴底。
 
    典型用法（应用外壳直接用它，见 ZeroApp）：
      <ZeroScroll id="scrollArea" tag="main" :bottom-inset="64">
@@ -61,7 +62,7 @@ const viewStyle = computed(() => (props.padding ? { padding: props.padding } : u
 const hasEdgeTop = computed(() => props.fade > 0)
 const hasEdgeBottom = computed(() => props.fade > 0)
 /* 底部模糊带/插槽的 bottom 偏移：被 TabBar 顶住时抬升 */
-const bottomOffset = computed(() => (props.bottomInset > 0 ? props.bottomInset + 'px' : '0'))
+/* 底部固定层高度：同时决定底部模糊带的高度与 #edge-bottom 的位置 */
 
 defineExpose({
   /* 交给外部做「切 Tab 回顶」这类操作 */
@@ -102,18 +103,16 @@ defineExpose({
     <template v-if="hasEdgeBottom">
       <UiProgressiveBlur
         placement="bottom"
-        :height="fade"
         :max-blur="fadeBlur"
         :layers="fadeLayers"
         :tint="fadeTint"
         :tint-strength="fadeTintStrength"
         :visible="canScrollDown"
-        :style="{ bottom: bottomOffset }"
+        :height="bottomInset > 0 ? bottomInset : fade"
       />
       <div
         v-if="$slots['edge-bottom']"
         class="zero-scroll__edge zero-scroll__edge--bottom"
-        :style="{ bottom: bottomOffset }"
       >
         <slot name="edge-bottom" />
       </div>
@@ -157,5 +156,11 @@ defineExpose({
 }
 .zero-scroll__edge--top { top: 0; }
 .zero-scroll__edge--bottom { bottom: 0; }
+/* 容器实际宽度 = 内容主体宽度：左右缩到滚动内容的内距上，
+   而不是把融合条拉满屏再用内边距硬蹭回来。 */
+.zero-scroll__edge {
+  left: var(--scroll-pad-l, 0px);
+  right: var(--scroll-pad-r, 0px);
+}
 .zero-scroll__edge > :deep(*) { pointer-events: auto; }
 </style>

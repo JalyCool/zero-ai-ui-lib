@@ -57,8 +57,10 @@ function pick(value) {
   position: fixed;
   display: flex;
   z-index: 20;
-  background: var(--surface-container-low);
-  transition: background var(--t-fade), border-color var(--t-fade);
+  /* 透明：TabBar 只是浮在页面上的图标行，底板由 ZeroScroll 的
+     底部渐变模糊提供（设计稿导出 PNG 里这块完全透明）。 */
+  background: transparent;
+  transition: border-color var(--t-fade);
 }
 .ui-tabbar__tab {
   display: flex;
@@ -104,7 +106,6 @@ function pick(value) {
     display: flex;
     justify-content: center;
     /* 全库唯一的阴影：TabBar 悬浮在内容上，向上投一层淡淡的分离影 */
-    box-shadow: 0 -6px 24px color-mix(in oklab, var(--on-surface) 14%, transparent);
   }
   /* tab 总宽上限：超出后每个 tab 按内容收拢，不再等分铺满。 */
   .ui-tabbar__tab { flex: 1 1 0; min-width: 0; max-width: 96px; }
@@ -125,7 +126,8 @@ function pick(value) {
     justify-content: flex-start;
     gap: 6px;
     padding: 16px 8px;
-    box-shadow: 8px 0 24px color-mix(in oklab, var(--on-surface) 14%, transparent);
+    /* 桌面端保留栏体底色（移动端透明，融进底部渐变模糊） */
+    background: var(--surface-container-low);
   }
   .ui-tabbar__tab { flex: 0 0 auto; width: 100%; }
 }

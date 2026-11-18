@@ -29,6 +29,12 @@
    只是从底部横排改成贴左边的竖排。
    首页改两列卡片 + 四列指标。
    ============================================================ */
+/* 内容与融合容器共用这组内距（移动优先，对称） */
+:root {
+  --scroll-pad-l: clamp(16px, 4vw, 48px);
+  --scroll-pad-r: clamp(16px, 4vw, 48px);
+}
+
 @media (min-width: 900px) {
   .app {
     max-width: none;
@@ -36,9 +42,14 @@
   }
 
   /* 竖排导航条由 UiTabBar 组件自带样式；这里只让内容区避开它。 */
+  /* 内容主体的左右内距（内容盒 = 视口 - 这两项）；融合容器与它对齐。 */
+  :root {
+    --scroll-pad-l: calc(74px + clamp(20px, 3vw, 48px));
+    --scroll-pad-r: clamp(24px, 4vw, 64px);
+  }
   #scrollArea {
-    padding: calc(20px * var(--density)) clamp(24px, 4vw, 64px) calc(40px * var(--density))
-             calc(74px + clamp(20px, 3vw, 48px));
+    padding: calc(20px * var(--density)) var(--scroll-pad-r) calc(40px * var(--density))
+             var(--scroll-pad-l);
   }
 
   /* 首页：两列卡片 + 四列指标 */

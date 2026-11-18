@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, h, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import {
   UiAccordion, UiAlert, UiAvatar, UiBadge, UiBottomSheet, UiButton, UiCard,
   UiChart, UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState, UiSideNav,
@@ -19,6 +19,7 @@ import {
   UiChatThread, UiChatMessage, UiChatSystemLine, UiMenu,
   UiTimeline, UiTour
 } from '../components/ui'
+import { setPageHeadAfter } from '../composables/useAppHead'
 import { ZeroScroll } from '../components/layout'
 import { confirmDialog, AGENT_SHAPES } from '../lib'
 import { useRouter } from 'vue-router'
@@ -81,6 +82,35 @@ const sections = [
   { id: 'sec-motion', label: '动效手势' }
 ]
 activeSection.value = sections[0].id
+
+/* 分区切换放到头部的第二行（#after）：滚动前后都钉在头上，
+   内容区不再被这条 picker 占位。 */
+function registerHeadAfter() {
+  setPageHeadAfter(() =>
+    h(
+      'div',
+      { class: 'lib-picker', role: 'tablist', 'aria-label': '组件分区' },
+      sections.map(s =>
+        h(
+          'button',
+          {
+            key: s.id,
+            type: 'button',
+            role: 'tab',
+            class: ['lib-picker__item', { 'is-active': activeSection.value === s.id }],
+            'aria-selected': activeSection.value === s.id,
+            onClick: () => (activeSection.value = s.id)
+          },
+          s.label
+        )
+      )
+    )
+  )
+}
+onMounted(registerHeadAfter)
+onActivated(registerHeadAfter)
+onDeactivated(() => setPageHeadAfter(null))
+onBeforeUnmount(() => setPageHeadAfter(null))
 /* 调试入口：/?sec=sec-overlay 直接落到对应分区 */
 const debugSec = new URLSearchParams(window.location.search).get('sec')
 if (debugSec && sections.some(s => s.id === debugSec)) activeSection.value = debugSec
@@ -669,20 +699,6 @@ watch(activeSection, id => {
 
 <template>
   <section class="view active lib" data-view="components">
-    <!-- 分区切换：吸顶胶囊条，一次只展示一个分区（68 个演示单元） -->
-    <div class="lib-picker" role="tablist" aria-label="组件分区">
-      <button
-        v-for="s in sections"
-        :key="s.id"
-        type="button"
-        role="tab"
-        class="lib-picker__item"
-        :class="{ 'is-active': activeSection === s.id }"
-        :aria-selected="activeSection === s.id"
-        @click="activeSection = s.id"
-      >{{ s.label }}</button>
-    </div>
-
     <!-- 操作 -->
     <section v-show="activeSection === sections[0].id" :id="sections[0].id" class="lib-sec">
       <h3 class="lib-sec__title">操作与选择</h3>
