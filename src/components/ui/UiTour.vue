@@ -106,12 +106,11 @@ watch(() => props.modelValue, async value => {
     index.value = props.startAt
     closing.value = false
     landed.value = false
-    /* 首帧就把孔放到目标上（第一项要能直接聚焦目标），
-       遮罩靠 opacity 渐入 —— 不再从「整屏黑」收拢，那一下太突然。 */
+    /* 聚焦动画：先把孔铺满整屏（遮罩还没压暗），下一帧再收拢到目标 ——
+       整体「聚焦到一点」。之前首帧直接落在目标上，所以看不到这个动作。 */
     rendered.value = true
+    spot.value = viewportRect()
     await nextTick()
-    measure()
-    /* 目标还没渲染出来时（异步内容）再量一次 */
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     measure()
     requestAnimationFrame(() => {

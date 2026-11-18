@@ -5,7 +5,7 @@
 
 ## 0. 这套框架长什么样
 
-- **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 圆角分档」，不用阴影；**描边只出现在功能处**——输入框 / 开关、复选框类控件 / `variant="outline"` 变体 / 行分隔线 / 浮层边界，**能没有描边的地方就不要有描边**（卡片、告警、折叠面板、模态、表格外形、卡片组等一律无描边）。**阴影全库只有一处：TabBar**（移动端向上 / 桌面端向右投一层淡分离影），其他组件一律不投影。
+- **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 圆角分档」，不用阴影；**描边只出现在功能处**——输入框 / 开关、复选框类控件 / `variant="outline"` 变体 / 行分隔线 / 浮层边界，**能没有描边的地方就不要有描边**（卡片、告警、折叠面板、模态、表格外形、卡片组等一律无描边）。**全库没有任何阴影**（TabBar 也是透明的，靠页面底部渐变模糊托住），其他组件更不投影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
 - **交付形态**：92 个组件 + 3 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **字体**：三组变量是**唯一来源**，别处不许写死字体名——`--font-sans`（中文优先阿里巴巴普惠体 3.0 → PingFang SC / 微软雅黑 / Noto Sans CJK → 系统 sans）、`--font-mono`（代码 / 终端：ui-monospace → SFMono → Cascadia → Consolas → DejaVu / Liberation / Ubuntu Mono → Noto Sans Mono → Source Code Pro / Fira Code / JetBrains Mono → monospace，逐平台回退）、`--font-numeric`（读数 / 二维码条码等数字列，等同 mono）。等宽数字**双保险**：`font-variant-numeric: tabular-nums` + `font-feature-settings: var(--font-feat-tnum)`（`"tnum" 1, "lnum" 1`，兼容不认前者的老浏览器）。应用想换字库只要覆盖 `--font-sans-custom` / `--font-mono-custom`。
@@ -129,7 +129,7 @@ import {
   UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots,
   UiSideNav, MarkdownView, normalizeIconName,
   UiChatThread, UiChatMessage, UiChatSystemLine, UiChatComposer, UiProgressiveBlur,
-  AppHead, useHeadFuse, setPageHeadActions, ZeroApp, ZeroScroll, useScrollEdges, useSurfaceTier,
+  AppHead, useHeadFuse, setPageHeadActions, setPageHeadAfter, ZeroApp, ZeroScroll, useScrollEdges, useSurfaceTier,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -199,13 +199,13 @@ import {
 | `UiSplitter` | `v-model` 占比（0~1；误传 20 / 80 这类百分数会自动换算）；`direction` 横向 / 纵向，`#first` 与默认插槽分居两侧，拖分隔条实时改比例；第一面板只占「总长 - 分隔条」的份额，分隔条固定宽度，永远不会把容器撑出滚动条；**吸附（可选开启）**：`snap-count` 等分或 `stops` 指定点位，松手弹到最近分段值（拖动零过渡跟手、松手走 view 弹簧） |
 | `UiScrollArea` | `max-height` / `height` + `shadows`；自定义滚动条，贴边时出现渐隐阴影 |
 | `UiCommandPalette` | `v-model` 开关 + `items`；输入过滤、上下键移动、Enter 执行，Esc 关闭 |
-| `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让；**进场高亮孔先铺满整屏再收拢到目标**（整体聚焦到一点），换步时孔在目标之间连续移动，退场再张回整屏 |
+| `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让；**开场孔先铺满整屏、下一帧收拢到目标**（聚焦到一点的弹簧过渡，缺省实现里曾被跳过），换步时孔在目标间连续移动，退场再张回整屏 |
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
 | `UiProgressiveBlur` | **页面顶端 / 底部的渐进式模糊**：N 层 backdrop-filter 叠加，靠**光滑遮罩**控制每层贡献。三条设计铁律（都是踩过坑换来的）：**① 遮罩必须光滑** —— 遮罩若是分段线性，总模糊量 B(y)=Σrᵢ·mᵢ(y) 要连续就得 rₖ=rₖ₊₂，逼得所有半径相等（就没有渐变）；这里用**共享的升余弦曲线 P**，第 i 层遮罩取 **P^i**（光滑函数之和仍光滑 → 没有台阶）。**② 幂次要压低** —— 直接用 P^i 会让高次项在贴边处瞬间归零（「最该糊的地方没糊住，往内立刻清晰」，过渡区被压成几像素），所以 w 压在 1~2.4。**③ 半径按 1/i^0.7 递减并归一化到 Σr²=maxBlur²** —— 叠加模糊的等效半径按方差相加，sqrt(Σrᵢ²) 才是贴边处的真实模糊量。参数：`placement` top/bottom、`height`（模糊带高度 = 过渡区长度，太窄看着像「一刀切」）、`maxBlur`、`layers`、`precision`（`soft` 高斯尾部铺得最开 = 过渡区最宽、可见台阶最少，**默认**；`high` 标准；`sharp` 贴边干脆）、`tint` + `tintStrength`、`position`、`visible`（只切不透明度，不销毁层）；层全部 pointer-events: none。实测（真实渲染像素 + 折点检测）：soft+12 层的可见台阶 109（旧实现 125），过渡区铺开 7 个采样点 |
 | `AppHead` | 页面头部（默认大标题 ⇄ 上滑融合条）。**外壳成对使用两个实例**：`fuseOnly` 放 `ZeroScroll` 的 `#edge-top`（固定层，滚出头才淡入），普通实例放页面流内（随内容滚走）；融合状态由 `useHeadFuse` 单例管理，**只有 fuseOnly 实例渲染固定条**，不要各算一份。插槽：`#leading`（返回键等左侧常驻）、`#actions`（右侧，全局 + 页面按钮同排）、`#title`/`#sub`、`#logo`（默认态 `show-logo` / 融合态 `show-logo-in-fuse`）、`#badge`。融合条自带一层极淡 surface 竖向渐变，叠在模糊带上形成设计稿的"白→透明"柔光。**页面要加自己的按钮**用 `setPageHeadActions(() => h(...))` 注册（配合 `onMounted/onActivated` 设置、`onDeactivated/onBeforeUnmount` 清理，keep-alive 只触发 deactivated），**不要自造 view-head** |
 | `useHeadFuse` / `useAppHead` | 头部配套组合式函数：`useHeadFuse` 是融合状态单例（两实例共用，避免两条固定条同时出现）；`useAppHead().setPageHeadActions(fn)` 把页面动作注入外壳 `#actions`（与全局按钮并排，两态共享） |
-| `useSurfaceTier` | 组合式函数：探测宿主实际背景（半透明逐层合成），在 M3 表面梯度上选「比宿主亮一档」的令牌，暴露 `--tier-bg`/`--tier-bg-high`/`--tier-bg-low`。组件背景别写死 surface-container——嵌套层级一多就错位 |
-| `ZeroScroll` | **零配置滚动区（根组件）**：自带「溢出即模糊」——顶部还有被裁内容就淡入顶部渐进模糊、到顶淡出；底部同理；内容不足一屏两侧都不出现。内部用 `useScrollEdges` 判断，模糊层**常驻不销毁**（只切不透明度，backdrop-filter 反复重建会闪）。`fade`（带高，0 关闭）/ `fade-blur` / `fade-layers` / `fade-tint` / `bottom-inset`（底部 fixed 覆盖层高度：底部模糊带与 `#edge-bottom` 抬升到其顶边之上）/ `padding` / `tag` / `id`（默认 `scrollArea`：弹层锁滚动靠它）；`#edge-top`/`#edge-bottom` 插槽渲染在模糊带**上层**的固定内容（z-55）；暴露 `scrollTo` / `scrollTop`。flex 父级与固定高度父级下都能撑满 |
+| `useSurfaceTier` | **可选**工具：无法静态判断层级时，探测宿主实际背景并在 M3 表面梯度上取下一档，输出 `--tier-bg`/`--tier-bg-high`/`--tier-bg-low` 三个 **rgb() 值**（不要存 var() 名）。常规做法是直接用变体令牌（见第 5 节层级表），默认不必用它 |
+| `ZeroScroll` | **零配置滚动区（根组件）**：自带「溢出即模糊」——顶部还有被裁内容就淡入顶部渐进模糊、到顶淡出；底部同理；内容不足一屏两侧都不出现。内部用 `useScrollEdges` 判断，模糊层**常驻不销毁**（只切不透明度，backdrop-filter 反复重建会闪）。`fade`（带高，0 关闭）/ `fade-blur` / `fade-layers`（默认 8）/ `fade-precision`（默认 `high`，`soft` 过渡最柔但层最多）/ `fade-tint` / `bottom-inset`（底部固定层高度：底部模糊带**高度**取该值，贴容器底边 —— TabBar 透明地坐在里面；≥900px 由 ZeroApp 自动传 0）/ `padding` / `tag` / `id`（默认 `scrollArea`：弹层锁滚动靠它）；`#edge-top`/`#edge-bottom` 插槽渲染在模糊带**上层**的固定内容（z-55）；暴露 `scrollTo` / `scrollTop`。flex 父级与固定高度父级下都能撑满 |
 | `ZeroApp` | **应用外壳根组件（约定优于配置）**：新项目用它包一层，下面这些就**不需要再逐页配置**——`#scrollArea` 滚动容器、**页面上下边缘溢出时的渐进式模糊**（随滚动自动淡入淡出）、居中限宽（`max-width`）、`#tabbar` 槽位与底部占位（内容不会被压在 tab 下，**自动实测 TabBar 高度让底部模糊带以它的顶边为底边**），并转发 `#edge-top`/`#edge-bottom` 给 ZeroScroll。`<ZeroApp :tabbar-space="N"><router-view /><template #tabbar>…</template></ZeroApp>`；暴露 `scrollTo`。需要更细控制就退回 `ZeroScroll`，或直接用 `UiProgressiveBlur` 手搭 |
 | `UiChatThread` | 对话流容器：**自己就是滚动容器**（不是 body），`gap`（设计稿 18）+ `padding`（给顶 / 底模糊栏与输入条让位）；`align-bottom` 内容不足时 `margin-top:auto` 把消息推到底部；`auto-scroll` 新内容到达自动贴底，**用户上滑自动暂停、滚回底部附近恢复跟随**（与 UiTerminalOutput 的 follow 同语言）；暴露 `scrollToBottom()` |
 | `UiChatMessage` | 对话消息，**三种角色共用一套骨架**（外层行对齐 + 可选头像 + 气泡）：`assistant` 纯文本无气泡左对齐（AI 叙述不该被框住）、`user` 黑底白字气泡右对齐 **右上收窄 24/8/24/24**、`agent` 品牌色气泡（`color`）+ 左侧头像左对齐 **左上收窄 8/24/24/24** —— **收窄角指向说话人**，是唯一的形状语义。**正文一律走 `MarkdownView`**：传 `content`（Markdown 字符串）+ `mentions` + `mention-resolver`，`@名字` 由 MarkdownView 的提及机制渲染成 `UiAvatarTag`（**不在消息组件里另做一套 mention**）；也可用默认插槽放任意内容。**头像直接放标准 `UiAgentAvatar` / `UiAvatar` 本体**——不加圆形底、不做圆角裁切（设计稿里 agent 头像就是裸的）。另有 `bubble`（null = 按 role）、`name`、`avatar-shape/state/src/size`、`size` sm/md/lg（lg = 设计稿 1rem）、`max-width`（默认 agent 290 / user 340）、`time`、`#avatar` / `#footer` 插槽 |
@@ -295,6 +295,7 @@ import { EmptyRoute } from 'zero-ai-ui-lib'
 - 展开内容里放关闭按钮：`<UiButton data-close>返回</UiButton>`。
 - 卡片内可交互元素（按钮、输入框、图表）默认已被忽略，不会误触发展开；额外元素加 `data-no-expand`。
 - 桌面端（≥900px）展开成居中模态 + 背景压暗模糊；移动端铺满整屏，但**展开遮罩两端都铺**（`.expand-backdrop` 满档 = 20% 黑 + 5px 模糊）：移动端卡片收起 / 侧滑的过程中遮罩露出来，承担同一段「由黑转不黑 + 由模糊转清晰」的过渡（`--edge-fade` 乘算系数控制强度）。
+- **展开内容用 `ZeroScroll`**：`ExpandableCard` 的内容容器就是 ZeroScroll（唯一 id `expand-<key>`），溢出时自动获得与主页一致的顶 / 底渐变模糊；内容里的 `.expand-topbar` 粘顶且 z-60，压在顶部模糊带之上。
 - 更多细节见仓库 `docs/route-expand-card.md`。
 
 ## 4.5 历史栈与返回（硬规则）

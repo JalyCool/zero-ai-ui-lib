@@ -2,6 +2,7 @@
 import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { clearActive, getActive, setActive } from '../core/expandManager'
+import ZeroScroll from './layout/ZeroScroll.vue'
 
 /* ============================================================
    卡片展开 / 收起
@@ -592,10 +593,21 @@ defineExpose({ close: closeCard, open: openCard })
       <slot />
     </div>
 
-    <div class="expand-scroller" ref="scrollerEl">
+    <!-- 展开页就是「另一个页面」：沿用 ZeroScroll，溢出时自动获得
+         与主页一致的顶 / 底渐变模糊；id 必须唯一（多个展开卡不能都叫
+         scrollArea，否则弹层锁滚动会锁错容器）。 -->
+    <ZeroScroll
+      ref="scrollerEl"
+      class="expand-scroller"
+      :id="`expand-${expandKey}`"
+      :fade="56"
+      :fade-blur="6"
+      :fade-layers="8"
+      padding="0"
+    >
       <div class="expand-content" v-if="loaded">
         <component :is="content" v-bind="contentProps" />
       </div>
-    </div>
+    </ZeroScroll>
   </component>
 </template>

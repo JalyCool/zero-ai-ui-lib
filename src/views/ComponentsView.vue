@@ -20,7 +20,7 @@ import {
   UiTimeline, UiTour
 } from '../components/ui'
 import { setPageHeadAfter } from '../composables/useAppHead'
-import { ZeroScroll } from '../components/layout'
+
 import { confirmDialog, AGENT_SHAPES } from '../lib'
 import { useRouter } from 'vue-router'
 import supabaseSvg from '../assets/figma/supabase.svg?raw'
@@ -91,18 +91,11 @@ function registerHeadAfter() {
       'div',
       { class: 'lib-picker', role: 'tablist', 'aria-label': '组件分区' },
       sections.map(s =>
-        h(
-          'button',
-          {
-            key: s.id,
-            type: 'button',
-            role: 'tab',
-            class: ['lib-picker__item', { 'is-active': activeSection.value === s.id }],
-            'aria-selected': activeSection.value === s.id,
-            onClick: () => (activeSection.value = s.id)
-          },
-          s.label
-        )
+        h(UiChip, {
+          key: s.id,
+          selected: activeSection.value === s.id,
+          onClick: () => (activeSection.value = s.id)
+        }, () => s.label)
       )
     )
   )

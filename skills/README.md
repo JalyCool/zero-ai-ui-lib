@@ -38,3 +38,9 @@ npm run sync:skills      # skills/zero-ai-ui → .github/skills/zero-ai-ui
 - 对外组件统一 `Ui` 前缀；外壳/布局类用角色名（`ZeroApp` / `ZeroScroll` / `AppHead`）
 - 一种能力只保留一个名字：形态差异用属性表达（`UiChart type`、`UiMenu variant`、`UiDatePicker mode`），不再并列多个同义组件
 - 被合并的实现放 `src/components/ui/internal/`，不导出
+
+## 维护约定
+
+- 唯一源是 `skills/zero-ai-ui/`；改完跑 `npm run sync:skills` 生成 `.agents/skills/` 与 `.github/skills/` 两份检索副本（已挂进 `prepublishOnly`）。
+- `SKILL.md` 只放索引 + 五条硬规则；规则细节去 `reference/` 对应篇，完整规范在 `AGENTS.md`。
+- 新增/改名组件后：① 更新 `reference/08` 的选用表；② 在 `AGENTS.md` 第 2 节表格加行；③ 如涉及交互约定，同步 `reference/07`。
