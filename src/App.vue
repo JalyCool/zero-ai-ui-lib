@@ -41,6 +41,11 @@ const pageActionsComp = computed(() =>
   appHeadState.actions ? { render: appHeadState.actions } : null
 )
 
+/* 头部第二行（#after）：页面注入，默认态与融合条共用 */
+const pageAfterComp = computed(() =>
+  appHeadState.after ? { render: appHeadState.after } : null
+)
+
 /* 非 tab 根页显示返回键（Figma 46:363 左侧箭头） */
 const canBack = computed(() => !!(route.meta.tab && route.name !== route.meta.tab))
 function goBack() {
