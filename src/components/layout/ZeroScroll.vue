@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import UiProgressiveBlur from '../ui/UiProgressiveBlur.vue'
 import { useScrollEdges } from '../../composables/useScrollEdges'
 
+
 const props = defineProps({
   /* 滚动元素的 id（默认 scrollArea）：UiModal / UiBottomSheet /
      ExpandableCard 打开时锁的就是它。改名字这些组件就锁不住页面。 */
@@ -54,6 +55,7 @@ const props = defineProps({
 
 const viewEl = ref(null)
 const { canScrollUp, canScrollDown } = useScrollEdges(viewEl)
+
 
 const viewStyle = computed(() => (props.padding ? { padding: props.padding } : undefined))
 const hasEdgeTop = computed(() => props.fade > 0)

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SettingsSheet from './components/SettingsSheet.vue'
-import { UiTabBar, UiToastHost, UiCommandPalette, ZeroApp } from './lib'
+import { AppHead, UiTabBar, UiToastHost, UiCommandPalette, ZeroApp } from './lib'
 import { initZeroConfig } from './lib'
 import { state, persistThemeState } from './core/state'
 import * as spring from './core/spring'
@@ -153,12 +153,29 @@ onBeforeUnmount(() => {
        （它带 media query，内联样式会把它盖掉）。 -->
   <div class="app">
     <ZeroApp ref="scrollRef" :max-width="0" padding="none">
-      <header class="app-head">
-        <div class="greet">
-          <h1 id="greetTitle">{{ meta.title }}</h1>
-          <p id="greetSub">{{ pageSub }}</p>
-        </div>
-        <div class="app-head__actions">
+      <template #edge-top>
+        <!-- 融合条：只渲染迷你标题 + 同一组按钮。
+             底色就是顶部渐变模糊带本身（不再另画底），滚过头才淡入。 -->
+        <AppHead fuse-only :title="meta.title || ''">
+          <template #actions>
+            <button class="icon-btn" aria-label="打开命令面板" title="⌘K" @click.stop="openPalette">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+              </svg>
+            </button>
+            <button class="icon-btn" id="themeBtn" aria-label="打开设置" @click.stop="toggleSheet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+              </svg>
+            </button>
+          </template>
+        </AppHead>
+      </template>
+
+      <!-- 默认态大标题：在页面流内，随内容滚走 -->
+      <AppHead :title="meta.title || ''" :sub="pageSub || ''">
+        <template #actions>
           <button class="icon-btn" aria-label="打开命令面板" title="⌘K" @click.stop="openPalette">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
@@ -170,8 +187,8 @@ onBeforeUnmount(() => {
               <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
             </svg>
           </button>
-        </div>
-      </header>
+        </template>
+      </AppHead>
 
       <div id="viewRoot">
         <router-view v-slot="{ Component }">
@@ -200,13 +217,5 @@ onBeforeUnmount(() => {
 </template>
 
 <style>
-/* 顶栏：标题 + 两个动作按钮。外壳几何由 ZeroApp 负责，这里只管排版 */
-.app-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: calc(14px * var(--density));
-}
-.app-head__actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+/* AppHead 自带排版；这里只留 icon-btn 的尺寸约定 */
 </style>

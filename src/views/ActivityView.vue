@@ -5,8 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 import RouteExpandCard from '../components/expand/RouteExpandCard.vue'
 import ExpandActivity from '../expand/ExpandActivity.vue'
 import {
-  UiAlert, UiBadge, UiButton, UiCheckbox, UiChip, UiEmptyState, UiFloatingMenu,
-  UiModal, UiSkeleton, UiSwipeRow, UiToolMenu
+  AppHead, UiAlert, UiBadge, UiButton, UiCheckbox, UiChip, UiEmptyState,
+  UiFloatingMenu, UiModal, UiSkeleton, UiSwipeRow, UiToolMenu
 } from '../lib'
 import {
   activityState,
@@ -139,21 +139,18 @@ function onSwipeAction(action, record) {
 
 <template>
   <section class="view active" data-view="activity">
-    <div class="view-head">
-      <div>
-        <div class="view-title">运动记录</div>
-        <div class="view-sub">
-          {{ initialLoading ? '正在加载…' : `${records.length} 条记录 · 今天 ${todayCount} 项` }}
-        </div>
-      </div>
-      <div class="view-actions">
+    <!-- 页面头部：AppHead（插槽化）—— 大标题在流内，上滑后自动融合成
+         迷你条（与顶部渐变模糊带融为一体）。动作按钮走 #actions 插槽，
+         不用再为每个页面自造 view-head。 -->
+    <AppHead title="运动记录" :sub="initialLoading ? '正在加载…' : `${records.length} 条记录 · 今天 ${todayCount} 项`">
+      <template #actions>
         <UiFloatingMenu v-model="sortMode" label="排序" :items="sortItems" title="排序方式" />
         <UiButton size="sm" variant="tonal" @click="goAdd">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           新增
         </UiButton>
-      </div>
-    </div>
+      </template>
+    </AppHead>
 
     <!-- 批量操作条：只在多选模式出现 -->
     <div v-if="selectionMode" class="activity-batch">

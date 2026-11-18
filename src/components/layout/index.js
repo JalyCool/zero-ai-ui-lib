@@ -8,5 +8,6 @@
    · ZeroScroll 任意滚动区：同样自带「溢出即模糊」，可嵌套在卡片 / 弹层里
    ============================================================ */
 
+export { default as AppHead } from './AppHead.vue'
 export { default as ZeroApp } from './ZeroApp.vue'
 export { default as ZeroScroll } from './ZeroScroll.vue'

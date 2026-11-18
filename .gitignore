@@ -13,3 +13,6 @@ t1.txt
 .chrome-*/
 .shot*
 *.swp
+
+# 临时提交信息文件
+.commit-msg.txt

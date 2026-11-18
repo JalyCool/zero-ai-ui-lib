@@ -45,6 +45,11 @@ const props = defineProps({
    ============================================================ */
 
 const scrollRef = ref(null)
+
+/* 不在这里 provide 滚动元素：插槽内容的作用域链经过 ZeroApp，
+   但 provide 的值一旦涉及子组件的 computed 就容易形成读取链循环
+   （实测整页白屏）。AppHead 改为**自己向上找滚动容器**，
+   不依赖 provide/inject —— 见 useScrollEdges 的说明。 */
 const barEl = ref(null)
 const barHeight = ref(0)
 let barRo = null
@@ -110,6 +115,11 @@ defineExpose({
       :bottom-inset="tabBarInset"
     >
       <slot />
+      <!-- 边缘插槽：渲染在渐变模糊带**上层**的固定内容。
+           AppHead 放 #edge-top：默认态大标题在流内，滚出后自动融合成
+           迷你条（与模糊带融为一体）。 -->
+      <template v-if="$slots['edge-top']" #edge-top><slot name="edge-top" /></template>
+      <template v-if="$slots['edge-bottom']" #edge-bottom><slot name="edge-bottom" /></template>
     </ZeroScroll>
     <!-- TabBar 槽位：UiTabBar 自己是 position:fixed 悬浮层（z-20），
          而 ZeroScroll 的模糊层 z-50 —— 不包一层的话，底部模糊会糊在
