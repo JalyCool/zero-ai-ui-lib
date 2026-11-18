@@ -116,7 +116,6 @@ declare const UiAgentAvatar: DefineComponent<{
   eyesY?: number | null
 }, AnyProps, unknown>
 declare const UiBadge: DefineComponent<{ tone?: 'primary' | 'success' | 'warning' | 'danger'; dot?: boolean; label?: string }, AnyProps, unknown>
-declare const UiBarChart: DefineComponent<{ data?: number[]; labels?: string[]; height?: number }, AnyProps, unknown>
 declare const UiBottomSheet: DefineComponent<{ modelValue?: boolean; title?: string; maxHeight?: string; closeOnBackdrop?: boolean; scrim?: boolean; anchors?: number[] }, AnyProps, unknown>
 declare const UiCheckbox: DefineComponent<{ modelValue?: boolean; label?: string; disabled?: boolean }, AnyProps, unknown>
 declare const UiAvatarTag: DefineComponent<{
@@ -160,7 +159,6 @@ declare const UiCodeEditor: DefineComponent<{
   label?: string; hint?: string; error?: string; placeholder?: string
   readonly?: boolean; disabled?: boolean; tabSize?: number; lines?: number; formatJson?: boolean
 }, AnyProps, unknown>
-declare const UiConfirmDialog: DefineComponent<Record<string, never>, AnyProps, unknown>
 declare const UiDataTable: DefineComponent<{
   columns: { key: string; label?: string; width?: string; align?: 'left' | 'center' | 'right'; sortable?: boolean; hidden?: boolean }[]
   rows?: unknown[]
@@ -175,13 +173,10 @@ declare const UiDataTable: DefineComponent<{
 declare const UiDatePicker: DefineComponent<{ modelValue?: string; label?: string; placeholder?: string; disabled?: boolean }, AnyProps, unknown>
 declare const UiEmptyState: DefineComponent<{ title?: string; description?: string }, AnyProps, unknown>
 declare const UiFileDropzone: DefineComponent<{ label?: string; hint?: string; accept?: string; multiple?: boolean; disabled?: boolean; maxSize?: number }, AnyProps, unknown>
-declare const UiFloatingMenu: DefineComponent<{ modelValue?: string | number; items?: { value?: string | number; label?: string }[] }, AnyProps, unknown>
-declare const UiGauge: DefineComponent<{ value?: number; label?: string }, AnyProps, unknown>
-declare const UiGaugeSlider: DefineComponent<{
+declare const Slider: DefineComponent<{
   modelValue?: number; label?: string; unit?: string; precision?: number | null
   showScale?: boolean; showBubble?: boolean; spring?: Record<string, number> | null
 }, AnyProps, unknown>
-declare const UiHeatmap: DefineComponent<{ data?: number[][]; labels?: string[] }, AnyProps, unknown>
 declare const UiInput: DefineComponent<{
   modelValue?: string | number; label?: string; type?: string; placeholder?: string
   hint?: string; error?: string; disabled?: boolean; autocomplete?: string
@@ -191,12 +186,10 @@ declare const UiKeyValueEditor: DefineComponent<{
   modelValue?: { key: string; value: string }[]
   label?: string; keyPlaceholder?: string; valuePlaceholder?: string; addLabel?: string; secret?: boolean
 }, AnyProps, unknown>
-declare const UiLineChart: DefineComponent<{ series?: number[][]; labels?: string[]; height?: number }, AnyProps, unknown>
 declare const UiModal: DefineComponent<{ modelValue?: boolean; title?: string; width?: string }, AnyProps, unknown>
 declare const UiMorphPanel: DefineComponent<{ open?: boolean; label?: string; disabled?: boolean; minWidth?: number; minHeight?: number; closeOnOutside?: boolean }, AnyProps, unknown>
 declare const UiProgress: DefineComponent<{ value?: number; label?: string }, AnyProps, unknown>
 declare const UiRadioGroup: DefineComponent<{ modelValue?: string | number; options?: { label: string; value: string | number }[]; name?: string }, AnyProps, unknown>
-declare const UiRangeDatePicker: DefineComponent<{ modelValue?: { start?: string; end?: string } | null; label?: string; presets?: number[] }, AnyProps, unknown>
 declare const UiRangeSlider: DefineComponent<{
   modelValue?: [number, number]; min?: number; max?: number; step?: number
   precision?: number | null; label?: string; unit?: string; showValue?: boolean
@@ -204,9 +197,7 @@ declare const UiRangeSlider: DefineComponent<{
   /** @deprecated */ stiffness?: number; /** @deprecated */ dampingRatio?: number
   /** @deprecated */ flingTime?: number; /** @deprecated */ rubber?: number; /** @deprecated */ maxOverscroll?: number
 }, AnyProps, unknown>
-declare const UiRangeTimePicker: DefineComponent<{ modelValue?: { start?: string; end?: string }; precision?: 'h' | 'm' | 's' }, AnyProps, unknown>
 declare const UiRating: DefineComponent<{ modelValue?: number; max?: number; readOnly?: boolean }, AnyProps, unknown>
-declare const UiRingProgress: DefineComponent<{ value?: number; label?: string; size?: number; stroke?: number }, AnyProps, unknown>
 declare const UiRingSlider: DefineComponent<{
   modelValue?: number; label?: string; unit?: string; precision?: number | null
   size?: number; stroke?: number; spring?: Record<string, number> | null
@@ -256,7 +247,6 @@ declare const UiSlider: DefineComponent<{
   /** @deprecated */ stiffness?: number; /** @deprecated */ dampingRatio?: number
   /** @deprecated */ flingTime?: number; /** @deprecated */ rubber?: number; /** @deprecated */ maxOverscroll?: number
 }, AnyProps, unknown>
-declare const UiSparkline: DefineComponent<{ data?: number[]; width?: number; height?: number }, AnyProps, unknown>
 declare const UiSpinner: DefineComponent<{ size?: number }, AnyProps, unknown>
 declare const UiStepper: DefineComponent<{
   modelValue?: number; min?: number; max?: number; step?: number
@@ -271,7 +261,6 @@ declare const UiTerminalOutput: DefineComponent<{ text?: string; label?: string;
 declare const UiTextarea: DefineComponent<{ modelValue?: string; label?: string; placeholder?: string; rows?: number; disabled?: boolean }, AnyProps, unknown>
 declare const UiTimePicker: DefineComponent<{ modelValue?: string; label?: string; placeholder?: string; disabled?: boolean }, AnyProps, unknown>
 declare const UiToastHost: DefineComponent<{ max?: number }, AnyProps, unknown>
-declare const UiToolMenu: DefineComponent<{ items?: AnyProps[]; label?: string }, AnyProps, unknown>
 declare const UiTooltip: DefineComponent<{ text?: string; placement?: 'top' | 'bottom' | 'left' | 'right' }, AnyProps, unknown>
 declare const UiTreeView: DefineComponent<{
   nodes?: { label: string; value?: string | number; children?: unknown[]; kind?: string }[]
@@ -284,8 +273,6 @@ declare const UiVirtualList: DefineComponent<{
   swipeSelect?: boolean; modelValue?: number[]; itemKey?: string
 }, AnyProps, unknown>
 declare const UiWheel: DefineComponent<{ columns?: { items?: unknown[]; value?: string | number; separator?: string; label?: string }[]; interactive?: boolean; itemHeight?: number }, AnyProps, unknown>
-declare const UiWheelColumn: DefineComponent<{ items?: unknown[]; modelValue?: string | number; label?: string; interactive?: boolean }, AnyProps, unknown>
-declare const UiWheelDatePicker: DefineComponent<{ modelValue?: string; label?: string; startYear?: number; endYear?: number }, AnyProps, unknown>
 
 declare const ExpandableCard: DefineComponent<AnyProps, AnyProps, unknown>
 declare const RouteExpandCard: DefineComponent<{
@@ -478,7 +465,6 @@ declare const UiRow: DefineComponent<{ gap?: number; align?: string; justify?: s
 declare const UiCol: DefineComponent<{ span?: number; sm?: number; md?: number; lg?: number; offset?: number }, AnyProps, unknown>
 declare const UiSplitter: DefineComponent<{ modelValue?: number; direction?: 'horizontal' | 'vertical'; min?: number; max?: number; handle?: number }, AnyProps, unknown>
 declare const UiScrollArea: DefineComponent<{ maxHeight?: string; height?: string; shadows?: boolean; axis?: 'x' | 'y' }, AnyProps, unknown>
-declare const UiContextMenu: DefineComponent<{ items?: { label: string; value?: string; disabled?: boolean; tone?: string; icon?: string; divider?: boolean; shortcut?: string }[]; disabled?: boolean }, AnyProps, unknown>
 declare const UiCommandPalette: DefineComponent<{ modelValue?: boolean; items?: { label: string; value: string; hint?: string; icon?: string; keywords?: string }[]; placeholder?: string; shortcut?: string }, AnyProps, unknown>
 declare const UiTour: DefineComponent<{ modelValue?: boolean; steps?: { target: string; title: string; text: string; placement?: 'top' | 'bottom' }[]; startAt?: number }, AnyProps, unknown>
 declare const UiPopover: DefineComponent<{ modelValue?: boolean; placement?: 'top' | 'bottom' | 'left' | 'right'; trigger?: string; offset?: number; label?: string }, AnyProps, unknown>
@@ -490,21 +476,24 @@ declare const UiTimeline: DefineComponent<{ items?: { title: string; time?: stri
 declare const UiCarousel: DefineComponent<{ items?: { title?: string; text?: string; image?: string }[]; modelValue?: number; autoplay?: boolean; interval?: number; loop?: boolean; height?: number }, AnyProps, unknown>
 declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direction?: 'left' | 'right'; gap?: number; pauseOnHover?: boolean }, AnyProps, unknown>
 
+/* ---------- 统一入口（合并后） ---------- */
+declare const UiChart: DefineComponent<{ type?: 'bar' | 'line' | 'spark' | 'heat' | 'ring' | 'gauge'; data?: number[]; labels?: string[]; id?: string; height?: number | string; unit?: string; decimals?: number; highlight?: number | null; viewBoxHeight?: number; gridY?: number[]; weeks?: number; columns?: number; size?: number | string; stroke?: string | number; ariaLabel?: string }, AnyProps, unknown>
+declare const UiMenu: DefineComponent<{ variant?: 'floating' | 'tool' | 'context'; modelValue?: string | number | object; items?: any[]; label?: string; title?: string; icon?: string; showIcon?: boolean; showLabel?: boolean; showChevron?: boolean; disabled?: boolean }, AnyProps, unknown>
+declare const AppHead: DefineComponent<{ title?: string; sub?: string; fuseHeight?: number; showLogoInFuse?: boolean; fuseOnly?: boolean }, AnyProps, unknown>
+declare const useSurfaceTier: (target: any, options?: { minStep?: number }) => { tierVars: any; resolve: () => void }
+
 /* ---------- components ---------- */
 export {
-  UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiContextMenu, UiCommandPalette, UiTour, UiPopover, UiKbd, UiLink, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
-  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBarChart, UiBottomSheet, UiButton,
-  UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiConfirmDialog, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiSideNav, MarkdownView, normalizeIconName,
-  UiEmptyState, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
-  UiProgress, UiRadioGroup, UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker,
-  UiCardGroup, UiCodeSlots, UiRotatingText, UiScrubField, UiStatusMark,
+  UiChart, UiMenu, AppHead, useSurfaceTier,
+  UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiCommandPalette, UiTour, UiPopover, UiKbd, UiLink, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
+  UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBottomSheet, UiButton,
+  UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiModal, UiSideNav, MarkdownView, normalizeIconName,
+  UiEmptyState, UiFileDropzone, Slider, UiProgress, UiRadioGroup, UiRangeSlider, UiCardGroup, UiCodeSlots, UiRotatingText, UiScrubField, UiStatusMark,
   UiStepFlow, UiSwipeRow, UiText, UiTooltipGroup,
-  UiRating, UiRingProgress, UiRingSlider, UiRollNumber, UiSchemaForm,
-  UiSearchField, UiSelect, UiSegmented, UiSkeleton, UiSlider, UiMorphPanel, UiSparkline, UiSpinner,
+  UiRating, UiRingSlider, UiRollNumber, UiSchemaForm,
+  UiSearchField, UiSelect, UiSegmented, UiSkeleton, UiSlider, UiMorphPanel, UiSpinner,
   UiStepper, UiSwitch, UiTabBar, UiTagInput, UiTerminalOutput, UiTextarea, UiTimePicker,
-  UiToastHost, UiToolMenu, UiTooltip, UiTreeView, UiVirtualList, UiWheelColumn,
-  UiWheel, UiWheelDatePicker,
-  ExpandableCard, RouteExpandCard, EmptyRoute,
+  UiToastHost, UiTooltip, UiTreeView, UiVirtualList, UiWheel, ExpandableCard, RouteExpandCard, EmptyRoute,
   useFocusTrap, useRovingTabindex, srOnly,
   vRipple, vIntersect, vResize, vClickOutside, zeroDirectives,
   createShortcuts, defineShortcuts,

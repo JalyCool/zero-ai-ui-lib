@@ -7,7 +7,7 @@
 
 - **视觉**：Material 3 血统的平面化语言。层次靠「表面色阶 + 圆角分档」，不用阴影；**描边只出现在功能处**——输入框 / 开关、复选框类控件 / `variant="outline"` 变体 / 行分隔线 / 浮层边界，**能没有描边的地方就不要有描边**（卡片、告警、折叠面板、模态、表格外形、卡片组等一律无描边）。**阴影全库只有一处：TabBar**（移动端向上 / 桌面端向右投一层淡分离影），其他组件一律不投影。
 - **动效**：6 组固定弹簧（feedback / view / sheet / expand / exit / fade），一切展开都是同一个元素在形变。
-- **交付形态**：99 个组件 + 2 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
+- **交付形态**：92 个组件 + 3 个组合式函数 + 一批工具函数（时长格式 / 高亮 / ANSI / confirmDialog）+ 一份 CSS 变量令牌，并自带 TypeScript 类型声明。库只管控件，页面布局由应用自己写。
 - **字体**：三组变量是**唯一来源**，别处不许写死字体名——`--font-sans`（中文优先阿里巴巴普惠体 3.0 → PingFang SC / 微软雅黑 / Noto Sans CJK → 系统 sans）、`--font-mono`（代码 / 终端：ui-monospace → SFMono → Cascadia → Consolas → DejaVu / Liberation / Ubuntu Mono → Noto Sans Mono → Source Code Pro / Fira Code / JetBrains Mono → monospace，逐平台回退）、`--font-numeric`（读数 / 二维码条码等数字列，等同 mono）。等宽数字**双保险**：`font-variant-numeric: tabular-nums` + `font-feature-settings: var(--font-feat-tnum)`（`"tnum" 1, "lnum" 1`，兼容不认前者的老浏览器）。应用想换字库只要覆盖 `--font-sans-custom` / `--font-mono-custom`。
 - **数字动效**：一切数字大小变化（步进器 / 仪表盘 / 滑块读数 / 气泡 / 时长文本）统一走 `UiRollNumber` 的上下位移 + 模糊渐变；拖拽等连续变化传 `instant`（缩短到 ~220ms 但仍然动画）。读数一律等宽（`tabular-nums`），值变化不得引起宽度跳变。
 
@@ -120,9 +120,7 @@ import {
   UiInput, UiTextarea, UiSelect, UiSwitch, UiCheckbox, UiRadioGroup, UiSlider,
   UiDatePicker, UiTimePicker, UiModal, UiBottomSheet, UiAccordion,
   UiAlert, UiTooltip, UiToastHost, UiEmptyState, UiSpinner, UiSkeleton,
-  UiProgress, UiRingProgress, UiGauge, UiSparkline, UiBarChart, UiLineChart,
-  UiHeatmap, UiFloatingMenu, UiToolMenu,
-  UiRangeDatePicker, UiWheelDatePicker, UiRangeTimePicker,
+  UiProgress, UiChart, UiMenu,
   UiRangeSlider, UiRingSlider, UiGaugeSlider, UiRollNumber,
   UiCodeEditor, UiTerminalOutput, UiTagInput, UiKeyValueEditor, UiSchemaForm,
   UiDataTable, UiTreeView, UiVirtualList, UiFileDropzone,
@@ -130,8 +128,8 @@ import {
   UiRotatingText, UiText, UiStatusMark, UiCodeSlots, UiScrubField,
   UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots,
   UiSideNav, MarkdownView, normalizeIconName,
-  UiChatThread, UiChatMessage, UiChatSystemLine, UiProgressiveBlur,
-  ZeroApp, ZeroScroll, useScrollEdges,
+  UiChatThread, UiChatMessage, UiChatSystemLine, UiChatComposer, UiProgressiveBlur,
+  AppHead, ZeroApp, ZeroScroll, useScrollEdges, useSurfaceTier,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -148,7 +146,7 @@ import {
 | `UiStepper` | `v-model` 数字 + `unit` `min` `max` `step`；`size`(sm/md/lg/xl)、`controls`(sides/bottom)、`roll`(standard/reverse)、`fieldLabel` |
 | `UiSelect` | 自绘下拉：`v-model` + `:options="[{ label, value, icon?, disabled? }]"`；点输入框原地展开成列表，**展开窗口宽度 = max(字段宽, 最长选项自然宽)，封顶视口可用宽**——选中项窄时长选项不再被截断；`icon-placement="leading\|top"`——leading 图标在文字前端（列表行布局不变，选中项图标也会显示在字段里），top 把面板变成图标卡片网格；`disabled` 整体禁用，单项 `disabled` 可见不可选；**`multiple` 多选模式**：`v-model` 为数组，勾选不收回面板，字段里显示已选标签摘要（列显隐等场景直接复用它） |
 | `UiSlider` | `v-model`；`stops` 数组或 `snapCount` 等分 → 拖动跟手、松手弹簧吸附；`@snap="({index, value}) => …"`；刻度：`show-scale` + `major-ticks`（大刻度区间数）+ `minor-ticks`（大刻度间的小刻度份数）+ `precision`（小数位）。刻度在轨道上方、短浅线，小刻度短大刻度长；数值只在最小值 / 最大值（无刻度时）或大刻度位置显示；`show-bubble` 拖拽时把手上方浮当前值；弹簧参数收进 `spring` 对象（`{ stiffness, dampingRatio, flingTime, rubber, maxOverscroll }`）；拖拽越界有**橡皮筋**（rubber 衰减 + 最多越界 6% 量程）；松手**惯性有触发阈值**——甩出速度 ≥ 0.8 × 量程 / 秒才做惯性预测，慢松手原地落定，阻尼默认 1.05 略过阻尼；旧的 5 个独立 props 已废弃仍兼容 |
-| `UiDatePicker` / `UiTimePicker` | `v-model` 字符串；贴着输入框展开，不压暗背景；`UiTimePicker` 有 `precision`（h/m/s）决定波轮字段数，`min` / `max`（默认无限制）**级联到每一列**（min=09:30:15 时 时列>=9、时=9 时 分列>=30），越界的行禁用且滚动被钉在合法范围（推不动）；`UiDatePicker` 有 `precision`（day / month / year）+ 三级状态机：顶部**年、月可点击往宏观走**（镜头拉远），网格点击往细走（镜头推近，ZoomTo 缩放 + 模糊）；**非终点层级点击一律下钻（含当前所在的年 / 月）**，提交只发生在 precision 指定的终点层级；**年 / 月 / 日三视图常驻不销毁**（is-hidden = display:none）——元素销毁重建是 Zoom 错位的根因，切换只驱动可见性；箭头翻页带方向滑动；年视图按 10 年一页；回传值按精度是 `YYYY` / `YYYY-MM` / `YYYY-MM-DD`（显示与解析都按对应精度，不会跳回今天）；`min` / `max` 之外的日期直接禁用 |
+| `UiDatePicker` / `UiTimePicker` | **日期时间统一入口**：`UiDatePicker mode="grid"(默认)|"wheel"|"range"`、`UiTimePicker mode="single"(默认)|"range"`；除 `mode` 与 `modelValue` 外 props 原样透传（label/precision/min/max/startYear/endYear/presets/displayPrecision…），range 时 v-model 为 `{start,end}`。附着输入框旁展开，不压暗背景；`UiTimePicker` 有 `precision`（h/m/s）决定波轮字段数，`min` / `max`（默认无限制）**级联到每一列**（min=09:30:15 时 时列>=9、时=9 时 分列>=30），越界的行禁用且滚动被钉在合法范围（推不动）；`UiDatePicker` 有 `precision`（day / month / year）+ 三级状态机：顶部**年、月可点击往宏观走**（镜头拉远），网格点击往细走（镜头推近，ZoomTo 缩放 + 模糊）；**非终点层级点击一律下钻（含当前所在的年 / 月）**，提交只发生在 precision 指定的终点层级；**年 / 月 / 日三视图常驻不销毁**（is-hidden = display:none）——元素销毁重建是 Zoom 错位的根因，切换只驱动可见性；箭头翻页带方向滑动；年视图按 10 年一页；回传值按精度是 `YYYY` / `YYYY-MM` / `YYYY-MM-DD`（显示与解析都按对应精度，不会跳回今天）；`min` / `max` 之外的日期直接禁用 |
 | `UiCodeImage` | 2~3 项用分段控件（跨族时图标在上、仅 2 项跨族时只留图标不显示文字）、4 项及以上一律用带图标的下拉框。切换动画的方向按「目标相对当前位置」动态决定（目标在后往正方向进、在前往反方向进），进场层先按新方向落位、下一帧再滑回原位；用下拉切换时轴改为纵向（上下滑入滑出），分段 / 图标切换保持横向；仅两个跨族（一维/二维）选项时图标模式不再显示文字标签（图标已说明族差别）。children 直接传文本：<`CodeImage type="qrcode">https://…</`CodeImage>；`type` 字符串或数组（数组 = 可切换码制组，<=3 用 Segmented、>3 用下拉；跨一维/二维用图标区分，同族用文字标签）；一维码渲染后把固有宽高转成 viewBox，长条码不会再撑出画布；`options` 按码制传参 `{ qrcode: { errorCorrectionLevel: 'H' }, ean13: { flat: true } }`，未传的走默认、未知键忽略不崩溃；内容不合规的选项可见但禁用、自动切到可用项；全部不可用走降级候选（二维码兜底），仍无解渲染空状态。校验 / 参数 / 降级规则全部集中在 `core/codeFormats`，组件内不硬编码码制规则 |
 | `UiRotatingText` | 循环短语：`phrases` + `transition="rotate|flip|slide"`；进场层从进入方向的偏转 + 位移 + 模糊里出现，离场层反向散去，方向随前后顺序切换；`pause-on-hover` 默认开 |
 | `UiText` | 文字动效包装器：`variant="type"` 打字机（`cps` 节奏、逐字符进场 `type-effect="blur|fade|rise"`、**`reserve` 提前占位**——没有光标时默认开启，用不可见完整文本撑开最终高度，逐字进场不把下方内容顶得抖；`streaming` 开启后内容增长时只给新增片段播一次进场（`stream-effect`），不重播整段 —— 默认 blur 就是**透明度 + 模糊**渐变、光标四档 `bar|block|underscore|character`、`loop` 会先逐字删除再重打）、`shiny` 掠光（`sheen="soft|chrome"`）、`gradient` 流动渐变（`sweep|mesh|conic` + `colors`） |
@@ -164,16 +162,11 @@ import {
 | `UiMorphPanel` | 泛用「按钮 ⇄ 任意组件」形变容器：`#trigger` 是收起态按钮，默认插槽放展开内容（作用域带 `close`）；外壳只动几何、内容从模糊中浮现，点外部 / Esc 收起；**内容常驻不销毁**（closed 态 visibility 兜底），收起尾段按钮延迟到外壳缩完才回归——按钮在大盒子里闪现一帧是闪烁根因；内容测量带 RO 反馈门闩 |
 | `UiModal` | `v-model`；插槽 `#header` / `#title` / 默认 / `#footer`，作用域都带 `close`；遮罩压暗 + 5px 模糊 |
 | `UiBottomSheet` | `v-model` + `title` `max-height` `close-on-backdrop`；`#footer` 插槽；**把手可拖拽**：拖把手实时改高度（跟手、禁 transition），松手按位移 + 速度吸附锚点；`anchors` 默认随 `scrim`：无背景版 `[0.2, 0.6]`、有背景版 `[0.6]`（压暗背景不放 20% 档）+ 自动追加「全内容」档，全内容不足 60% 时 60% 档不出现；拖到最低锚点之下直接关闭；面板外还有一段约 **50dvh 的「弹簧裙边」**（`.ui-sheet-skirt`，正常被 root 裁掉），活泼模式上冲、面板下沿离开视口底时用它补住缺口，不会露出页面背景；`scrim=false` 为无背景版（不压暗不模糊，但透明拦截层 + Esc + 锁滚动 + aria-modal 的模态性质保持） |
-| `UiFloatingMenu` | `v-model`(当前值) + `:items` + `@select`；按钮原地长成浮动面板 |
-| `UiToolMenu` | 只有 `@select`，**回传整个 item 对象**（不是 value），无 v-model，选中值自己同步到 `label` |
-| `UiGauge` | `:value` 0–100 + `label` + `stroke` 档位；220° 圆弧，大数字居中偏上（数字变化走统一滚动动效）。弧线宽度全库只有两档：`'thin'`(10px) / `'bold'`(12px)，也可传具体数值；一律 `vector-effect="non-scaling-stroke"`，宽度是 CSS 像素，不随组件尺寸缩放 |
-| `UiRingProgress` | `:value` 0–100、`label`、`size`(默认 116)、`stroke` 档位（默认 `'thin'`）；中心数字走滚动动效 |
+| `UiMenu` | **所有「弹出选项」的统一入口**，`variant`: `floating`（`v-model` 当前值，按钮原地长成面板）/ `tool`（无 v-model，`@select` **回传整个 item 对象**）/ `context`（包裹型，右键/长按在指针处弹）。floating 的触发器三段可自定义：`#icon` 插槽 / `icon` prop（空串关默认）、默认插槽改文字、`show-icon`/`show-label`/`show-chevron` 任意关闭 |
+| `UiChart` | **所有图表的统一入口**，`type`: `bar` 柱 / `line` 折线 / `spark` 迷你趋势 / `heat` 热力 / `ring` 圆环进度 / `gauge` 仪表。prop 名全族统一：`data`（序列值，不再有 values）、`labels`、`unit`、`decimals`、`highlight`（柱参考线）、`size`（环/仪表直径）、`stroke`（弧宽 thin/bold/数值）、`weeks`/`columns`（热力）、`gridY`/`viewBoxHeight`（折线）。各形态仍是一套自己的 SVG 实现（在 `ui/internal/`），本组件只按 type 映射 props。选择：装饰性趋势 spark、读数交互 line、离散比较 bar、进度比例 ring、仪表读数 gauge、时间密度 heat |
 | `UiRangeSlider` | `v-model` 为 `[lo, hi]` 数组 + `min max step precision unit`；点击轨道移动更近的拖拽头，距离相等默认移左侧（lo）；两头互不交叉且至少间隔一个步进（把手不重合）；读数走 `UiRollNumber` |
 | `UiRingSlider` | `v-model` 0–100；圆环从 12 点顺时针 360°；`stroke` 档位同圆环族；只有环带（描边 ±13px）接受指针，环内环外不捕获触控与滚动；中心数字滚动 |
 | `UiGaugeSlider` | `v-model` 0–100；UiGauge 同款 220° 弧 + 拖拽 thumb，中心数字复用仪表盘显示逻辑；`stroke` 档位；只有弧带接受指针（弧内大片区域不再吞触控）；`show-scale` 显示底部 0/100 刻度行 |
-| `UiRangeDatePicker` | `v-model` 为 `{ start, end }`（`YYYY-MM-DD`）；第一次点选起点、第二次点选终点，区间铺浅主色底、两端实心；`清除` 回传空对象 |
-| `UiWheelDatePicker` | `v-model` 字符串（`YYYY-MM-DD`）；年 / 月 / 日三列滚轮（高亮块固定中间），`startYear endYear` 控制年范围，日列随年月伸缩 |
-| `UiRangeTimePicker` | `v-model` 为 `{ start, end }`（`HH:mm`）；内部直接拼两个 `UiTimePicker`（`label` 传空即不显示标签行）+ 浅色箭头；时长文本（1h03m03s 规则）显示在箭头正上方，精度由 `precision`（h/m/s，最小显示单位）决定 |
 | `UiRollNumber` | 全库统一数字变化动效，可暴露属性：`value`（数字或已格式化字符串）、`directionKey`（参与大小比较）、`size`（字号，任意 CSS 长度）、`reverse`（大小方向是否反向）、`distance`（滚动位移 CSS 长度，缺省按变化量自动缩放）、`step`（换算步数用）、`instant`（拖拽等高频连续变化：只缩短时长与位移，**不跳过动画**）。任何值变化都必须播放上下位移 + 模糊渐变；数字一律等宽（tabular-nums） |
 | `UiAlert` | `tone`: warning / danger / success / info；`title`；默认插槽放正文 |
 | `UiEmptyState` | `title` `description` + `#action` 插槽 |
@@ -205,15 +198,17 @@ import {
 | `UiRow` / `UiCol` | 12 栅格：Row 是 `repeat(12, minmax(0, 1fr))` 的 grid，Col 只负责 `grid-column: span N`；`span` / `offset` 加 `sm md lg` 覆盖，Row 管 `gap` `align` `justify`。gap 由轨道间距承担，span 怎么组合都不会撑破容器 |
 | `UiSplitter` | `v-model` 占比（0~1；误传 20 / 80 这类百分数会自动换算）；`direction` 横向 / 纵向，`#first` 与默认插槽分居两侧，拖分隔条实时改比例；第一面板只占「总长 - 分隔条」的份额，分隔条固定宽度，永远不会把容器撑出滚动条；**吸附（可选开启）**：`snap-count` 等分或 `stops` 指定点位，松手弹到最近分段值（拖动零过渡跟手、松手走 view 弹簧） |
 | `UiScrollArea` | `max-height` / `height` + `shadows`；自定义滚动条，贴边时出现渐隐阴影 |
-| `UiContextMenu` | 包住任意内容，右键 / 长按弹 `items`（`value tone icon shortcut divider`） |
 | `UiCommandPalette` | `v-model` 开关 + `items`；输入过滤、上下键移动、Enter 执行，Esc 关闭 |
 | `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让；**进场高亮孔先铺满整屏再收拢到目标**（整体聚焦到一点），换步时孔在目标之间连续移动，退场再张回整屏 |
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
 | `UiProgressiveBlur` | **页面顶端 / 底部的渐进式模糊**：N 层 backdrop-filter 叠加，靠**光滑遮罩**控制每层贡献。三条设计铁律（都是踩过坑换来的）：**① 遮罩必须光滑** —— 遮罩若是分段线性，总模糊量 B(y)=Σrᵢ·mᵢ(y) 要连续就得 rₖ=rₖ₊₂，逼得所有半径相等（就没有渐变）；这里用**共享的升余弦曲线 P**，第 i 层遮罩取 **P^i**（光滑函数之和仍光滑 → 没有台阶）。**② 幂次要压低** —— 直接用 P^i 会让高次项在贴边处瞬间归零（「最该糊的地方没糊住，往内立刻清晰」，过渡区被压成几像素），所以 w 压在 1~2.4。**③ 半径按 1/i^0.7 递减并归一化到 Σr²=maxBlur²** —— 叠加模糊的等效半径按方差相加，sqrt(Σrᵢ²) 才是贴边处的真实模糊量。参数：`placement` top/bottom、`height`（模糊带高度 = 过渡区长度，太窄看着像「一刀切」）、`maxBlur`、`layers`、`precision`（`soft` 高斯尾部铺得最开 = 过渡区最宽、可见台阶最少，**默认**；`high` 标准；`sharp` 贴边干脆）、`tint` + `tintStrength`、`position`、`visible`（只切不透明度，不销毁层）；层全部 pointer-events: none。实测（真实渲染像素 + 折点检测）：soft+12 层的可见台阶 109（旧实现 125），过渡区铺开 7 个采样点 |
-| `ZeroScroll` | **零配置滚动区（根组件）**：自带「溢出即模糊」——顶部还有被裁内容就淡入顶部渐进模糊、到顶淡出；底部同理；内容不足一屏两侧都不出现。内部用 `useScrollEdges` 判断，模糊层**常驻不销毁**（只切不透明度，backdrop-filter 反复重建会闪）。`fade`（带高，0 关闭）/ `fade-blur` / `fade-layers` / `fade-tint` / `padding` / `tag` / `id`（默认 `scrollArea`：弹层锁滚动靠它）；暴露 `scrollTo` / `scrollTop`。flex 父级与固定高度父级下都能撑满 |
-| `ZeroApp` | **应用外壳根组件（约定优于配置）**：新项目用它包一层，下面这些就**不需要再逐页配置**——`#scrollArea` 滚动容器、**页面上下边缘溢出时的渐进式模糊**（随滚动自动淡入淡出）、居中限宽（`max-width`）、`#tabbar` 槽位与底部占位（内容不会被压在 tab 下）。`<ZeroApp :tabbar-space="N"><router-view /><template #tabbar>…</template></ZeroApp>`；暴露 `scrollTo`。需要更细控制就退回 `ZeroScroll`，或直接用 `UiProgressiveBlur` 手搭 |
+| `AppHead` | 页面头部（默认大标题 ⇄ 上滑融合条）：默认态 32px 标题 + 12px 副标题（40% 透明度）+ 动作按钮行；滚出视口后一个固定条淡入，**底色就是顶部渐变模糊带本身**（不另画表面），中间 20px 迷你标题（可选 `#logo`）+ 同一组 `#actions`。`fuse-only` 只渲染融合条（分开放布局：默认态在页面流内，融合条放 `#edge-top`）。滚动容器**向上找最近的可滚动祖先**，零接线；阈值 = 默认态完全离场位置。插槽 `#actions`/`#actions-left`/`#title`/`#sub`/`#logo`/`#badge`。**不要再自造 view-head** |
+| `useSurfaceTier` | 组合式函数：探测宿主实际背景（半透明逐层合成），在 M3 表面梯度上选「比宿主亮一档」的令牌，暴露 `--tier-bg`/`--tier-bg-high`/`--tier-bg-low`。组件背景别写死 surface-container——嵌套层级一多就错位 |
+| `ZeroScroll` | **零配置滚动区（根组件）**：自带「溢出即模糊」——顶部还有被裁内容就淡入顶部渐进模糊、到顶淡出；底部同理；内容不足一屏两侧都不出现。内部用 `useScrollEdges` 判断，模糊层**常驻不销毁**（只切不透明度，backdrop-filter 反复重建会闪）。`fade`（带高，0 关闭）/ `fade-blur` / `fade-layers` / `fade-tint` / `bottom-inset`（底部 fixed 覆盖层高度：底部模糊带与 `#edge-bottom` 抬升到其顶边之上）/ `padding` / `tag` / `id`（默认 `scrollArea`：弹层锁滚动靠它）；`#edge-top`/`#edge-bottom` 插槽渲染在模糊带**上层**的固定内容（z-55）；暴露 `scrollTo` / `scrollTop`。flex 父级与固定高度父级下都能撑满 |
+| `ZeroApp` | **应用外壳根组件（约定优于配置）**：新项目用它包一层，下面这些就**不需要再逐页配置**——`#scrollArea` 滚动容器、**页面上下边缘溢出时的渐进式模糊**（随滚动自动淡入淡出）、居中限宽（`max-width`）、`#tabbar` 槽位与底部占位（内容不会被压在 tab 下，**自动实测 TabBar 高度让底部模糊带以它的顶边为底边**），并转发 `#edge-top`/`#edge-bottom` 给 ZeroScroll。`<ZeroApp :tabbar-space="N"><router-view /><template #tabbar>…</template></ZeroApp>`；暴露 `scrollTo`。需要更细控制就退回 `ZeroScroll`，或直接用 `UiProgressiveBlur` 手搭 |
 | `UiChatThread` | 对话流容器：**自己就是滚动容器**（不是 body），`gap`（设计稿 18）+ `padding`（给顶 / 底模糊栏与输入条让位）；`align-bottom` 内容不足时 `margin-top:auto` 把消息推到底部；`auto-scroll` 新内容到达自动贴底，**用户上滑自动暂停、滚回底部附近恢复跟随**（与 UiTerminalOutput 的 follow 同语言）；暴露 `scrollToBottom()` |
 | `UiChatMessage` | 对话消息，**三种角色共用一套骨架**（外层行对齐 + 可选头像 + 气泡）：`assistant` 纯文本无气泡左对齐（AI 叙述不该被框住）、`user` 黑底白字气泡右对齐 **右上收窄 24/8/24/24**、`agent` 品牌色气泡（`color`）+ 左侧头像左对齐 **左上收窄 8/24/24/24** —— **收窄角指向说话人**，是唯一的形状语义。**正文一律走 `MarkdownView`**：传 `content`（Markdown 字符串）+ `mentions` + `mention-resolver`，`@名字` 由 MarkdownView 的提及机制渲染成 `UiAvatarTag`（**不在消息组件里另做一套 mention**）；也可用默认插槽放任意内容。**头像直接放标准 `UiAgentAvatar` / `UiAvatar` 本体**——不加圆形底、不做圆角裁切（设计稿里 agent 头像就是裸的）。另有 `bubble`（null = 按 role）、`name`、`avatar-shape/state/src/size`、`size` sm/md/lg（lg = 设计稿 1rem）、`max-width`（默认 agent 290 / user 340）、`time`、`#avatar` / `#footer` 插槽 |
+| `UiChatComposer` | 对话输入区：输入框 + 发送 + 附件条（图片/视频本地预览、文件、逐个移除）+ 加号四格入口；长粘贴（>2000 字符）自动转 `.txt` 附件；⌘/Ctrl+Enter 发送；四个插槽 `#left-start`/`#left-end`/`#right-start`/`#right-end`；`max-attachments`/`max-attachment-mb` 超限走 `@error` |
 | `UiChatSystemLine` | 对话流里的非消息行，两类共用：**活动行**（`align="start"` + `icon` + "提取了 xx"，随消息流左对齐）与**状态行**（`align="center"` + `size="sm"`，"关闭了对话" / "已授权 xx 访问 xx"）；整行 `opacity` 默认 0.4（**永远不抢消息的注意力**）；`#trailing` 放行尾的补充内容 |
 | `UiKbd` | `keys` 字符串或数组，`size` sm / md |
 | `UiIcon` | `name` **先查库内 ICONS 注册表，未命中则按 Iconify 名字渲染**（`pack:icon` / `pack/icon` / `pack--icon` / `i-pack:icon` 都自动归一化成 `pack:icon`），`size`（像素或 `1em` 内联用）`filled` `stroke-width` `label` |
@@ -233,7 +228,7 @@ import {
 - **动作按钮三个变体**（`UiButton`）：`fuse` 点一下进入「可撤销」，倒计时用与 `hold` 同语言的**实心进度条、方向相反**（铺满 → 缩回 0，线性烧完 `undo-window`）；进度条 **idle 期间完全不显示，点击后才淡入**（未触发就铺满进度是错的）；烧完落定；`hold` 按住填充上涨（纯色实心条，**没有前端圆球 / 光晕 / 渐变**），抬手过早就缩回，涨满才确认；`slide` 拖滑块过阈值确认，跑动时只有把手转圈（不再叠加通用 spinner），完成后把手回到最左铺满成整颗药丸。
 - **图标的两种放法**：`leading`（文字前端，布局完全不变）与 `top`（文字上方，卡片网格）；分段与下拉都支持，图标标记统一用 24x24 viewBox 内的 SVG 内容。`UiSegmented` 单行装不下会自动转多行网格，多行与单行共用同一张底层卡片轨道和同一个滑动指示器（JS 实测激活格矩形，`translate3d` 连续滑动，跨行不瞬移）。
 - **内容替换**：旧内容留在原位 `opacity→0 + blur(8px)`，新内容从 `blur(10px)` 浮现；外壳只做几何（宽高/圆角/底色）过渡。
-- **可打断**：`UiToolMenu` / `UiFloatingMenu` / `UiSelect` / `UiDatePicker` / `UiTimePicker` 在收起动画途中再次点击，会直接反向长回展开态。
+- **可打断**：`UiMenu` / `UiSelect` / `UiDatePicker` / `UiTimePicker` 在收起动画途中再次点击，会直接反向长回展开态。
 - **不占位的形变**：`UiSelect` / 日期 / 时间选择器展开时临时改固定定位并插入占位块，父容器**不要** `overflow: hidden`。
 - **数字滑轨**（`UiStepper`）：旧值按「新旧值大小关系」方向滑出并模糊，新值从反向滑入，位移量随变化量缩放；单位不滚动、与数字底部对齐；到上下限再点有轻微「碰壁」回弹。
 - **滚轮**（`UiWheel`，时间 / 日期波轮共用）：高亮块固定在中间不动，点击和滑动移动的是背后的数字层；字段数量由列配置决定。
@@ -434,7 +429,7 @@ useZeroConfig({ ui: { motion: 'lively', colors: { primary: '#0f766e' } } })
 5. 本机 Vite 的 `localhost` 可能只监听 `::1`：用 `server.host = '0.0.0.0'`，验收走 `http://127.0.0.1:<port>`。
 6. pnpm 用本地 tarball 时先复制进项目（`vendor/*.tgz`）再写 `file:vendor/...`；指向仓库外路径会随文件移动而失效。
 7. `UiToastHost` 在最上层，底部面板打开时可能盖住表单底部，可在打开前 dismiss。
-8. `UiToolMenu` 展开时会在文档流里占位、把下方内容推开；不想位移就换 `UiFloatingMenu`。
+8. `UiMenu variant="tool"` 展开时会在文档流里占位、把下方内容推开；不想位移就用 `variant="floating"`。
 9. 调试用的无头 Chrome profile 目录（`.chrome-*/`，含 `.chrome-color`）与根目录截图（`.shot*`）会被写大量文件，`.gitignore` 已忽略，`vite.config.js` 的 `server.watch.ignored` 也排除了它们，否则 dev/preview 会被热更风暴拖垮。
 10. 给展开卡片做「滑出式关闭」时，动画必须**从当前跟手位置续接**（先 `void offsetWidth` 提交当前帧再写 transition），并在路由切换绘制后才清内联样式；否则完成动画会像从原位重新开始。
 11. 动效气质不要做成用户设置：它是产品定位（工具类用 `calm`、娱乐社交类用 `lively`），应在代码或 `zero.config` 里预置。做成「设置 → 动效风格」会让同一产品的手感随用户漂移，动效语言就散了。
