@@ -87,6 +87,22 @@ body { background: var(--background); color: var(--on-surface);
 
 深色：`--background` 取很深的色、表面色阶**按 6 / 14 / 17 / 22 / 27** 分档（别照搬 MD3 的 6/10/12/17/22，卡片会和底色粘住），并给 `<html>` 设 `color-scheme: dark`。首帧防闪：`<head>` 里同步读 localStorage 落 `--background` 与 `data-appearance`。
 
+### 表面层级（背景色怎么选）
+
+直接用 MD3 变体，看它下面垫着什么：
+
+| 变量 | 用在哪 |
+| --- | --- |
+| `--background` / `--surface` | 页面底色 |
+| `--surface-container-lowest` | 凹陷托盘（最底层） |
+| `--surface-container-low` | **直接放在页面背景上的容器**（列表卡、分组卡、输入条） |
+| `--surface-container` | 嵌套一层的内容块 |
+| `--surface-container-high` | 弹层里的分区、次级面板 |
+| `--surface-container-highest` | 浮层 / 弹出面板 / 下拉菜单底 |
+| `--surface-bright` / `--surface-dim` | 需要比最高层更亮 / 比背景更沉的极端层 |
+
+⚠️ 自定义属性里不要存 `var(--xxx)`：`--a: var(--b)` + `background: var(--a)` = `var(var(...))`，解析失败 → background-color 变空、卡片透明透出下层（看着像脏了）。
+
 ## 应用级配置 zero.config.yaml
 
 放应用根目录（与 index.html 同级），库启动时读根部 `ui` 段落成令牌；文件不存在全走默认。查找顺序 `yaml → yml → json`。

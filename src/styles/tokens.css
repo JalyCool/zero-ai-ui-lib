@@ -150,10 +150,15 @@
 
   --background: #faf9fd;
   --surface: #faf9fd;
+  /* MD3 表面变体：页面直接放容器用 low，嵌套一层用 container，
+     浮层 / 顶层用 high|highest，凹陷的托盘用 lowest|dim。 */
+  --surface-container-lowest: #ffffff;
   --surface-container-low: #f4f3f7;
   --surface-container: #eeedf1;
   --surface-container-high: #e9e7eb;
   --surface-container-highest: #e3e2e6;
+  --surface-bright: #faf9fd;
+  --surface-dim: #dcdbe0;
   --on-surface: #1b1b1f;
   --on-surface-variant: #46464f;
   --outline: #777680;

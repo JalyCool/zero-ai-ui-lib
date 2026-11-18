@@ -365,6 +365,25 @@ window.with_preferred_screen_edges_deferring_system_gestures(ScreenEdge::LEFT);
 深色不要照搬 MD3 默认层级（6 / 10 / 12 / 17 / 22）：卡片和页面底色只差几个灰阶，几乎粘在一起。示例应用改成 **6 / 14 / 17 / 22 / 27**（描边 tone 36），卡片与背景的亮度比约 1.2:1、高层约 1.5:1；纯黑外观用 #000 / #151518 / #1d1d21 / #27272d / #32323a。
 首帧防闪：在 `<head>` 里同步读 localStorage 落 `--background` 与 `data-appearance`，别等模块脚本。
 
+### 表面层级：按 MD3 变体取，不要写死、也不要运行时候探测
+
+主题生成的就是 MD3 的表面变体（`core/theme.js` 里全部 scheme 都补齐了）：
+
+| 变量 | 用在哪 |
+| --- | --- |
+| `--background` / `--surface` | 页面底色 |
+| `--surface-container-lowest` | 凹陷托盘（最底层） |
+| `--surface-container-low` | **直接放在页面背景上的容器**（列表卡、分组卡、输入条） |
+| `--surface-container` | 嵌套一层的内容块 |
+| `--surface-container-high` | 弹层里的分区、次级面板 |
+| `--surface-container-highest` | 浮层 / 弹出面板 / 下拉菜单底 |
+| `--surface-bright` / `--surface-dim` | 需要比最高层更亮 / 比背景更沉的极端层 |
+
+规则只有一条：**看它下面垫着什么，就取对应档位**（页面上 → low；卡片里 → container/high；浮层 → highest）。例如 `UiCard variant=filled` 固定用 `--surface-container-low`。
+自定义属性里**不要存 `var(--xxx)`**（`background: var(--a)` 而 `--a: var(--b)` 会变成 `var(var(...))`，浏览器解析失败并把 background-color 丢成空值）。
+`useSurfaceTier` 是为「无法静态判断层级」的场景保留的可选工具，且只输出 rgb() 值；**默认不要用**——静态令牌更简单也不会串味。
+
+
 ## 5.1 应用级配置：zero.config.yaml / zero.config.json
 
 应用根目录（与 `index.html` 同级）放一份配置，库启动时读 **根部 `ui`** 段并落成令牌；文件不存在时全部走默认，不算错。查找顺序：`zero.config.yaml` → `zero.config.yml` → `zero.config.json`。

@@ -98,7 +98,7 @@ export function useSurfaceTier(target, options = {}) {
     const host = detectHostBackground(el)
     const hostL = luminance(host)
 
-    /* 把梯度令牌解析成实际色（在宿主上取一次 getComputedStyle 的值） */
+    /* 把梯度令牌解析成实际色（探针读计算值；主题切换后重算即跟随） */
     const probe = document.createElement('div')
     probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;'
     el.appendChild(probe)
@@ -107,6 +107,10 @@ export function useSurfaceTier(target, options = {}) {
       const c = parseColor(getComputedStyle(probe).backgroundColor)
       return { name, color: c, lum: c ? luminance(c) : 0 }
     })
+    /* 混色用的前景 / 表面色也取实际值，保证 high/low 同样是合法 rgb() */
+    probe.style.background = 'transparent'
+    probe.style.color = 'var(--on-surface)'
+    const ink = parseColor(getComputedStyle(probe).color)
     probe.remove()
 
     /* 找比宿主「高一档」（亮度差 ≥ minStep 且最接近）的令牌 */
@@ -118,17 +122,23 @@ export function useSurfaceTier(target, options = {}) {
       if (d < minStep) continue
       if (d < bestDist) { bestDist = d; best = s }
     }
-    /* 没有更高的（宿主已在 highest）：用最高档 */
-    const chosen = best || steps[steps.length - 1]
-    const chosenLum = chosen.color ? luminance(chosen.color) : hostL + minStep
+    /* 找不到「严格更高一档」时不硬套最高档（可能和宿主几乎同色，
+       卡片会隐形）：改用宿主色混 4% 墨色，得到一条极淡的分层。 */
+    const chosenColor = chosen ? chosen.color : blend(host, ink || { r: 30, g: 30, b: 38 }, 0.04)
+
+    const toRgb = col => `rgb(${Math.round(col.r)}, ${Math.round(col.g)}, ${Math.round(col.b)})`
+    const blend = (a, b, t) => ({
+      r: Math.round(a.r + (b.r - a.r) * t),
+      g: Math.round(a.g + (b.g - a.g) * t),
+      b: Math.round(a.b + (b.b - a.b) * t)
+    })
 
     tierVars.value = {
-      '--tier-bg': chosen.name,
-      /* 高一档 / 低一档：给弹出层与次级内容用 */
-      '--tier-bg-high': `color-mix(in oklab, ${chosen.name} 88%, var(--on-surface))`,
-      '--tier-bg-low': `color-mix(in oklab, ${chosen.name} 92%, var(--surface))`
+      '--tier-bg': toRgb(chosenColor),
+      /* 更高 / 更低一档：给弹出层与次级内容用（都基于实际颜色混出来） */
+      '--tier-bg-high': toRgb(ink ? blend(chosenColor, ink, 0.12) : chosenColor),
+      '--tier-bg-low': toRgb(blend(chosenColor, host, 0.6))
     }
-    void chosenLum
   }
 
   function observe() {

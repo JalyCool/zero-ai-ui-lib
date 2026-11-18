@@ -134,6 +134,11 @@ function md3Vibrant(seed, isDark) {
       '--background': tone(neutral, 6), '--surface': tone(neutral, 6),
       '--surface-container-low': tone(neutral, 14), '--surface-container': tone(neutral, 17),
       '--surface-container-high': tone(neutral, 22), '--surface-container-highest': tone(neutral, 27),
+      /* MD3 表面变体补齐：最低层比背景更深，bright 比最高层更亮，
+         dim 比背景略沉 —— 弹层 / 嵌套容器按层级取用。 */
+      '--surface-container-lowest': tone(neutral, 4),
+      '--surface-bright': tone(neutral, 30),
+      '--surface-dim': tone(neutral, 2),
       '--on-surface': tone(neutral, 92), '--on-surface-variant': tone(neutralVariant, 82),
       '--outline': tone(neutralVariant, 62), '--outline-variant': tone(neutralVariant, 36),
       '--primary': tone(primary, 80), '--on-primary': tone(primary, 20),
@@ -148,6 +153,11 @@ function md3Vibrant(seed, isDark) {
     '--background': tone(neutral, 98), '--surface': tone(neutral, 98),
     '--surface-container-low': tone(neutral, 96), '--surface-container': tone(neutral, 94),
     '--surface-container-high': tone(neutral, 92), '--surface-container-highest': tone(neutral, 90),
+    /* MD3 表面变体（亮色）：lowest = tone 100（比背景更白），
+       bright = 98（≈背景），dim = 87（比最高层略沉）。 */
+    '--surface-container-lowest': tone(neutral, 100),
+    '--surface-bright': tone(neutral, 98),
+    '--surface-dim': tone(neutral, 87),
     '--on-surface': tone(neutral, 10), '--on-surface-variant': tone(neutralVariant, 30),
     '--outline': tone(neutralVariant, 50), '--outline-variant': tone(neutralVariant, 85),
     '--primary': tone(primary, 40), '--on-primary': tone(primary, 100),
@@ -164,6 +174,7 @@ function monochromeTokens(isDark) {
       '--background': '#0a0a0a', '--surface': '#0a0a0a',
       '--surface-container-low': '#141414', '--surface-container': '#1c1c1c',
       '--surface-container-high': '#242424', '--surface-container-highest': '#2c2c2c',
+      '--surface-container-lowest': '#0e0e0e', '--surface-bright': '#343434', '--surface-dim': '#060606',
       '--on-surface': '#ededed', '--on-surface-variant': '#a3a3a3',
       '--outline': '#5a5a5a', '--outline-variant': '#2e2e2e',
       '--primary': '#ededed', '--on-primary': '#0a0a0a',
@@ -178,6 +189,7 @@ function monochromeTokens(isDark) {
     '--background': '#ffffff', '--surface': '#ffffff',
     '--surface-container-low': '#f7f7f7', '--surface-container': '#f0f0f0',
     '--surface-container-high': '#e8e8e8', '--surface-container-highest': '#e0e0e0',
+    '--surface-container-lowest': '#ffffff', '--surface-bright': '#fafafa', '--surface-dim': '#dcdcdc',
     '--on-surface': '#111111', '--on-surface-variant': '#666666',
     '--outline': '#a3a3a3', '--outline-variant': '#d4d4d4',
     '--primary': '#111111', '--on-primary': '#ffffff',
@@ -208,6 +220,7 @@ function fallbackOklch(seed, isDark) {
       /* 与 MD3 分支同一策略：深色下把抬起层级拉开，卡片不再粘背景。 */
       '--surface-container-low': neutral[9], '--surface-container': neutral[8],
       '--surface-container-high': neutral[7], '--surface-container-highest': neutral[6],
+      '--surface-container-lowest': neutral[10], '--surface-bright': neutral[5], '--surface-dim': neutral[11],
       '--on-surface': neutral[0], '--on-surface-variant': neutralVariant[3],
       '--outline': neutralVariant[5], '--outline-variant': neutralVariant[7],
       '--primary': primary[2], '--on-primary': primary[10],
@@ -221,6 +234,7 @@ function fallbackOklch(seed, isDark) {
     '--background': neutral[0], '--surface': neutral[0],
     '--surface-container-low': neutral[1], '--surface-container': neutral[2],
     '--surface-container-high': neutral[3], '--surface-container-highest': neutral[4],
+    '--surface-container-lowest': neutral[0], '--surface-bright': neutral[0], '--surface-dim': neutral[5],
     '--on-surface': neutral[11], '--on-surface-variant': neutralVariant[9],
     '--outline': neutralVariant[7], '--outline-variant': neutralVariant[5],
     '--primary': primary[7], '--on-primary': primary[0],
@@ -233,13 +247,15 @@ function fallbackOklch(seed, isDark) {
 const WHITE_OVERRIDE = {
   '--background': '#ffffff', '--surface': '#ffffff',
   '--surface-container-low': '#f8f8fa', '--surface-container': '#f1f2f5',
-  '--surface-container-high': '#eceef1', '--surface-container-highest': '#e6e8ec'
+  '--surface-container-high': '#eceef1', '--surface-container-highest': '#e6e8ec',
+  '--surface-container-lowest': '#ffffff', '--surface-bright': '#ffffff', '--surface-dim': '#dcdce2'
 }
 
 const BLACK_OVERRIDE = {
   '--background': '#000000', '--surface': '#000000',
   '--surface-container-low': '#151518', '--surface-container': '#1d1d21',
-  '--surface-container-high': '#27272d', '--surface-container-highest': '#32323a'
+  '--surface-container-high': '#27272d', '--surface-container-highest': '#32323a',
+  '--surface-container-lowest': '#000000', '--surface-bright': '#3a3a44', '--surface-dim': '#000000'
 }
 
 export function apply({ animate = false } = {}) {
