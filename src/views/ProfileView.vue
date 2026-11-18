@@ -266,8 +266,8 @@ const tourSteps = [
           <UiRangeSlider v-model="range" :min="0" :max="100" :step="1" unit="%" />
         </UiFormField>
 
-        <UiFormField label="主观疲劳度">
-          <UiRating v-model="rating" :max="5" />
+        <UiFormField label="主观疲劳度" hint="点星星可选半颗或整颗">
+          <UiRating v-model="rating" :max="5" half />
         </UiFormField>
 
         <UiFormField label="步长校准" hint="拖动数字直接改">

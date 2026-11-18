@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useSurfaceTier } from '../../composables/useSurfaceTier'
 
 /* ============================================================
    卡片（参考 Nuxt UI 的 Card）
@@ -34,17 +35,26 @@ const props = defineProps({
 
 const isProduct = computed(() => props.variant === 'product')
 
+/* ---------- 层级自适应背景 ----------
+   卡片写死 surface-container 的问题：放进 low 层的页面里它和邻块同色，
+   放进 high 层里又高了两档。useSurfaceTier 探测宿主实际背景，
+   在 M3 表面梯度上选「比宿主高一档」的最近令牌。
+   variant=filled 时背景用 --tier-bg；product 卡是品牌色光晕卡，不参与。 */
+const cardEl = ref(null)
+const { tierVars } = useSurfaceTier(cardEl)
+
 </script>
 
 <template>
   <section
+    ref="cardEl"
     class="ui-card"
     :class="[`ui-card--${variant}`, `ui-card--${size}`, {
       /* 产品卡不分段画线：品牌卡是一整块，不要被分隔线切碎。 */
       'has-divider': divider && !isProduct,
       'is-clickable': clickable
     }]"
-    :style="isProduct ? { '--card-accent': accent } : undefined"
+    :style="[isProduct ? { '--card-accent': accent } : undefined, tierVars]"
   >
     <!-- 产品卡底部的一圈品牌色光晕：随主题 / accent 变化，不用固定位图 -->
     <span v-if="isProduct" class="ui-card__glow" aria-hidden="true"></span>
@@ -105,7 +115,7 @@ const isProduct = computed(() => props.variant === 'product')
   transition: border-color var(--t-fade), background var(--t-fade),
               transform var(--t-pop), box-shadow var(--t-fade);
 }
-.ui-card--filled { background: var(--surface-container); }
+.ui-card--filled { background: var(--tier-bg, var(--surface-container)); }
 .ui-card--outline { background: transparent; border: var(--border-w) solid var(--outline-variant); }
 .ui-card--plain { background: transparent; }
 

@@ -19,7 +19,14 @@ const props = defineProps({
   fadeTint: { type: String, default: 'var(--surface)' },
   fadeTintStrength: { type: Number, default: 0.8 },
   /* 内容内边距：直接传给滚动元素 */
-  padding: { type: String, default: '' }
+  padding: { type: String, default: '' },
+  /* ============================================================
+     底部固定层高度（px）：TabBar / 悬浮输入条这类 fixed 覆盖层的高度。
+     >0 时底部模糊带与 #edge-bottom 插槽都**抬升到固定层之上** ——
+     模糊带以固定层的顶边为底边，不再被 TabBar 盖住一截。
+     ZeroApp 会把 TabBar 高度自动传进来；独立使用时手动传。
+     ============================================================ */
+  bottomInset: { type: Number, default: 0 }
 })
 
 /* ============================================================
@@ -34,9 +41,14 @@ const props = defineProps({
    模糊层**常驻不销毁**，只切不透明度：backdrop-filter 反复重建会闪，
    而且层数多时重建代价明显。
 
+   #edge-top / #edge-bottom 插槽：渲染在模糊层**上方**的固定内容
+   （返回栏、悬浮标题、输入条……），与模糊带同一坐标系，
+   bottomInset > 0 时底部插槽贴在固定层之上而不是容器底。
+
    典型用法（应用外壳直接用它，见 ZeroApp）：
-     <ZeroScroll id="scrollArea" tag="main" padding="20px 16px 110px">
+     <ZeroScroll id="scrollArea" tag="main" :bottom-inset="64">
        …页面内容…
+       <template #edge-bottom><浮动输入条 /></template>
      </ZeroScroll>
    ============================================================ */
 
@@ -44,6 +56,10 @@ const viewEl = ref(null)
 const { canScrollUp, canScrollDown } = useScrollEdges(viewEl)
 
 const viewStyle = computed(() => (props.padding ? { padding: props.padding } : undefined))
+const hasEdgeTop = computed(() => props.fade > 0)
+const hasEdgeBottom = computed(() => props.fade > 0)
+/* 底部模糊带/插槽的 bottom 偏移：被 TabBar 顶住时抬升 */
+const bottomOffset = computed(() => (props.bottomInset > 0 ? props.bottomInset + 'px' : '0'))
 
 defineExpose({
   /* 交给外部做「切 Tab 回顶」这类操作 */
@@ -65,7 +81,7 @@ defineExpose({
       <slot />
     </component>
 
-    <template v-if="fade > 0">
+    <template v-if="hasEdgeTop">
       <UiProgressiveBlur
         placement="top"
         :height="fade"
@@ -75,6 +91,13 @@ defineExpose({
         :tint-strength="fadeTintStrength"
         :visible="canScrollUp"
       />
+      <!-- 模糊区上层的固定内容插槽：返回栏 / 悬浮标题等 -->
+      <div v-if="$slots['edge-top']" class="zero-scroll__edge zero-scroll__edge--top">
+        <slot name="edge-top" />
+      </div>
+    </template>
+
+    <template v-if="hasEdgeBottom">
       <UiProgressiveBlur
         placement="bottom"
         :height="fade"
@@ -83,7 +106,15 @@ defineExpose({
         :tint="fadeTint"
         :tint-strength="fadeTintStrength"
         :visible="canScrollDown"
+        :style="{ bottom: bottomOffset }"
       />
+      <div
+        v-if="$slots['edge-bottom']"
+        class="zero-scroll__edge zero-scroll__edge--bottom"
+        :style="{ bottom: bottomOffset }"
+      >
+        <slot name="edge-bottom" />
+      </div>
     </template>
   </div>
 </template>
@@ -113,4 +144,16 @@ defineExpose({
   scrollbar-width: none;
 }
 .zero-scroll__view::-webkit-scrollbar { display: none; }
+
+/* 模糊区上层的固定内容：与模糊层同坐标系，不随滚动 */
+.zero-scroll__edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 55; /* 模糊层 z-50 之上、TabBar 槽位（z-60）之下 */
+  pointer-events: none;
+}
+.zero-scroll__edge--top { top: 0; }
+.zero-scroll__edge--bottom { bottom: 0; }
+.zero-scroll__edge > :deep(*) { pointer-events: auto; }
 </style>

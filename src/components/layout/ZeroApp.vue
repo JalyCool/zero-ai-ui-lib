@@ -1,6 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useSlots } from 'vue'
 import ZeroScroll from './ZeroScroll.vue'
+
+const slots = useSlots()
 
 const props = defineProps({
   /* 内容最大宽度（px）；0 = 不限制。移动优先的应用设 480 就够。 */
@@ -9,7 +11,9 @@ const props = defineProps({
      传 'none' 表示**不写内联 padding**，完全交给应用自己的外壳 CSS
      （老项目已经有 #scrollArea 的响应式内边距时用这个，避免内联样式盖掉它） */
   padding: { type: String, default: '' },
-  /* 底部给 TabBar 留的高度（px）；0 = 没有 TabBar */
+  /* 底部给 TabBar 留的高度（px）；0 = 没有 TabBar。
+     传了非 0 且没有 #tabbar 插槽时按此值让位；有 #tabbar 插槽时
+     **自动实测** TabBar 高度（fixed 悬浮层的真实占位），见 tabBarInset。 */
   tabbarSpace: { type: Number, default: 0 },
   /* 顶 / 底淡出带高度（px）；0 = 关闭 */
   fade: { type: Number, default: 84 },
@@ -30,8 +34,9 @@ const props = defineProps({
    · 页面上下边缘溢出时的渐进式模糊（随滚动位置自动淡入淡出）
    · 移动优先的居中列 + 安全区 + 桌面端铺满
    · TabBar 占位（底部自动留出高度，内容不会被压在 tab 下）
+   · **底部模糊带以 TabBar 顶边为底边** —— 模糊不再糊进 TabBar 区域
 
-     <ZeroApp :tabbar-space="tabBarHeightOr0">
+     <ZeroApp>
        <router-view />
        <template #tabbar><UiTabBar … /></template>
      </ZeroApp>
@@ -40,12 +45,40 @@ const props = defineProps({
    ============================================================ */
 
 const scrollRef = ref(null)
+const barEl = ref(null)
+const barHeight = ref(0)
+let barRo = null
+
+/* #tabbar 槽位存在时实测 TabBar 高度（fixed 层不占布局，必须量）。
+   ResizeObserver 跟随旋转 / 字体加载引起的高度变化。 */
+onMounted(() => {
+  nextTickBar()
+})
+function nextTickBar() {
+  const el = barEl.value?.firstElementChild || barEl.value
+  if (el && typeof ResizeObserver !== 'undefined') {
+    barRo = new ResizeObserver(() => {
+      barHeight.value = Math.round(el.getBoundingClientRect().height)
+    })
+    barRo.observe(el)
+    barHeight.value = Math.round(el.getBoundingClientRect().height)
+  } else if (el) {
+    barHeight.value = Math.round(el.getBoundingClientRect().height)
+  }
+}
+onBeforeUnmount(() => { if (barRo) barRo.disconnect() })
+
+/* 底部固定层高度：实测优先，fallback 用 tabbarSpace */
+const tabBarInset = computed(() => {
+  if (slots && slots.tabbar) return barHeight.value
+  return props.tabbarSpace
+})
 
 const resolvedPadding = computed(() => {
   /* 'none' = 内联不写，交给应用的 #scrollArea 规则（含 media query） */
   if (props.padding === 'none') return ''
   if (props.padding) return props.padding
-  const bottom = props.tabbarSpace > 0 ? props.tabbarSpace + 16 : 24
+  const bottom = tabBarInset.value > 0 ? tabBarInset.value + 16 : 24
   return `20px clamp(16px, 4vw, 48px) ${bottom}px`
 })
 
@@ -74,13 +107,15 @@ defineExpose({
       :fade-layers="fadeLayers"
       :fade-tint="fadeTint"
       :fade-tint-strength="fadeTintStrength"
+      :bottom-inset="tabBarInset"
     >
       <slot />
     </ZeroScroll>
     <!-- TabBar 槽位：UiTabBar 自己是 position:fixed 悬浮层（z-20），
          而 ZeroScroll 的模糊层 z-50 —— 不包一层的话，底部模糊会糊在
-         TabBar 文字上（截图中 tab 被一层白雾盖住就是这个原因）。 -->
-    <div v-if="$slots.tabbar" class="zero-app__bar"><slot name="tabbar" /></div>
+         TabBar 文字上。包一层抬到 z-60；同时实测高度传给 bottomInset，
+         让底部模糊带以 TabBar 顶边为底边。 -->
+    <div v-if="$slots.tabbar" ref="barEl" class="zero-app__bar"><slot name="tabbar" /></div>
   </div>
 </template>
 

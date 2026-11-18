@@ -85,8 +85,8 @@ const props = defineProps({
   /* 注视压缩系数：看向设备 / 指定点时「距离 → 眼偏移」的换算比例 */
   gazeScale: { type: Number, default: 0.37 },
   /* 眼整体基础偏移（相对 24 盒中心）：调节台实测固化值 */
-  eyesOffsetX: { type: Number, default: -0.4 },
-  eyesOffsetY: { type: Number, default: -1.15 }
+  eyesOffsetX: { type: Number, default: 0.45 },
+  eyesOffsetY: { type: Number, default: -1.5 }
 })
 
 /* ---------- 情绪层：状态配方表（参数即状态，状态即参数向量） ---------- */

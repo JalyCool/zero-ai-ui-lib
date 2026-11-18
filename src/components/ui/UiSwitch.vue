@@ -69,7 +69,9 @@ function toggle() {
   min-width: 0;
   cursor: pointer;
 }
-.ui-switch-row.is-end { display: flex; width: 100%; justify-content: flex-end; }
+/* align-end：整行展开成 100% 宽。「最右侧内容对齐到行尾」——
+   无论文案在哪侧：吃掉剩余宽度的都是文字，开关永远贴行尾。 */
+.ui-switch-row.is-end { display: flex; width: 100%; }
 .ui-switch-row__text {
   color: var(--on-surface);
   font-size: var(--fs-small);
@@ -77,8 +79,8 @@ function toggle() {
   transition: color var(--t-fade);
 }
 .ui-switch-row.is-end .ui-switch-row__text { flex: 1; }
-.ui-switch-row.is-text-right .ui-switch-row__text { text-align: left; }
-/* 右对齐到行尾：alignEnd + 文案在右的组合语义 */
+/* 文案在右 + align-end：开关贴行首、文字右对齐到行尾 */
+.ui-switch-row.is-end.is-text-right { flex-direction: row-reverse; }
 .ui-switch-row.is-end.is-text-right .ui-switch-row__text { text-align: right; }
 .ui-switch-row.is-disabled { opacity: .55; cursor: not-allowed; }
 .ui-switch-row.is-disabled .ui-switch { cursor: not-allowed; }
