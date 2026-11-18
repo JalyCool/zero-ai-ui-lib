@@ -1,6 +1,6 @@
 <script setup>
 import ExpandTopbar from '../components/ExpandTopbar.vue'
-import { UiBarChart } from '../components/ui'
+import { UiChart } from '../components/ui'
 
 const week = [7.2, 6.5, 8.1, 7.8, 6.9, 8.4, 7.5]
 </script>
@@ -16,7 +16,7 @@ const week = [7.2, 6.5, 8.1, 7.8, 6.9, 8.4, 7.5]
   <div class="expand-section">
     <div class="expand-section-title">本周睡眠时长</div>
     <div class="expand-chart-card">
-      <UiBarChart id="expandSleepBars" :data="week" :height="120" unit="小时" :highlight="7.8" />
+      <UiChart type="bar" id="expandSleepBars" :data="week" :height="120" unit="小时" :highlight="7.8" />
     </div>
   </div>
   <div class="expand-section">

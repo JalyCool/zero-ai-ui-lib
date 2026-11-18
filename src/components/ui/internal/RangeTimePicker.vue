@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import UiTimePicker from './UiTimePicker.vue'
-import UiRollNumber from './UiRollNumber.vue'
-import { formatDurationBetweenApprox, parseClockTime } from '../../core/duration'
+import TimePickerImpl from './TimePicker.vue'
+import UiRollNumber from '../UiRollNumber.vue'
+import { formatDurationBetweenApprox, parseClockTime } from '../../../core/duration'
 
 const props = defineProps({
   /* { start: 'HH:mm', end: 'HH:mm' } */
@@ -123,7 +123,7 @@ watch(() => props.modelValue, value => {
 <template>
   <div class="ui-range-time">
     <div class="ui-range-time__row">
-      <UiTimePicker
+      <TimePickerImpl
         class="ui-range-time__picker"
         :model-value="startValue"
         :precision="precision"
@@ -152,7 +152,7 @@ watch(() => props.modelValue, value => {
         </span>
       </div>
 
-      <UiTimePicker
+      <TimePickerImpl
         class="ui-range-time__picker"
         :model-value="endValue"
         :precision="precision"

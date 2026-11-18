@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import UiRollNumber from './UiRollNumber.vue'
+import UiRollNumber from '../UiRollNumber.vue'
 
 const props = defineProps({
   value: { type: Number, default: 78 },

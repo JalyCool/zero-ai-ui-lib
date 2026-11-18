@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   UiAlert, UiAvatar, UiAvatarGroup, UiBadge, UiBreadcrumb, UiButton,
-  UiCard, UiChip, UiCodeEditor, UiColorPicker, UiCommandPalette, UiContextMenu,
+  UiCard, UiChip, UiCodeEditor, UiColorPicker, UiCommandPalette, UiMenu,
   UiDataTable, UiForm, UiFormField, UiKeyValueEditor, UiLink, UiMarquee,
   UiPagination, UiPopover, UiRadioGroup, UiRangeSlider, UiRating, UiScrubField,
   UiSearchField, UiSegmented, UiSelect, UiSideNav, UiSlider, UiStepper,
@@ -216,9 +216,9 @@ const tourSteps = [
 
       <!-- 右键菜单：真的能触发 -->
       <div class="profile-view__ctx" @contextmenu.prevent>
-        <UiContextMenu :items="contextItems" @select="onContextPick">
+        <UiMenu variant="context" :items="contextItems" @select="onContextPick">
           <UiButton variant="text" size="sm">右键这里</UiButton>
-        </UiContextMenu>
+        </UiMenu>
       </div>
     </UiCard>
 

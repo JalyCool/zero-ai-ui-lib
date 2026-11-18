@@ -1,6 +1,6 @@
 <script setup>
 import { nextTick, useSlots, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue'
-import { usePress } from '../../core/pressFeedback'
+import { usePress } from '../../../core/pressFeedback'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },

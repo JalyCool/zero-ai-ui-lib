@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useMorphWindow } from '../../core/morphWindow'
+import { useMorphWindow } from '../../../core/morphWindow'
 
 const props = defineProps({
   /* { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' }，null 视为全空 */

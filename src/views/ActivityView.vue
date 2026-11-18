@@ -6,7 +6,7 @@ import RouteExpandCard from '../components/expand/RouteExpandCard.vue'
 import ExpandActivity from '../expand/ExpandActivity.vue'
 import {
   AppHead, UiAlert, UiBadge, UiButton, UiCheckbox, UiChip, UiEmptyState,
-  UiFloatingMenu, UiModal, UiSkeleton, UiSwipeRow, UiToolMenu
+  UiMenu, UiModal, UiSkeleton, UiSwipeRow
 } from '../lib'
 import {
   activityState,
@@ -144,7 +144,7 @@ function onSwipeAction(action, record) {
          不用再为每个页面自造 view-head。 -->
     <AppHead title="运动记录" :sub="initialLoading ? '正在加载…' : `${records.length} 条记录 · 今天 ${todayCount} 项`">
       <template #actions>
-        <UiFloatingMenu v-model="sortMode" label="排序" :items="sortItems" title="排序方式" />
+        <UiMenu variant="floating" v-model="sortMode" label="排序" :items="sortItems" title="排序方式" />
         <UiButton size="sm" variant="tonal" @click="goAdd">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           新增
@@ -250,7 +250,7 @@ function onSwipeAction(action, record) {
             <!-- 行内更多操作：UiFloatingMenu（自绘按钮 + items），
                  不用 UiToolMenu —— 它是「图标 + 文字 + 箭头」的下拉，
                  塞进列表行会挤掉正文。 -->
-            <UiFloatingMenu
+            <UiMenu variant="floating"
               :model-value="''"
               label="⋯"
               size="sm"

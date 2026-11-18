@@ -1,11 +1,11 @@
 <script setup>
 import { computed, ref } from 'vue'
 import {
-  UiBarChart, UiButton, UiCalendar, UiCard, UiCardGroup, UiCarousel, UiCol,
-  UiGauge, UiGaugeSlider, UiGrid, UiHeatmap, UiLineChart, UiPagerDots,
-  UiProgress, UiRangeDatePicker, UiRingProgress, UiRingSlider, UiRow,
-  UiSegmented, UiSlider, UiSparkline, UiSplitter, UiStepFlow, UiTooltip,
-  UiTooltipGroup, UiVirtualList, UiWheelDatePicker
+  UiButton, UiCalendar, UiCard, UiCardGroup, UiCarousel, UiChart, UiCol, UiDatePicker,
+  UiGaugeSlider, UiGrid, UiPagerDots,
+  UiProgress, UiRingSlider, UiRow,
+  UiSegmented, UiSlider, UiSplitter, UiStepFlow, UiTooltip,
+  UiTooltipGroup, UiVirtualList
 } from '../lib'
 
 /* ============================================================
@@ -114,8 +114,8 @@ function rowStyle(index) {
     <UiCard>
       <div class="trends-view__filters">
         <UiSegmented v-model="granularity" :options="granularityOptions" />
-        <UiRangeDatePicker v-model="range" />
-        <UiWheelDatePicker v-model="wheelDate" />
+        <UiDatePicker v-model="range" mode="range" />
+        <UiDatePicker v-model="wheelDate" mode="wheel" />
       </div>
     </UiCard>
 
@@ -123,20 +123,20 @@ function rowStyle(index) {
     <UiCard title="指标总览" description="点下面的小标签切换指标">
       <UiTooltipGroup v-model="selectedMetric" :items="tipItems" />
 
-      <UiLineChart
+      <UiChart
+        type="line"
         :data="metricData.data"
         :labels="metricData.labels"
-        :unit="metricData.unit"
         :view-box-height="140"
         aria-label="趋势折线"
       />
 
       <UiRow :gutter="12">
         <UiCol :span="8">
-          <UiSparkline :values="stepData" />
+          <UiChart type="spark" :data="stepData" />
         </UiCol>
         <UiCol :span="8">
-          <UiBarChart :data="sleepData" unit="小时" :highlight="8.4" />
+          <UiChart type="bar" :data="sleepData" unit="小时" :highlight="8.4" />
         </UiCol>
         <UiCol :span="8">
           <UiProgress :value="78" label="目标完成度" />
@@ -148,7 +148,7 @@ function rowStyle(index) {
     <UiCard title="环与表" description="三个都能拖">
       <UiGrid :min="150" :gap="16">
         <div class="trends-view__gauge">
-          <UiRingProgress :value="78" label="步数目标" />
+          <UiChart type="ring" :data="[78]" label="步数目标" />
           <UiSlider v-model="ringValue" :min="0" :max="100" />
         </div>
 
@@ -157,7 +157,7 @@ function rowStyle(index) {
         </div>
 
         <div class="trends-view__gauge">
-          <UiGauge :value="gaugeValue" label="恢复指数" />
+          <UiChart type="gauge" :data="[gaugeValue]" label="恢复指数" />
           <UiGaugeSlider v-model="gaugeValue" />
         </div>
       </UiGrid>
@@ -165,7 +165,7 @@ function rowStyle(index) {
 
     <!-- 热力图 + 卡片组 -->
     <UiCard title="活跃热力" description="最近 12 周">
-      <UiHeatmap :values="heatValues" :columns="7" />
+      <UiChart type="heat" :data="heatValues" :columns="7" />
 
       <UiCardGroup
         :items="galleryItems"

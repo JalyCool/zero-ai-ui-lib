@@ -1,6 +1,6 @@
 <script setup>
 import { nextTick, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue'
-import { usePress } from '../../core/pressFeedback'
+import { usePress } from '../../../core/pressFeedback'
 
 const props = defineProps({
   label: { type: String, default: '工具' },

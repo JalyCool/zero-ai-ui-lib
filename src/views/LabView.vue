@@ -2,9 +2,9 @@
 import { computed, ref } from 'vue'
 import {
   UiAccordion, UiAutocomplete, UiAvatarTag, UiCodeImage, UiCodeSlots,
-  UiFileDropzone, UiIcon, UiKbd, UiNavigationMenu, UiRangeTimePicker,
+  UiFileDropzone, UiIcon, UiKbd, UiNavigationMenu, UiMenu,
   UiRollNumber, UiSchemaForm, UiScrollArea, UiSidebar, UiSideNav, UiSlideover,
-  UiSpinner, UiTerminalOutput, UiText, UiToolMenu, UiWheel, ZeroScroll, MarkdownView
+  UiSpinner, UiTerminalOutput, UiText, UiTimePicker, UiWheel, ZeroScroll, MarkdownView
 } from '../lib'
 
 /* ============================================================
@@ -211,7 +211,7 @@ const mdDemo = [
     <!-- 时间范围 -->
     <div class="lab-card">
       <h3 class="lab-title">时间范围</h3>
-      <UiRangeTimePicker v-model="timeRange" precision="h" />
+      <UiTimePicker v-model="timeRange" mode="range" precision="h" />
     </div>
 
     <!-- Schema 表单 -->
@@ -276,7 +276,7 @@ const mdDemo = [
 
       <div class="lab-card">
         <h3 class="lab-title">工具菜单</h3>
-        <UiToolMenu :items="toolItems" label="配置" />
+        <UiMenu variant="tool" :items="toolItems" label="配置" />
       </div>
     </div>
 

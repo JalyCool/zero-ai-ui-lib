@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useMorphWindow } from '../../core/morphWindow'
-import UiWheel from './UiWheel.vue'
+import { useMorphWindow } from '../../../core/morphWindow'
+import UiWheel from '../UiWheel.vue'
 
 const props = defineProps({
   /* 'YYYY-MM-DD'，默认今天 */

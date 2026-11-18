@@ -102,7 +102,6 @@ onBeforeUnmount(() => {
   if (scrollEl.value) scrollEl.value.removeEventListener('scroll', onScroll)
 })
 
-const hasActions = computed(() => !!$slots.actions)
 </script>
 
 <template>

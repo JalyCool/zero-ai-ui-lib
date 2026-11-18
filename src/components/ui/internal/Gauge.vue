@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
-import UiRollNumber from './UiRollNumber.vue'
-import { arcStroke, useStrokeScale } from '../../core/arcStroke'
+import UiRollNumber from '../UiRollNumber.vue'
+import { arcStroke, useStrokeScale } from '../../../core/arcStroke'
 
 const props = defineProps({
   value: { type: Number, default: 72 },

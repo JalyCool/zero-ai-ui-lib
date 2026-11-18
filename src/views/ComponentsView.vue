@@ -1,23 +1,22 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import {
-  UiAccordion, UiAlert, UiAvatar, UiBadge, UiBarChart, UiBottomSheet, UiButton, UiCard,
-  UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState, UiSideNav,
+  UiAccordion, UiAlert, UiAvatar, UiBadge, UiBottomSheet, UiButton, UiCard,
+  UiChart, UiCheckbox, UiChip, UiCodeEditor, UiCodeImage, UiDataTable, UiDatePicker, UiEmptyState, UiSideNav,
   MarkdownView, UiLink,
-  UiCardGroup, UiCodeSlots, UiFileDropzone, UiFloatingMenu, UiGauge, UiGaugeSlider, UiHeatmap,
+  UiCardGroup, UiCodeSlots, UiFileDropzone, UiGaugeSlider,
   UiAgentAvatar, UiAvatarGroup, UiAvatarTag, UiRotatingText, UiScrubField, UiStatusMark, UiStepFlow, UiSwipeRow,
   UiText, UiTooltipGroup,
-  UiInput, UiKeyValueEditor, UiLineChart, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
-  UiRangeDatePicker, UiRangeSlider, UiRangeTimePicker, UiRating, UiRingProgress,
+  UiInput, UiKeyValueEditor, UiModal, UiMorphPanel, UiProgress, UiRadioGroup,
+  UiRangeSlider, UiRating,
   UiRingSlider, UiSchemaForm, UiSearchField, UiSegmented, UiSelect, UiSkeleton,
-  UiSlider, UiSparkline, UiSpinner, UiStepper, UiSwitch, UiTagInput,
-  UiTerminalOutput, UiTextarea, UiTimePicker, UiToastHost, UiToolMenu, UiTooltip,
-  UiTreeView, UiVirtualList, UiWheelDatePicker,
-  UiAutocomplete, UiBreadcrumb, UiCalendar, UiCarousel, UiCol, UiColorPicker,
-  UiCommandPalette, UiContextMenu, UiForm, UiFormField,
+  UiSlider, UiSpinner, UiStepper, UiSwitch, UiTagInput,
+  UiTerminalOutput, UiTextarea, UiTimePicker, UiToastHost, UiTooltip,
+  UiTreeView, UiVirtualList, UiAutocomplete, UiBreadcrumb, UiCalendar, UiCarousel, UiCol, UiColorPicker,
+  UiCommandPalette, UiForm, UiFormField,
   UiGrid, UiIcon, UiKbd, UiMarquee, UiNavigationMenu, UiPagination,
   UiPagerDots, UiPopover, UiProgressiveBlur, UiRow, UiScrollArea, UiSidebar, UiSlideover, UiSplitter,
-  UiChatThread, UiChatMessage, UiChatSystemLine,
+  UiChatThread, UiChatMessage, UiChatSystemLine, UiMenu,
   UiTimeline, UiTour
 } from '../components/ui'
 import { ZeroScroll } from '../components/layout'
@@ -851,8 +850,8 @@ watch(activeSection, id => {
         <div class="lib-cell">
           <span class="lib-cell__label">形变菜单 <small>Floating / Tool</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiFloatingMenu v-model="floatChoice" :items="floatItems" />
-            <UiToolMenu :items="toolItems" label="更多操作" @select="onToolSelect" />
+            <UiMenu variant="floating" v-model="floatChoice" :items="floatItems" />
+            <UiMenu variant="tool" :items="toolItems" label="更多操作" @select="onToolSelect" />
             <span class="lib-muted">当前工具项：{{ toolChoice || '未选择' }}</span>
           </div>
           <span class="lib-cell__note">按钮原地长成面板；收起途中可打断。</span>
@@ -1015,8 +1014,8 @@ watch(activeSection, id => {
         <div class="lib-cell">
           <span class="lib-cell__label">范围日期 / 波轮日期</span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiRangeDatePicker v-model="visitRange" label="回访区间" />
-            <UiWheelDatePicker v-model="wheelDate" label="出生日期" />
+            <UiDatePicker v-model="visitRange" mode="range" label="回访区间" />
+            <UiDatePicker v-model="wheelDate" mode="wheel" label="出生日期" />
           </div>
           <span class="lib-cell__note">范围日期支持「今天 / 近7天 / 近30天」快捷预设。</span>
         </div>
@@ -1025,7 +1024,7 @@ watch(activeSection, id => {
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiSegmented v-model="precision" layout="one-line" label="选择器精度" :options="precisionOptions" />
             <UiSelect v-model="displayPrecision" label="时长显示精度（取整后加 ~）" :options="displayPrecisionOptions" />
-            <UiRangeTimePicker v-model="visitRangeTime" :precision="precision" :display-precision="displayPrecision" />
+            <UiTimePicker v-model="visitRangeTime" mode="range" :precision="precision" :display-precision="displayPrecision" />
           </div>
           <span class="lib-cell__note">60 分钟 → 1h；63 分 3 秒 → 1h03m03s；整串首位 0 隐去。</span>
         </div>
@@ -1283,24 +1282,24 @@ watch(activeSection, id => {
         <div class="lib-cell">
           <span class="lib-cell__label">迷你图 <small>Sparkline / Progress</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiSparkline :values="week" />
-            <UiBarChart :data="week" :labels="['一', '二', '三', '四', '五', '六', '日']" :height="88" />
+            <UiChart type="spark" :data="week" />
+            <UiChart type="bar" :data="week" :labels="['一', '二', '三', '四', '五', '六', '日']" :height="88" />
             <UiProgress :value="64" label="周目标" />
           </div>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">环形 / 仪表盘</span>
           <div class="lib-cell__stage">
-            <UiRingProgress :value="ringValue" label="达成" :size="96" />
-            <UiGauge :value="gaugeValue" label="睡眠压力" />
+            <UiChart type="ring" :data="[ringValue]" label="达成" :size="96" />
+            <UiChart type="gauge" :data="[gaugeValue]" label="睡眠压力" />
           </div>
           <span class="lib-cell__note">条形与数字入场都走同一套弹簧。</span>
         </div>
         <div class="lib-cell">
           <span class="lib-cell__label">折线 / 热力</span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiLineChart :data="week" :labels="['一', '二', '三', '四', '五', '六', '日']" />
-            <UiHeatmap :values="heat" :weeks="6" />
+            <UiChart type="line" :data="week" :labels="['一', '二', '三', '四', '五', '六', '日']" />
+            <UiChart type="heat" :data="heat" :weeks="6" />
           </div>
         </div>
         <div class="lib-cell">
@@ -1383,9 +1382,9 @@ watch(activeSection, id => {
         <div class="lib-cell">
           <span class="lib-cell__label">右键菜单 / 命令面板 / 巡览</span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiContextMenu :items="ctxItems" @select="ctxLog = '选中：' + $event.label">
+            <UiMenu variant="context" :items="ctxItems" @select="ctxLog = '选中：' + $event.label">
               <div class="lib-ctx">{{ ctxLog }}</div>
-            </UiContextMenu>
+            </UiMenu>
             <div class="lib-demo-row">
               <UiButton size="sm" variant="tonal" @click="cmdOpen = true">命令面板</UiButton>
               <UiButton size="sm" variant="tonal" @click="tourOpen = true">开始巡览</UiButton>

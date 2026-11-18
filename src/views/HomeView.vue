@@ -6,7 +6,7 @@ import ExpandSteps from '../expand/ExpandSteps.vue'
 import ExpandHeart from '../expand/ExpandHeart.vue'
 import ExpandSleep from '../expand/ExpandSleep.vue'
 import ExpandMetric from '../expand/ExpandMetric.vue'
-import { UiBadge, UiCard, UiCarousel, UiChip, UiLineChart, UiBarChart, UiRingProgress } from '../lib'
+import { UiBadge, UiCard, UiCarousel, UiChart, UiChip } from '../lib'
 
 const router = useRouter()
 
@@ -138,7 +138,7 @@ const highlights = [
     <!-- 步数：主卡，点开是展开详情 -->
     <RouteExpandCard section="home" card-key="steps" :content="ExpandSteps" feature>
       <div class="steps">
-        <UiRingProgress :value="78" label="今日目标" />
+        <UiChart type="ring" :data="[78]" label="今日目标" />
         <div class="steps-info">
           <div class="big">7,842 步</div>
           <div class="sub">目标 10,000 步</div>
@@ -153,7 +153,8 @@ const highlights = [
         <span>心率</span>
         <span class="muted">今天 · 静息 62 bpm</span>
       </div>
-      <UiLineChart
+      <UiChart
+        type="line"
         id="heartChart"
         :data="heartData"
         :labels="heartLabels"
@@ -166,7 +167,7 @@ const highlights = [
     <!-- 睡眠 -->
     <RouteExpandCard section="home" card-key="sleep" :content="ExpandSleep">
       <div class="card-title"><span>睡眠</span><span class="muted">平均 7.4 小时</span></div>
-      <UiBarChart :data="sleepData" unit="小时" :highlight="7.8" />
+      <UiChart type="bar" :data="sleepData" unit="小时" :highlight="7.8" />
     </RouteExpandCard>
 
     <!-- 四个指标格 -->
