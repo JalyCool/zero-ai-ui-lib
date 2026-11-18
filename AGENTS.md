@@ -129,7 +129,7 @@ import {
   UiAvatarTag, UiSwipeRow, UiStepFlow, UiTooltipGroup, UiCardGroup, UiPagerDots,
   UiSideNav, MarkdownView, normalizeIconName,
   UiChatThread, UiChatMessage, UiChatSystemLine, UiChatComposer, UiProgressiveBlur,
-  AppHead, ZeroApp, ZeroScroll, useScrollEdges, useSurfaceTier,
+  AppHead, useHeadFuse, setPageHeadActions, ZeroApp, ZeroScroll, useScrollEdges, useSurfaceTier,
   ExpandableCard, RouteExpandCard, EmptyRoute, usePress, useMorphWindow
 } from 'zero-ai-ui-lib'
 ```
@@ -202,7 +202,8 @@ import {
 | `UiTour` | `v-model` + `steps`（`{ target, title, text, placement? }`）；高亮真实元素，气泡自动避让；**进场高亮孔先铺满整屏再收拢到目标**（整体聚焦到一点），换步时孔在目标之间连续移动，退场再张回整屏 |
 | `UiPopover` | `v-model` + `placement`；`#trigger` 放触发器，默认插槽放面板内容 |
 | `UiProgressiveBlur` | **页面顶端 / 底部的渐进式模糊**：N 层 backdrop-filter 叠加，靠**光滑遮罩**控制每层贡献。三条设计铁律（都是踩过坑换来的）：**① 遮罩必须光滑** —— 遮罩若是分段线性，总模糊量 B(y)=Σrᵢ·mᵢ(y) 要连续就得 rₖ=rₖ₊₂，逼得所有半径相等（就没有渐变）；这里用**共享的升余弦曲线 P**，第 i 层遮罩取 **P^i**（光滑函数之和仍光滑 → 没有台阶）。**② 幂次要压低** —— 直接用 P^i 会让高次项在贴边处瞬间归零（「最该糊的地方没糊住，往内立刻清晰」，过渡区被压成几像素），所以 w 压在 1~2.4。**③ 半径按 1/i^0.7 递减并归一化到 Σr²=maxBlur²** —— 叠加模糊的等效半径按方差相加，sqrt(Σrᵢ²) 才是贴边处的真实模糊量。参数：`placement` top/bottom、`height`（模糊带高度 = 过渡区长度，太窄看着像「一刀切」）、`maxBlur`、`layers`、`precision`（`soft` 高斯尾部铺得最开 = 过渡区最宽、可见台阶最少，**默认**；`high` 标准；`sharp` 贴边干脆）、`tint` + `tintStrength`、`position`、`visible`（只切不透明度，不销毁层）；层全部 pointer-events: none。实测（真实渲染像素 + 折点检测）：soft+12 层的可见台阶 109（旧实现 125），过渡区铺开 7 个采样点 |
-| `AppHead` | 页面头部（默认大标题 ⇄ 上滑融合条）：默认态 32px 标题 + 12px 副标题（40% 透明度）+ 动作按钮行；滚出视口后一个固定条淡入，**底色就是顶部渐变模糊带本身**（不另画表面），中间 20px 迷你标题（可选 `#logo`）+ 同一组 `#actions`。`fuse-only` 只渲染融合条（分开放布局：默认态在页面流内，融合条放 `#edge-top`）。滚动容器**向上找最近的可滚动祖先**，零接线；阈值 = 默认态完全离场位置。插槽 `#actions`/`#actions-left`/`#title`/`#sub`/`#logo`/`#badge`。**不要再自造 view-head** |
+| `AppHead` | 页面头部（默认大标题 ⇄ 上滑融合条）。**外壳成对使用两个实例**：`fuseOnly` 放 `ZeroScroll` 的 `#edge-top`（固定层，滚出头才淡入），普通实例放页面流内（随内容滚走）；融合状态由 `useHeadFuse` 单例管理，**只有 fuseOnly 实例渲染固定条**，不要各算一份。插槽：`#leading`（返回键等左侧常驻）、`#actions`（右侧，全局 + 页面按钮同排）、`#title`/`#sub`、`#logo`（默认态 `show-logo` / 融合态 `show-logo-in-fuse`）、`#badge`。融合条自带一层极淡 surface 竖向渐变，叠在模糊带上形成设计稿的"白→透明"柔光。**页面要加自己的按钮**用 `setPageHeadActions(() => h(...))` 注册（配合 `onMounted/onActivated` 设置、`onDeactivated/onBeforeUnmount` 清理，keep-alive 只触发 deactivated），**不要自造 view-head** |
+| `useHeadFuse` / `useAppHead` | 头部配套组合式函数：`useHeadFuse` 是融合状态单例（两实例共用，避免两条固定条同时出现）；`useAppHead().setPageHeadActions(fn)` 把页面动作注入外壳 `#actions`（与全局按钮并排，两态共享） |
 | `useSurfaceTier` | 组合式函数：探测宿主实际背景（半透明逐层合成），在 M3 表面梯度上选「比宿主亮一档」的令牌，暴露 `--tier-bg`/`--tier-bg-high`/`--tier-bg-low`。组件背景别写死 surface-container——嵌套层级一多就错位 |
 | `ZeroScroll` | **零配置滚动区（根组件）**：自带「溢出即模糊」——顶部还有被裁内容就淡入顶部渐进模糊、到顶淡出；底部同理；内容不足一屏两侧都不出现。内部用 `useScrollEdges` 判断，模糊层**常驻不销毁**（只切不透明度，backdrop-filter 反复重建会闪）。`fade`（带高，0 关闭）/ `fade-blur` / `fade-layers` / `fade-tint` / `bottom-inset`（底部 fixed 覆盖层高度：底部模糊带与 `#edge-bottom` 抬升到其顶边之上）/ `padding` / `tag` / `id`（默认 `scrollArea`：弹层锁滚动靠它）；`#edge-top`/`#edge-bottom` 插槽渲染在模糊带**上层**的固定内容（z-55）；暴露 `scrollTo` / `scrollTop`。flex 父级与固定高度父级下都能撑满 |
 | `ZeroApp` | **应用外壳根组件（约定优于配置）**：新项目用它包一层，下面这些就**不需要再逐页配置**——`#scrollArea` 滚动容器、**页面上下边缘溢出时的渐进式模糊**（随滚动自动淡入淡出）、居中限宽（`max-width`）、`#tabbar` 槽位与底部占位（内容不会被压在 tab 下，**自动实测 TabBar 高度让底部模糊带以它的顶边为底边**），并转发 `#edge-top`/`#edge-bottom` 给 ZeroScroll。`<ZeroApp :tabbar-space="N"><router-view /><template #tabbar>…</template></ZeroApp>`；暴露 `scrollTo`。需要更细控制就退回 `ZeroScroll`，或直接用 `UiProgressiveBlur` 手搭 |

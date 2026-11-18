@@ -40,26 +40,40 @@
 
 ## AppHead —— 页面头部（默认大标题 ⇄ 上滑融合条）
 
-对应设计稿的两个状态：顶部是 32px 大标题 + 12px 副标题（40% 透明度）+ 动作按钮行；上滑把默认 head 滚出视口后，一个固定条淡入——它的底**就是顶部渐变模糊带本身**（不再另画底色），中间一行 20px 迷你标题（可选 `#logo`），左右仍是同一组按钮。
+顶部一行**常驻动作**（左 `#leading` 放返回键，右 `#actions` 放功能按钮），中间是标题区。滚出视口后默认头消失，一个固定条淡入——它的底就是顶部渐变模糊带（再加一层极淡 surface 渐变，形成"白→透明"柔光），按钮原位不动，中间换成 20px 迷你标题。
+
+**外壳成对使用两个实例**（少一个都不对）：
 
 ```vue
-<!-- 分开放（推荐）：默认态真正在页面流内 -->
 <template #edge-top>
-  <AppHead fuse-only title="运动记录">…</AppHead>
+  <AppHead fuse-only :title="meta.title">
+    <template #leading><button v-if="canBack" @click="$router.back()">←</button></template>
+    <template #actions><!-- 全局按钮 --></template>
+  </AppHead>
 </template>
-<AppHead title="运动记录" :sub="`${records.length} 条记录`">
-  <template #actions>
-    <UiMenu variant="floating" v-model="sortMode" label="排序" :items="sortItems" />
-    <UiButton size="sm" variant="tonal" @click="goAdd">新增</UiButton>
-  </template>
+
+<AppHead :title="meta.title" :sub="meta.sub">
+  <template #actions><!-- 与上面同一组 --></template>
 </AppHead>
 ```
 
-- 插槽：`#actions`（右侧动作）、`#actions-left`（返回键等）、`#title` / `#sub`、`#logo`（迷你条里的头像 / 徽标）、`#badge`
-- `fuse-height` 融合条高度（默认 84）；`show-logo-in-fuse` 是否显示 logo 位
-- **不要再为每个页面自造 `.view-head`**——页面动作走 `#actions`，两态共享同一组插槽内容
-- 滚动容器由 AppHead **向上找最近的可滚动祖先**，零接线；阈值 = 默认态完全离场的位置（不同内边距都正确）
-- 内容不足一屏 → 没有滚动 → 不融合（无溢出就没有模糊，符合直觉）
+- `fuse-only`：只渲染固定条（放 `#edge-top`）；不带该 prop 只渲染流内默认态
+- 融合状态由 `useHeadFuse` **单例**管理 —— 两个实例各自算状态会出现两条固定条
+- 插槽：`#leading` / `#actions` / `#title` / `#sub` / `#logo`（默认态 `show-logo`、融合态 `show-logo-in-fuse`）/ `#badge`
+- 阈值 = 默认头完全离场的位置；内容不足一屏 → 不滚 → 不融合
+
+**页面加自己的按钮**：注册到外壳，它会和全局按钮（命令面板/设置）并排，两态都在：
+
+```js
+import { h, onActivated, onDeactivated, onMounted } from 'vue'
+import { setPageHeadActions } from 'zero-ai-ui-lib'
+
+onMounted(() => setPageHeadActions(() => h(UiButton, { onClick: goAdd }, () => '新增')))
+onActivated(() => setPageHeadActions(/* 同上 */))
+onDeactivated(() => setPageHeadActions(null))   // keep-alive 切走只触发这个！
+```
+
+> 不要每个页面自造 `.view-head` —— 那会和外壳标题重复。
 
 ## UiProgressiveBlur —— 手搭边缘模糊时才用
 

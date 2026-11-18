@@ -9,6 +9,8 @@ export * from '../components/ui/index.js'
 export * from '../components/layout/index.js'
 export { useScrollEdges } from '../composables/useScrollEdges.js'
 export { useSurfaceTier } from '../composables/useSurfaceTier.js'
+export { useHeadFuse } from '../composables/useHeadFuse.js'
+export { useAppHead, setPageHeadActions, setPageHeadCenter, appHeadState } from '../composables/useAppHead.js'
 export { default as ExpandableCard } from '../components/ExpandableCard.vue'
 export { default as RouteExpandCard } from '../components/expand/RouteExpandCard.vue'
 /* 子路由占位组件：可展开卡片的子路由直接用它，不要再自己写一份。 */
