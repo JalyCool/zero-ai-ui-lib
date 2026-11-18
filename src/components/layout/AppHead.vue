@@ -60,6 +60,8 @@ onMounted(() => {
           <slot name="badge" />
         </div>
       </Transition>
+      <!-- 与默认态同一个占位：把功能按钮推到最右 -->
+      <div class="app-head__spacer" />
       <div class="app-head__side app-head__side--r">
         <slot name="actions" />
       </div>
@@ -115,7 +117,7 @@ onMounted(() => {
 .app-head__spacer { flex: 1; }
 
 /* ---------- 默认态（流内） ---------- */
-.app-head__default { padding-bottom: 2px; }
+.app-head__default { padding-bottom: 14px; }
 /* 融合后收起默认态：**保留流内占位**（只切可见性）。
    用 display:none 会让头部 104px 的高度瞬间消失 —— 内容猛地往上跳，
    正好和淡入的固定条重合，看起来就是「滚动时全叠在一起」。 */
@@ -156,13 +158,20 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  transition: opacity var(--t-fade), visibility 0s linear var(--t-fade);
 }
 /* 第二行：给分区切换这类横向操作；与第一行一起被融合带包住 */
-.app-head__after { width: 100%; margin-top: 8px; }
+.app-head__after { width: 100%; margin-top: 4px; }
 .app-head__default .app-head__after { padding-left: 2px; }
-.app-head__fuse.is-visible { visibility: visible; pointer-events: auto; }
+.app-head__fuse.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--t-fade);
+}
 /* 融合底：与 ZeroScroll 的模糊带叠加的一层极淡竖向渐变（对应设计稿
    上滑态的白→透明带），让常驻按钮像是从页面里长出来而不悬在内容上。 */
 .app-head__fuse::before {

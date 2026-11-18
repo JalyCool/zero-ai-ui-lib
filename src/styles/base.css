@@ -155,3 +155,42 @@ header {
 html, body, button, input, textarea, select {
   font-family: var(--font-sans);
 }
+
+/* ============================================================
+   页面切换过渡
+   桌面端 = 纵向（y），移动端 = 横向（x）；方向（next/prev）由
+   TabBar 中的相对位置决定。旧页淡出 + 模糊变大并退开，新页从
+   模糊中浮入并归位 —— 进出共用同一条曲线，所以是连续的一段。
+   ============================================================ */
+.y-next-enter-from,
+.y-prev-leave-to { opacity: 0; filter: blur(12px); }
+.y-next-enter-from { transform: translateY(26px); }
+.y-prev-leave-to { transform: translateY(-26px); }
+.x-next-enter-from,
+.x-prev-leave-to { opacity: 0; filter: blur(12px); }
+.x-next-enter-from { transform: translateX(34px); }
+.x-prev-leave-to { transform: translateX(-34px); }
+
+.y-next-enter-active,
+.y-next-leave-active,
+.y-prev-enter-active,
+.y-prev-leave-active,
+.x-next-enter-active,
+.x-next-leave-active,
+.x-prev-enter-active,
+.x-prev-leave-active {
+  transition: opacity var(--t-view), transform var(--t-view), filter var(--t-view);
+}
+.y-next-leave-active,
+.y-prev-leave-active,
+.x-next-leave-active,
+.x-prev-leave-active { position: absolute; inset: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .y-next-enter-active, .y-next-leave-active,
+  .y-prev-enter-active, .y-prev-leave-active,
+  .x-next-enter-active, .x-next-leave-active,
+  .x-prev-enter-active, .x-prev-leave-active { transition: none; }
+  .y-next-enter-from, .y-prev-leave-to,
+  .x-next-enter-from, .x-prev-leave-to { transform: none; filter: none; }
+}

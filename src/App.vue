@@ -2,7 +2,7 @@
 import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SettingsSheet from './components/SettingsSheet.vue'
-import { AppHead, UiTabBar, UiToastHost, UiCommandPalette, ZeroApp } from './lib'
+import { AppHead, UiButton, UiCommandPalette, UiIcon, UiTabBar, UiToastHost, ZeroApp } from './lib'
 import { initZeroConfig } from './lib'
 import { state, persistThemeState } from './core/state'
 import * as spring from './core/spring'
@@ -34,6 +34,22 @@ const tabItems = [
   { value: 'components', label: '组件', icon: '<rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/>' },
   { value: 'profile', label: '我的', icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>' }
 ]
+
+/* 页面切换方向：由当前 tab 与上一个 tab 在 TabBar 里的相对位置决定
+   （左/右），桌面端表现为上下；配合透明度 + 模糊半径的增减。 */
+const isDesktop = () => typeof window !== 'undefined' &&
+  window.matchMedia && window.matchMedia('(min-width: 900px)').matches
+const tabOrder = tabItems.map(item => item.value)
+const lastTab = ref(activeTab.value)
+const viewDir = ref('next')
+watch(activeTab, (next, prev) => {
+  const from = tabOrder.indexOf(prev)
+  const to = tabOrder.indexOf(next)
+  viewDir.value = to >= from ? 'next' : 'prev'
+})
+const viewTransition = computed(() =>
+  `${isDesktop() ? 'y' : 'x'}-${viewDir.value}`
+)
 
 /* 页面通过 useAppHead 注册的头部动作：渲染在全局按钮旁边，
    默认态与融合条共用同一份（AppHead 两态渲染同一插槽）。 */
@@ -177,12 +193,12 @@ onBeforeUnmount(() => {
         <AppHead fuse-only :title="meta.title || ''">
           <template #actions>
             <component :is="pageActionsComp" />
-            <button class="icon-btn" aria-label="打开命令面板" title="⌘K" @click.stop="openPalette">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            </button>
-            <button class="icon-btn" id="themeBtn" aria-label="打开设置" @click.stop="toggleSheet">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-            </button>
+            <UiButton variant="icon" aria-label="打开命令面板" title="⌘K" @click.stop="openPalette">
+              <UiIcon name="mdi:magnify" :size="19" />
+            </UiButton>
+            <UiButton variant="icon" id="themeBtn" aria-label="打开设置" @click.stop="toggleSheet">
+              <UiIcon name="mdi:cog-outline" :size="19" />
+            </UiButton>
           </template>
           <template #after><component :is="pageAfterComp" v-if="pageAfterComp" /></template>
         </AppHead>
@@ -193,21 +209,23 @@ onBeforeUnmount(() => {
       <AppHead :title="meta.title || ''" :sub="pageSub || ''">
         <template #actions>
           <component :is="pageActionsComp" />
-          <button class="icon-btn" aria-label="打开命令面板" title="⌘K" @click.stop="openPalette">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          </button>
-          <button class="icon-btn" id="themeBtn" aria-label="打开设置" @click.stop="toggleSheet">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          </button>
+          <UiButton variant="icon" aria-label="打开命令面板" title="⌘K" @click.stop="openPalette">
+            <UiIcon name="mdi:magnify" :size="19" />
+          </UiButton>
+          <UiButton variant="icon" id="themeBtn" aria-label="打开设置" @click.stop="toggleSheet">
+            <UiIcon name="mdi:cog-outline" :size="19" />
+          </UiButton>
         </template>
         <template #after><component :is="pageAfterComp" v-if="pageAfterComp" /></template>
       </AppHead>
 
       <div id="viewRoot">
         <router-view v-slot="{ Component }">
-          <keep-alive>
-            <component :is="Component" :key="route.meta.cacheKey || route.meta.tab" />
-          </keep-alive>
+          <Transition :name="viewTransition" mode="out-in">
+            <keep-alive>
+              <component :is="Component" :key="route.meta.cacheKey || route.meta.tab" />
+            </keep-alive>
+          </Transition>
         </router-view>
       </div>
 

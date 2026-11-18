@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { onBeforeUnmount, computed, onMounted, ref } from 'vue'
 import UiProgressiveBlur from '../ui/UiProgressiveBlur.vue'
 import { useScrollEdges } from '../../composables/useScrollEdges'
 
@@ -61,10 +61,31 @@ const { canScrollUp, canScrollDown } = useScrollEdges(viewEl)
 
 
 const viewStyle = computed(() => (props.padding ? { padding: props.padding } : undefined))
+
+/* 顶部边缘插槽（含第二行）比模糊带高时，把模糊带一起撑高 ——
+   否则第二行会伸出柔光之外，看着像被挤出头部。 */
+const topEdgeEl = ref(null)
+const topEdgeH = ref(0)
+let topEdgeRo = null
+const measureTopEdge = () => {
+  const el = topEdgeEl.value
+  if (!el) return
+  topEdgeH.value = Math.round(el.getBoundingClientRect().height)
+}
+const topBandH = computed(() => Math.max(props.fade, topEdgeH.value))
 const hasEdgeTop = computed(() => props.fade > 0)
 const hasEdgeBottom = computed(() => props.fade > 0)
 /* 底部模糊带/插槽的 bottom 偏移：被 TabBar 顶住时抬升 */
 /* 底部固定层高度：同时决定底部模糊带的高度与 #edge-bottom 的位置 */
+
+onMounted(() => {
+  requestAnimationFrame(measureTopEdge)
+  if (typeof ResizeObserver !== 'undefined' && topEdgeEl.value) {
+    topEdgeRo = new ResizeObserver(measureTopEdge)
+    topEdgeRo.observe(topEdgeEl.value)
+  }
+})
+onBeforeUnmount(() => { if (topEdgeRo) topEdgeRo.disconnect() })
 
 defineExpose({
   /* 交给外部做「切 Tab 回顶」这类操作 */
@@ -89,7 +110,7 @@ defineExpose({
     <template v-if="hasEdgeTop">
       <UiProgressiveBlur
         placement="top"
-        :height="fade"
+        :height="topBandH"
         :max-blur="fadeBlur"
         :layers="fadeLayers"
         :precision="fadePrecision"
@@ -98,7 +119,7 @@ defineExpose({
         :visible="canScrollUp"
       />
       <!-- 模糊区上层的固定内容插槽：返回栏 / 悬浮标题等 -->
-      <div v-if="$slots['edge-top']" class="zero-scroll__edge zero-scroll__edge--top">
+      <div v-if="$slots['edge-top']" ref="topEdgeEl" class="zero-scroll__edge zero-scroll__edge--top">
         <slot name="edge-top" />
       </div>
     </template>
