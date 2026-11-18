@@ -41,9 +41,6 @@
              calc(74px + clamp(20px, 3vw, 48px));
   }
 
-  .view-head { padding: 0; }
-  .view-title { font-size: 1.45rem; }
-
   /* 首页：两列卡片 + 四列指标 */
   .view[data-view='home'] {
     display: grid;

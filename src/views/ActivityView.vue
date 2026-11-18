@@ -1,13 +1,14 @@
 <script setup>
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { computed, h, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import RouteExpandCard from '../components/expand/RouteExpandCard.vue'
 import ExpandActivity from '../expand/ExpandActivity.vue'
 import {
-  AppHead, UiAlert, UiBadge, UiButton, UiCheckbox, UiChip, UiEmptyState,
+  UiAlert, UiBadge, UiButton, UiCheckbox, UiChip, UiEmptyState,
   UiMenu, UiModal, UiSkeleton, UiSwipeRow
 } from '../lib'
+import { setPageHeadActions } from '../composables/useAppHead'
 import {
   activityState,
   formatDateLabel,
@@ -19,6 +20,28 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+
+/* 页面头部动作：不再自造头部，登记到外壳的 AppHead ——
+   它会和全局按钮（命令面板 / 设置）并排显示，上滑融合后依然在一起。 */
+onMounted(() => registerHeadActions())
+onActivated(() => registerHeadActions())
+/* keep-alive 下切走只触发 deactivated，必须在这里清理，否则动作会残留到别的页面 */
+onDeactivated(() => setPageHeadActions(null))
+onBeforeUnmount(() => setPageHeadActions(null))
+
+function registerHeadActions() {
+  setPageHeadActions(() => [
+    h(UiMenu, {
+      variant: 'floating',
+      modelValue: sortMode.value,
+      'onUpdate:modelValue': v => (sortMode.value = v),
+      label: '排序',
+      items: sortItems,
+      title: '排序方式'
+    }),
+    h(UiButton, { size: 'sm', variant: 'tonal', onClick: () => goAdd() }, () => '新增')
+  ])
+}
 
 const sortMode = ref('recent')
 const sortItems = [
@@ -139,19 +162,6 @@ function onSwipeAction(action, record) {
 
 <template>
   <section class="view active" data-view="activity">
-    <!-- 页面头部：AppHead（插槽化）—— 大标题在流内，上滑后自动融合成
-         迷你条（与顶部渐变模糊带融为一体）。动作按钮走 #actions 插槽，
-         不用再为每个页面自造 view-head。 -->
-    <AppHead title="运动记录" :sub="initialLoading ? '正在加载…' : `${records.length} 条记录 · 今天 ${todayCount} 项`">
-      <template #actions>
-        <UiMenu variant="floating" v-model="sortMode" label="排序" :items="sortItems" title="排序方式" />
-        <UiButton size="sm" variant="tonal" @click="goAdd">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          新增
-        </UiButton>
-      </template>
-    </AppHead>
-
     <!-- 批量操作条：只在多选模式出现 -->
     <div v-if="selectionMode" class="activity-batch">
       <UiCheckbox :model-value="allChecked" @update:model-value="toggleAll" />

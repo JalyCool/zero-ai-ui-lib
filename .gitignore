@@ -16,3 +16,7 @@ t1.txt
 
 # 临时提交信息文件
 .commit-msg.txt
+
+# CDP 调试脚本与截图
+cdp-*.cjs
+shot-*.png

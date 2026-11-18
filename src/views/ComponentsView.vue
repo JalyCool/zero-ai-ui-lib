@@ -520,7 +520,7 @@ const cmdItems = [
 ]
 const tourOpen = ref(false)
 const tourSteps = [
-  { target: '.lib-hero__title', title: '这里是标题', text: '巡览会高亮目标元素，气泡自动放到下方。' },
+  { target: '.app-head__title', title: '这里是标题', text: '巡览会高亮目标元素，气泡自动放到下方。' },
   { target: '.lib-picker', title: '分区选择器', text: '一次只展示一个分区，避免把全部组件排开。' }
 ]
 const popOpen = ref(false)
@@ -669,18 +669,18 @@ watch(activeSection, id => {
 
 <template>
   <section class="view active lib" data-view="components">
-    <div class="lib-hero">
-      <h2 class="lib-hero__title">组件库</h2>
-      <p class="lib-hero__desc">一套令牌、一套弹簧、一套形变语言。8 个分区、97 个组件，窄屏单列、宽屏自动多列。</p>
-    </div>
-
-    <!-- 分类选择器：一次只展示一个分区，避免把几十个组件全排在一页里 -->
-    <div class="lib-picker">
-      <UiSelect
-        v-model="activeSection"
-        :options="sectionOptions"
-        label="选择分类"
-      />
+    <!-- 分区切换：吸顶胶囊条，一次只展示一个分区（68 个演示单元） -->
+    <div class="lib-picker" role="tablist" aria-label="组件分区">
+      <button
+        v-for="s in sections"
+        :key="s.id"
+        type="button"
+        role="tab"
+        class="lib-picker__item"
+        :class="{ 'is-active': activeSection === s.id }"
+        :aria-selected="activeSection === s.id"
+        @click="activeSection = s.id"
+      >{{ s.label }}</button>
     </div>
 
     <!-- 操作 -->
@@ -1628,8 +1628,6 @@ watch(activeSection, id => {
 .lib { gap: 18px; }
 
 /* ---------- 顶部 ---------- */
-.lib-hero__title { margin: 4px 0 0; font-size: var(--fs-h1); font-weight: var(--w-heading); letter-spacing: -.01em; }
-.lib-hero__desc { margin: 6px 0 0; color: var(--on-surface-variant); font-size: var(--fs-small); }
 .lib-nav {
   position: sticky;
   top: 0;
@@ -1659,7 +1657,34 @@ watch(activeSection, id => {
 .lib-nav__item:active { transform: scale(var(--press-scale)); }
 
 /* ---------- 分区 ---------- */
-.lib-picker { position: sticky; top: 0; z-index: 5; padding: 8px 0; background: color-mix(in oklab, var(--background) 88%, transparent); backdrop-filter: blur(8px); }
+.lib-picker {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+  padding: 8px 0 10px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: color-mix(in oklab, var(--background) 82%, transparent);
+  backdrop-filter: blur(8px);
+}
+.lib-picker::-webkit-scrollbar { display: none; }
+.lib-picker__item {
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: inherit;
+  font-size: var(--fs-tiny);
+  cursor: pointer;
+  transition: background var(--t-fade), color var(--t-fade), transform var(--t-feedback);
+}
+.lib-picker__item:active { transform: scale(var(--press-scale)); }
+.lib-picker__item.is-active { background: var(--primary-container); color: var(--on-primary-container); }
 .lib-sec { scroll-margin-top: 54px; }
 .lib-sec__title {
   margin: 0 0 10px;

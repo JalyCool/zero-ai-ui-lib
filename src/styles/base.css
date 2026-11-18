@@ -139,13 +139,6 @@ header {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
-.view-title {
-  font-size: var(--fs-big);
-  font-weight: var(--w-heading);
-  letter-spacing: -.01em;
-  padding: 0 2px;
-}
-
 /* 共享 SVG 渐变定义 */
 .svg-defs {
   position: absolute;
