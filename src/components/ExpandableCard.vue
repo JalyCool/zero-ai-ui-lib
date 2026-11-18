@@ -133,6 +133,46 @@ function directChild(card, className) {
   return Array.from(card.children).find(child => child.classList.contains(className)) || null
 }
 
+/* 展开期祖先「包含块劫持」处理。
+   position:fixed 的包含块会被祖先的 transform / filter / backdrop-filter /
+   will-change:transform 改写成那个祖先 —— 列表容器（SwipeRow 的 surface
+   就带 will-change:transform）里展开时，卡片的 left:0 / width:100vw 会按
+   祖先的盒子算：整体偏出十几像素、右侧被裁，看起来就是「打不开」。
+   展开动画期间把这些提示压成 auto（此刻不在跟手滑动，无性能损失），
+   收起落定后逐一还原。 */
+let releasedAncestors = []
+
+function releaseContainingBlock(card) {
+  releasedAncestors = []
+  let node = card?.parentElement
+  while (node && node !== document.body) {
+    const cs = getComputedStyle(node)
+    const hit = {}
+    if (cs.transform && cs.transform !== 'none') hit.transform = cs.transform
+    if (cs.filter && cs.filter !== 'none') hit.filter = cs.filter
+    if (cs.backdropFilter && cs.backdropFilter !== 'none' && cs.backdropFilter !== '') hit.backdropFilter = cs.backdropFilter
+    if (cs.willChange === 'transform' || cs.willChange.includes('transform')) hit.willChange = cs.willChange
+    if (Object.keys(hit).length) {
+      const restore = {}
+      for (const prop of Object.keys(hit)) {
+        /* will-change 必须回落到 auto —— 实测 none 依然会为 fixed 后代
+           建立包含块（卡片继续偏在列表容器里），auto 才真正解除。 */
+        node.style[prop] = prop === 'willChange' ? 'auto' : 'none'
+        restore[prop] = hit[prop]
+      }
+      releasedAncestors.push({ node, restore })
+    }
+    node = node.parentElement
+  }
+}
+
+function restoreContainingBlock() {
+  for (const { node, restore } of releasedAncestors) {
+    for (const [prop, value] of Object.entries(restore)) node.style[prop] = value
+  }
+  releasedAncestors = []
+}
+
 function setExpandedOrigin(card, rect, computed) {
   card.style.position = 'fixed'
   card.style.zIndex = '300'
@@ -246,6 +286,7 @@ async function openCard(method = 'pointer') {
   if (!loaded.value) loaded.value = true
 
   setExpandedOrigin(card, rect, computed)
+  releaseContainingBlock(card)
   card.setAttribute('role', 'dialog')
   card.setAttribute('aria-modal', 'true')
   card.setAttribute('aria-expanded', 'true')
@@ -326,6 +367,7 @@ function settleClosed(card, state, method) {
   }
   if (slot.parentNode) slot.remove()
   card.style.cssText = originalStyle
+  restoreContainingBlock()
   restoreAria(card, state)
 
   document.body.classList.remove('locked')
@@ -513,6 +555,7 @@ onBeforeUnmount(() => {
   clearTimeout(closeTimer)
   clearTimeout(settleTimer)
   clearTimeout(backdropTimer)
+  restoreContainingBlock()
   unlockPageScroll()
   backdropVisible.value = false
   const current = getActive()

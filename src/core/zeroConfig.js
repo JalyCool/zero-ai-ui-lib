@@ -9,7 +9,7 @@ import { setMotionTone } from './motionTone'
      motion: lively            # calm | lively（动效气质，产品调性）
      appearance: auto          # light | dark | auto（可选，交给应用）
      radiusScale: 1            # 圆角倍率 → --radius-scale
-     density: 0.93             # 密度 → --density 与 spacing
+     density: 0.86             # 密度 → --density 与 spacing
      pressScale: 0.97          # 按压缩放 → --press-scale
      colors:                   # 颜色令牌（camelCase 或 kebab-case 均可）
        primary: "#3f5f90"

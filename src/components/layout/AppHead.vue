@@ -96,12 +96,15 @@ onMounted(() => {
 
 /* ---------- 默认态（流内） ---------- */
 .app-head__default { padding-bottom: 2px; }
-.app-head__default.is-hidden { display: none; }
+/* 融合后收起默认态：**保留流内占位**（只切可见性）。
+   用 display:none 会让头部 104px 的高度瞬间消失 —— 内容猛地往上跳，
+   正好和淡入的固定条重合，看起来就是「滚动时全叠在一起」。 */
+.app-head__default.is-hidden { visibility: hidden; }
 .app-head__heading {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 4px;
+  margin-top: 6px;
   padding-left: 2px;
 }
 .app-head__name { display: flex; align-items: center; gap: 8px; min-width: 0; }

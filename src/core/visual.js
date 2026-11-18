@@ -3,7 +3,7 @@
    固定：密度、呼吸间距、描边、层次、圆角、图标容器、强调色。
    ============================================================ */
 
-const DENSITY = 0.93
+const DENSITY = 0.86
 const BORDER = '0.75px'
 const RADIUS = 1.0
 const ICON = 'subtle'
