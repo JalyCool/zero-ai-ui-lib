@@ -38,8 +38,10 @@ function viewportRect() {
 }
 
 function measure() {
-  /* 关掉之后不再画孔：resize 触发的 measure 也不许把遮罩画回来。 */
-  if (!open.value || closing.value) return
+  /* 关掉之后不再画孔：resize 触发的 measure 也不许把遮罩画回来。
+     注意用 rendered 而不是 open —— 开场第一帧 open 还是 false，
+     用 open 当守卫会让孔永远停在满屏（聚焦动画卡死）。 */
+  if (!rendered.value || closing.value) return
   if (!step.value) return
   const el = document.querySelector(step.value.target)
   if (!el) return

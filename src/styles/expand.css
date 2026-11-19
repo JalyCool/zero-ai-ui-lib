@@ -52,13 +52,17 @@
 /* 展开内容：默认隐藏但保留，展开时显示。
    现在由 ZeroScroll 承担 —— 它自带顶 / 底渐进模糊（与主页面同一套策略），
    这里只把它的布局位按原来的 scroller 铺满卡片。 */
-.expand-scroller.zero-scroll {
+/* 用更强选择器：ZeroScroll 根自带 `.zero-scroll{position:relative;flex:1}`，
+   同特异性下会盖过这里的 absolute —— 结果展开内容被排到原卡片后面
+   （y 偏移一截），顶栏/模糊带全部错位。 */
+[data-expand] > .expand-scroller.zero-scroll {
   position: absolute;
   inset: 0;
   z-index: 1;
   visibility: hidden;
   pointer-events: none;
   height: 100%;
+  flex: none;
   overflow: visible;
 }
 /* 顶栏粘在卡片顶部，且压在顶部模糊带之上 */
@@ -104,8 +108,11 @@
 }
 [data-expand].is-expanded .expand-content {
   opacity: 1;
-  transform: translate3d(0, 0, 0) scale(1);
-  filter: blur(0);
+  /* 必须彻底归零：translate3d(0,0,0) / blur(0) 虽然「看不见」，
+     但仍是包含块 —— 会让内部 .expand-topbar 的 sticky 基准跑到
+     内容盒上（顶栏不再钉在滚动容器顶部，还偏一截）。 */
+  transform: none;
+  filter: none;
 }
 [data-expand].is-closing .expand-content {
   opacity: 0;

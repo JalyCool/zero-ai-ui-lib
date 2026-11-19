@@ -20,6 +20,7 @@ import {
   UiTimeline, UiTour
 } from '../components/ui'
 import { setPageHeadAfter } from '../composables/useAppHead'
+import { ZeroScroll } from '../components/layout'
 
 import { confirmDialog, AGENT_SHAPES } from '../lib'
 import { useRouter } from 'vue-router'
