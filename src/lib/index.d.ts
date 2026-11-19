@@ -479,6 +479,7 @@ declare const UiMarquee: DefineComponent<{ text?: string; speed?: number; direct
 /* ---------- 统一入口（合并后） ---------- */
 declare const UiChart: DefineComponent<{ type?: 'bar' | 'line' | 'spark' | 'heat' | 'ring' | 'gauge'; data?: number[]; labels?: string[]; id?: string; height?: number | string; unit?: string; decimals?: number; highlight?: number | null; viewBoxHeight?: number; gridY?: number[]; weeks?: number; columns?: number; size?: number | string; stroke?: string | number; ariaLabel?: string }, AnyProps, unknown>
 declare const UiMenu: DefineComponent<{ variant?: 'floating' | 'tool' | 'context'; modelValue?: string | number | object; items?: any[]; label?: string; title?: string; icon?: string; showIcon?: boolean; showLabel?: boolean; showChevron?: boolean; disabled?: boolean }, AnyProps, unknown>
+declare const ViewSwap: DefineComponent<{ tabs?: string[] }, AnyProps, unknown>
 declare const AppHead: DefineComponent<{ title?: string; sub?: string; fuseHeight?: number; showLogoInFuse?: boolean; fuseOnly?: boolean }, AnyProps, unknown>
 declare const useHeadFuse: (defaultEl: any) => { fused: any; attach: () => void; detach: () => void; measureInline: (el: any) => void; bind: (el: any) => void }
 declare const setPageHeadActions: (renderFn: ((...args: any[]) => any) | null) => void
@@ -488,7 +489,7 @@ declare const useSurfaceTier: (target: any, options?: { minStep?: number }) => {
 
 /* ---------- components ---------- */
 export {
-  UiChart, UiMenu, AppHead, useHeadFuse, setPageHeadActions, setPageHeadAfter, setPageHeadCenter, useSurfaceTier,
+  UiChart, UiMenu, AppHead, ViewSwap, useHeadFuse, setPageHeadActions, setPageHeadAfter, setPageHeadCenter, useSurfaceTier,
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiCommandPalette, UiTour, UiPopover, UiKbd, UiLink, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
   UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiModal, UiSideNav, MarkdownView, normalizeIconName,

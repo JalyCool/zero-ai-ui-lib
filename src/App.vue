@@ -2,7 +2,7 @@
 import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SettingsSheet from './components/SettingsSheet.vue'
-import { AppHead, UiButton, UiCommandPalette, UiIcon, UiTabBar, UiToastHost, ZeroApp } from './lib'
+import { AppHead, UiButton, UiCommandPalette, UiIcon, UiTabBar, UiToastHost, ViewSwap, ZeroApp } from './lib'
 import { initZeroConfig } from './lib'
 import { state, persistThemeState } from './core/state'
 import * as spring from './core/spring'
@@ -35,21 +35,9 @@ const tabItems = [
   { value: 'profile', label: '我的', icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>' }
 ]
 
-/* 页面切换方向：由当前 tab 与上一个 tab 在 TabBar 里的相对位置决定
-   （左/右），桌面端表现为上下；配合透明度 + 模糊半径的增减。 */
-const isDesktop = () => typeof window !== 'undefined' &&
-  window.matchMedia && window.matchMedia('(min-width: 900px)').matches
+/* 页面切换（方向 / 过渡名 / keep-alive）统一交给 ViewSwap，
+   这里只提供 TabBar 的顺序用于判断 next / prev。 */
 const tabOrder = tabItems.map(item => item.value)
-const lastTab = ref(activeTab.value)
-const viewDir = ref('next')
-watch(activeTab, (next, prev) => {
-  const from = tabOrder.indexOf(prev)
-  const to = tabOrder.indexOf(next)
-  viewDir.value = to >= from ? 'next' : 'prev'
-})
-const viewTransition = computed(() =>
-  `${isDesktop() ? 'y' : 'x'}-${viewDir.value}`
-)
 
 /* 页面通过 useAppHead 注册的头部动作：渲染在全局按钮旁边，
    默认态与融合条共用同一份（AppHead 两态渲染同一插槽）。 */
@@ -124,10 +112,12 @@ function selectTab(id) {
 function toggleSheet() { sheetOpen.value = !sheetOpen.value }
 function closeSheet() { sheetOpen.value = false }
 
-/* 切页回顶：滚动容器由 ZeroApp 持有 */
+/* 切页回顶：滚动容器由 ZeroApp 持有。
+   用瞬时回顶而不是 smooth —— smooth 会与页面切换过渡叠加，
+   看起来就是「换页时抖一下」。回顶是定位，不是动效。 */
 watch(() => route.meta.tab, (value, oldValue) => {
   if (value === oldValue) return
-  scrollRef.value?.scrollTo?.({ top: 0, behavior: 'smooth' })
+  scrollRef.value?.scrollTo?.({ top: 0, behavior: 'auto' })
 })
 
 watch(state, () => theme.apply({ animate: true }), { deep: true })
@@ -219,14 +209,10 @@ onBeforeUnmount(() => {
         <template #after><component :is="pageAfterComp" v-if="pageAfterComp" /></template>
       </AppHead>
 
+      <!-- 视图区：切换保活 + 过渡统一在 ViewSwap（keep-alive 在外，
+           避免 out-in 的空白期与组件重建） -->
       <div id="viewRoot">
-        <router-view v-slot="{ Component }">
-          <Transition :name="viewTransition" mode="out-in">
-            <keep-alive>
-              <component :is="Component" :key="route.meta.cacheKey || route.meta.tab" />
-            </keep-alive>
-          </Transition>
-        </router-view>
+        <ViewSwap :tabs="tabOrder" />
       </div>
 
       <template #tabbar>

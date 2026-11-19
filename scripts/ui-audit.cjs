@@ -178,6 +178,41 @@ async function run() {
   rec('页面切换过渡', '存在过渡类名', /x-(next|prev)-(enter|leave)/.test(trans), String(trans).slice(0, 60))
   await sleep(1000)
 
+  /* 切换不空白：点击后 120ms，旧页（leave）与新页（enter）应同时存在 */
+  await open(m, '/home')
+  await ev(m, `(() => { const b = [...document.querySelectorAll('#tabbar button, #tabbar .ui-tabbar__tab')].find(b => b.textContent.includes('对话')); if (b) b.click() })()`)
+  await sleep(120)
+  const mid = await ev(m, `(() => {
+    const kids = [...document.querySelectorAll('#viewRoot > *')]
+    const cls = kids.map(k => k.className)
+    return { count: kids.length, hasLeave: cls.some(c => /leave-active/.test(c)), hasEnter: cls.some(c => /enter-active/.test(c)) }
+  })()`)
+  rec('切换无空白', '离场与进场页同时存在（非 out-in）', mid.count >= 2 && mid.hasLeave && mid.hasEnter, JSON.stringify(mid))
+  await sleep(1000)
+
+  /* 切页回顶（设计如此）：换 tab 后回到顶部，且是瞬时的（不与过渡叠加） */
+  await open(m, '/components')
+  await ev(m, `(() => { const v = document.getElementById('scrollArea'); v.scrollTop = 500 })()`)
+  await sleep(700)
+  await ev(m, `(() => { const b = [...document.querySelectorAll('#tabbar button, #tabbar .ui-tabbar__tab')].find(b => b.textContent.includes('我的')); if (b) b.click() })()`)
+  await sleep(1100)
+  const backTop = await ev(m, `document.getElementById('scrollArea').scrollTop`)
+  rec('切页回顶', '换 tab 后瞬时回到顶部', backTop === 0, `scrollTop=${backTop}`)
+
+  /* 同页内跳转再返回：滚动位置保留（keep-alive + 未回顶） */
+  await open(m, '/home')
+  await ev(m, `(() => { const v = document.getElementById('scrollArea'); v.scrollTop = 420 })()`)
+  await sleep(700)
+  const posBefore = await ev(m, `document.getElementById('scrollArea').scrollTop`)
+  /* SPA 内打开展开页（真实路径是点击卡片 push，不是整页刷新） */
+  await ev(m, `(() => { const card = document.querySelector('[data-expand="steps"]') || document.querySelector('[data-expand]');
+    if (card) card.click() })()`)
+  await sleep(1500)
+  await ev(m, `(() => { const b = document.querySelector('.expand-close'); if (b) b.click() })()`)
+  await sleep(1500)
+  const posAfter = await ev(m, `document.getElementById('scrollArea').scrollTop`)
+  rec('同页返回保活', '展开返回后保留滚动位置', Math.abs(posAfter - posBefore) <= 8, `${posBefore} -> ${posAfter}`)
+
   await open(m, '/activity')
   await ev(m, `(() => { const b = document.querySelector('.ui-floating-menu__trigger, .app-head__default .ui-btn'); if (b) b.click() })()`)
   await sleep(700)

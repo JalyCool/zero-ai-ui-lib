@@ -9,5 +9,6 @@
    ============================================================ */
 
 export { default as AppHead } from './AppHead.vue'
+export { default as ViewSwap } from './ViewSwap.vue'
 export { default as ZeroApp } from './ZeroApp.vue'
 export { default as ZeroScroll } from './ZeroScroll.vue'

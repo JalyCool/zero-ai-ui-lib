@@ -69,6 +69,9 @@ let settleTimer = null
 let mounted = false
 let scrollAreaEl = null
 let scrollPrevOverflow = ''
+/* 展开前主容器的滚动位置：卡片收起后要回到用户原来读的地方，
+   而不是被浏览器重置成 0（展开时列表高度变化会让 scrollTop 被钳掉）。 */
+let savedScrollTop = 0
 let backdropTimer = null
 let pendingMethod = 'pointer'
 let reopenAfterClose = false
@@ -111,6 +114,7 @@ function readDuration(name, fallback) {
 function lockPageScroll() {
   scrollAreaEl = document.getElementById('scrollArea')
   if (!scrollAreaEl) return
+  savedScrollTop = scrollAreaEl.scrollTop
   scrollPrevOverflow = scrollAreaEl.style.overflow
   scrollAreaEl.style.overflow = 'hidden'
 }
@@ -118,7 +122,19 @@ function lockPageScroll() {
 function unlockPageScroll() {
   if (!scrollAreaEl) return
   scrollAreaEl.style.overflow = scrollPrevOverflow
+  const restore = savedScrollTop
   scrollAreaEl = null
+  /* 等这一帧布局恢复后再写回位置（立即写会被旧高度钳制） */
+  requestAnimationFrame(() => {
+    const el = document.getElementById('scrollArea')
+    if (el && el.scrollTop !== restore) el.scrollTo({ top: restore, behavior: 'auto' })
+  })
+  /* 路由回父页时列表高度会先按展开态算、再收回来 —— 位置会被钳掉。
+     延迟到收起动画之后再补一次，保证用户回到原来的阅读位置。 */
+  setTimeout(() => {
+    const el = document.getElementById('scrollArea')
+    if (el && el.scrollTop !== restore) el.scrollTo({ top: restore, behavior: 'auto' })
+  }, 360)
 }
 
 function showBackdrop() {
@@ -501,6 +517,10 @@ function scrollCardIntoView() {
   if (!card || !scroller) return
   const cardRect = card.getBoundingClientRect()
   const scrollerRect = scroller.getBoundingClientRect()
+  /* 只在卡片真的不在视口内时才滚（深链直达的场景）。
+     从列表里点开展开时卡片本来就在视野中 —— 这时候滚一下，
+     返回后用户的阅读位置就丢了。 */
+  if (cardRect.top >= scrollerRect.top && cardRect.bottom <= scrollerRect.bottom) return
   const offset = cardRect.top - scrollerRect.top
   const top = scroller.scrollTop + offset
     - Math.max(0, (scroller.clientHeight - cardRect.height) / 2)
