@@ -60,8 +60,6 @@ onMounted(() => {
           <slot name="badge" />
         </div>
       </Transition>
-      <!-- 与默认态同一个占位：把功能按钮推到最右 -->
-      <div class="app-head__spacer" />
       <div class="app-head__side app-head__side--r">
         <slot name="actions" />
       </div>
@@ -192,23 +190,28 @@ onMounted(() => {
   padding: 0;
   margin-bottom: 14px;
 }
+/* 中间标题：参与 flex（不再 absolute 居中）——
+   absolute + translateX(-50%) 会让标题相对**整行**居中，右侧按钮一多
+   就显得「偏移」，更长标题还会和按钮叠在一起。flex 让它占据
+   左右两侧之间的空间并居中，配单行省略号，永不重叠。 */
 .app-head__center {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  flex: 1 1 auto;
   min-width: 0;
+  padding: 0 8px;
 }
 .app-head__mini-title {
   font-size: 1.25rem;
   font-weight: var(--w-heading);
   letter-spacing: -.01em;
+  /* 融合条空间有限：单行 + 省略号，绝不换行/挤压按钮 */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 46vw;
+  max-width: 100%;
 }
 
 .app-head-fade-enter-active,
@@ -216,7 +219,7 @@ onMounted(() => {
 .app-head-fade-enter-from,
 .app-head-fade-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(6px);
+  transform: translateY(6px);
   filter: blur(4px);
 }
 

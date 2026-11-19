@@ -47,8 +47,13 @@ function findScrollHost(el) {
   return null
 }
 
-export function useHeadFuse(defaultEl) {
-  function bind(el) {
+/* 只读的融合状态：页面注入到头部 #actions 的按钮可以据此切换形态
+   （例如融合后收起文字、只留图标）。 */
+export function useHeadFused() {
+  return fused
+}
+
+export function useHeadFuse(defaultEl) {  function bind(el) {
     if (scrollEl === el) return
     if (scrollEl) scrollEl.removeEventListener('scroll', onScroll)
     scrollEl = el

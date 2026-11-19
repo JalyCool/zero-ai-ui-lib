@@ -6,9 +6,10 @@ import RouteExpandCard from '../components/expand/RouteExpandCard.vue'
 import ExpandActivity from '../expand/ExpandActivity.vue'
 import {
   UiAlert, UiBadge, UiButton, UiCheckbox, UiChip, UiEmptyState,
-  UiMenu, UiModal, UiSkeleton, UiSwipeRow
+  UiIcon, UiMenu, UiModal, UiSkeleton
 } from '../lib'
 import { setPageHeadActions } from '../composables/useAppHead'
+import { useHeadFused } from '../composables/useHeadFuse'
 import {
   activityState,
   formatDateLabel,
@@ -29,6 +30,10 @@ onActivated(() => registerHeadActions())
 onDeactivated(() => setPageHeadActions(null))
 onBeforeUnmount(() => setPageHeadActions(null))
 
+/* 顶栏动作：进入融合态后一律收成图标按钮 —— 融合条高度有限，
+   带文字的按钮会挤占标题，甚至和标题叠在一起。 */
+const fused = useHeadFused()
+
 function registerHeadActions() {
   setPageHeadActions(() => [
     h(UiMenu, {
@@ -37,9 +42,14 @@ function registerHeadActions() {
       'onUpdate:modelValue': v => (sortMode.value = v),
       label: '排序',
       items: sortItems,
-      title: '排序方式'
+      title: '排序方式',
+      showLabel: !fused.value,
+      showChevron: !fused.value
     }),
-    h(UiButton, { size: 'sm', variant: 'tonal', onClick: () => goAdd() }, () => '新增')
+    fused.value
+      ? h(UiButton, { variant: 'icon', size: 'sm', onClick: () => goAdd() },
+          () => h(UiIcon, { name: 'mdi:plus', size: 18 }))
+      : h(UiButton, { size: 'sm', variant: 'tonal', onClick: () => goAdd() }, () => '新增')
   ])
 }
 
@@ -70,6 +80,36 @@ const records = computed(() => {
   else if (sortMode.value === 'duration') list = list.sort((a, b) => b.duration - a.duration)
   else list = list.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))
   return list
+})
+
+/* 横向滑动列表：一列 = 一天。容器整体是展开的原始对象（见模板）。 */
+const days = computed(() => {
+  const groups = new Map()
+  for (const record of records.value) {
+    if (!groups.has(record.date)) groups.set(record.date, [])
+    groups.get(record.date).push(record)
+  }
+  return [...groups.entries()].map(([date, items]) => ({
+    date,
+    items,
+    label: formatDateLabel(date),
+    minutes: items.reduce((sum, r) => sum + r.duration, 0),
+    kcal: items.reduce((sum, r) => sum + r.calories, 0)
+  }))
+})
+
+/* 展开内容取最近一天（容器级汇总），而不是某一张卡片 */
+const boardProps = computed(() => {
+  const day = days.value[0]
+  if (!day) {
+    return { title: '活动记录', meta: '还没有记录', kcal: '+0 kcal', desc: '新增一条记录后，这里会按天汇总。' }
+  }
+  return {
+    title: day.label,
+    meta: `${day.items.length} 条 · ${day.minutes} 分钟 · 累计 ${day.kcal} kcal`,
+    kcal: `+${day.kcal} kcal`,
+    desc: `${day.label}共 ${day.items.length} 次训练，累计 ${day.minutes} 分钟。`
+  }
 })
 
 const initialLoading = computed(() => activityState.loading && !activityState.loaded)
@@ -223,54 +263,44 @@ function onSwipeAction(action, record) {
       </template>
     </UiEmptyState>
 
-    <div v-else class="list">
-      <!-- 划开式行：左滑出删除 / 编辑，右滑出分享 -->
-      <UiSwipeRow
-        v-for="record in records"
-        :key="record.id"
-        :actions="swipeActions"
-        :left-actions="swipeLeftActions"
-        @action="a => onSwipeAction(a, record)"
-        @commit="a => onSwipeAction(a, record)"
-      >
-        <RouteExpandCard
-          section="activity"
-          :card-key="record.id"
-          tag="div"
-          variant="list-item"
-          route-name="activity-record"
-          :params="{ recordId: record.id }"
-          :content="ExpandActivity"
-          :content-props="expansionProps(record)"
-        >
-          <div class="list-item__row">
+    <!-- 横向滑动列表：整块容器是展开的原始对象。
+         点任意一天/任意卡片，形变都从**容器**发生（不再是内部某张卡片），
+         展开后看到的是这一天的汇总。 -->
+    <RouteExpandCard
+      v-else
+      class="activity-board-wrap"
+      section="activity"
+      card-key="board"
+      tag="div"
+      variant="card"
+      route-name="activity-board"
+      :content="ExpandActivity"
+      :content-props="boardProps"
+    >
+      <div class="activity-board">
+        <div v-for="day in days" :key="day.date" class="activity-day">
+          <div class="activity-day__head">
+            <b>{{ day.label }}</b>
+            <span>{{ day.items.length }} 条 · {{ day.minutes }} 分钟</span>
+          </div>
+          <div v-for="record in day.items" :key="record.id" class="activity-card">
+            <span class="activity-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="iconFor(record)"></svg>
+            </span>
+            <div class="activity-card__body">
+              <b>{{ record.title }}</b>
+              <span>{{ listMeta(record) }}</span>
+            </div>
+            <em>+{{ record.calories }}</em>
             <UiCheckbox
               v-if="selectionMode"
               :model-value="selected.includes(record.id)"
               @update:model-value="toggleOne(record.id)"
             />
-            <div class="list-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="iconFor(record)"></svg>
-            </div>
-            <div class="list-body">
-              <b>{{ record.title }}</b>
-              <span>{{ listMeta(record) }}</span>
-            </div>
-            <UiBadge tone="primary">+{{ record.calories }}</UiBadge>
-            <!-- 行内更多操作：UiFloatingMenu（自绘按钮 + items），
-                 不用 UiToolMenu —— 它是「图标 + 文字 + 箭头」的下拉，
-                 塞进列表行会挤掉正文。 -->
-            <UiMenu variant="floating"
-              :model-value="''"
-              label="⋯"
-              size="sm"
-              :items="rowMenuItems"
-              @select="item => item.value === 'delete' && (selected = [record.id])"
-            />
           </div>
-        </RouteExpandCard>
-      </UiSwipeRow>
-    </div>
+        </div>
+      </div>
+    </RouteExpandCard>
 
     <!-- 批量删除确认：统一走 confirmDialog，不用 window.confirm -->
     <UiModal v-model="confirmOpen" title="删除所选记录">
@@ -290,6 +320,52 @@ function onSwipeAction(action, record) {
 </template>
 
 <style scoped>
+/* 横向滑动列表：scroll-snap 让每次停在一「天」上；隐藏滚动条保持安静。 */
+.activity-board-wrap { display: block; }
+.activity-board {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 2px 12px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.activity-board::-webkit-scrollbar { display: none; }
+.activity-day {
+  flex: 0 0 86%;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: calc(var(--r-14) * var(--radius-scale));
+  background: var(--surface-container-low);
+}
+.activity-day__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.activity-day__head b { font-size: 1.05rem; font-weight: var(--w-heading); }
+.activity-day__head span { font-size: var(--fs-micro); color: var(--on-surface-variant); }
+.activity-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: calc(var(--r-12) * var(--radius-scale));
+  background: var(--surface-container);
+  color: var(--on-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--t-feedback), background var(--t-fade);
+}
+.activity-card:active { transform: scale(var(--press-scale)); }
+.activity-card__icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--surface-container-high); color: var(--primary); }
+.activity-card__icon svg { width: 20px; height: 20px; }
+.activity-card__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.activity-card__body b { font-size: var(--fs-small); }
+.activity-card__body span { font-size: var(--fs-micro); color: var(--on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-card em { font-style: normal; font-weight: 600; font-size: var(--fs-micro); color: var(--primary); }
+
 .activity-filters {
   display: flex;
   align-items: center;

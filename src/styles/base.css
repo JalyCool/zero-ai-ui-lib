@@ -170,14 +170,25 @@ html, body, button, input, textarea, select {
    TabBar 中的相对位置决定。旧页淡出 + 模糊变大并退开，新页从
    模糊中浮入并归位 —— 进出共用同一条曲线，所以是连续的一段。
    ============================================================ */
+/* 方向语义：新页在旧页**右侧**（next）→ 新页从右进、旧页向左出；
+   新页在旧页**左侧**（prev）→ 新页从左进、旧页向右出。
+   进出是同一组参数，所以看起来是「一起平移」。 */
 .y-next-enter-from,
-.y-prev-leave-to { opacity: 0; filter: blur(12px); }
+.y-next-leave-to { opacity: 0; filter: blur(12px); }
 .y-next-enter-from { transform: translateY(26px); }
-.y-prev-leave-to { transform: translateY(-26px); }
+.y-next-leave-to { transform: translateY(-26px); }
+.y-prev-enter-from,
+.y-prev-leave-to { opacity: 0; filter: blur(12px); }
+.y-prev-enter-from { transform: translateY(-26px); }
+.y-prev-leave-to { transform: translateY(26px); }
 .x-next-enter-from,
-.x-prev-leave-to { opacity: 0; filter: blur(12px); }
+.x-next-leave-to { opacity: 0; filter: blur(12px); }
 .x-next-enter-from { transform: translateX(34px); }
-.x-prev-leave-to { transform: translateX(-34px); }
+.x-next-leave-to { transform: translateX(-34px); }
+.x-prev-enter-from,
+.x-prev-leave-to { opacity: 0; filter: blur(12px); }
+.x-prev-enter-from { transform: translateX(-34px); }
+.x-prev-leave-to { transform: translateX(34px); }
 
 .y-next-enter-active,
 .y-next-leave-active,
@@ -197,6 +208,7 @@ html, body, button, input, textarea, select {
 .y-prev-leave-active,
 .x-next-leave-active,
 .x-prev-leave-active { position: absolute; inset: 0; z-index: 1; }
+/* 新页永远在旧页上层 */
 .y-next-enter-active,
 .y-prev-enter-active,
 .x-next-enter-active,

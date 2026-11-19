@@ -481,6 +481,7 @@ declare const UiChart: DefineComponent<{ type?: 'bar' | 'line' | 'spark' | 'heat
 declare const UiMenu: DefineComponent<{ variant?: 'floating' | 'tool' | 'context'; modelValue?: string | number | object; items?: any[]; label?: string; title?: string; icon?: string; showIcon?: boolean; showLabel?: boolean; showChevron?: boolean; disabled?: boolean }, AnyProps, unknown>
 declare const ViewSwap: DefineComponent<{ tabs?: string[] }, AnyProps, unknown>
 declare const AppHead: DefineComponent<{ title?: string; sub?: string; fuseHeight?: number; showLogoInFuse?: boolean; fuseOnly?: boolean }, AnyProps, unknown>
+declare const useHeadFused: () => any
 declare const useHeadFuse: (defaultEl: any) => { fused: any; attach: () => void; detach: () => void; measureInline: (el: any) => void; bind: (el: any) => void }
 declare const setPageHeadActions: (renderFn: ((...args: any[]) => any) | null) => void
 declare const setPageHeadAfter: (renderFn: ((...args: any[]) => any) | null) => void
@@ -489,7 +490,7 @@ declare const useSurfaceTier: (target: any, options?: { minStep?: number }) => {
 
 /* ---------- components ---------- */
 export {
-  UiChart, UiMenu, AppHead, ViewSwap, useHeadFuse, setPageHeadActions, setPageHeadAfter, setPageHeadCenter, useSurfaceTier,
+  UiChart, UiMenu, AppHead, ViewSwap, useHeadFuse, useHeadFused, setPageHeadActions, setPageHeadAfter, setPageHeadCenter, useSurfaceTier,
   UiColorPicker, UiAutocomplete, UiForm, UiFormField, UiBreadcrumb, UiPagination, UiSidebar, UiSlideover, UiNavigationMenu, UiGrid, UiRow, UiCol, UiSplitter, UiScrollArea, UiCommandPalette, UiTour, UiPopover, UiKbd, UiLink, UiIcon, UiCalendar, UiTimeline, UiCarousel, UiPagerDots, UiMarquee,
   UiAvatarTag, UiCard, UiAccordion, UiAlert, UiAvatar, UiAvatarGroup, UiAgentAvatar, AGENT_SHAPES, UiBadge, UiBottomSheet, UiButton,
   UiCheckbox, UiCodeImage, UiChip, UiCodeEditor, UiDataTable, UiDatePicker, UiInput, UiKeyValueEditor, UiModal, UiSideNav, MarkdownView, normalizeIconName,

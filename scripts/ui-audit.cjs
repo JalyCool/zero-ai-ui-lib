@@ -103,7 +103,7 @@ async function run() {
   rec('巡览聚焦', '孔由整屏收拢到目标', spotB.w > 0 && spotB.w < spotA.w * 0.75, `${spotA.w} -> ${spotB.w}`)
   await d.keyboard.press('Escape')
 
-  await open(d, '/activity/stairs')
+  await open(d, '/activity/board')
   await sleep(1500)
   const ed = await ev(d, `(() => {
     const card = document.querySelector('[data-expand].is-expanded')
@@ -223,7 +223,7 @@ async function run() {
   await sleep(700)
   rec('交互', '半星浮层可选', !!(await ev(m, `!!document.querySelector('.ui-rating__pick')`)))
 
-  await open(m, '/activity/stairs')
+  await open(m, '/activity/board')
   await sleep(1600)
   const ei = await ev(m, `(() => {
     const card = document.querySelector('[data-expand].is-expanded')
@@ -252,6 +252,90 @@ async function run() {
   })()`)
   rec('展开页(溢出模糊)', '滚动后顶部模糊淡入且顶栏钉顶',
     Number(b1.blur) > 0.5 && b1.st > 0 && b1.topbarY <= 2, `opacity ${b0} -> ${b1.blur}, st=${b1.st}, topbarY=${b1.topbarY}`)
+
+  /* 切换方向：新页在旧页右侧 → x-next（新页从右进 +dx，旧页向左出 -dx）；
+     新页在旧页左侧 → x-prev（新页从左进 -dx，旧页向右出 +dx）。
+     静态读 CSS 规则，运行时看「页面切换过渡」项留下的类名 + 冷启动一次反向。 */
+  const dirRules = await ev(m, `(() => {
+    const out = {}
+    for (const sheet of document.styleSheets) {
+      let rules
+      try { rules = sheet.cssRules } catch { continue }
+      for (const r of rules) {
+        if (!r.selectorText) continue
+        if (r.selectorText.includes('.x-next-enter-from')) out.nextEnter = r.style.transform
+        if (r.selectorText.includes('.x-prev-enter-from')) out.prevEnter = r.style.transform
+        if (r.selectorText.includes('.x-next-leave-to')) out.nextLeave = r.style.transform
+        if (r.selectorText.includes('.x-prev-leave-to')) out.prevLeave = r.style.transform
+      }
+    }
+    return out
+  })()`)
+  const num = s => { const m = /translateX\((-?[\d.]+)px/.exec(s || ''); return m ? Number(m[1]) : null }
+  const rulesOk = num(dirRules.nextEnter) > 0 && num(dirRules.nextLeave) < 0 &&
+    num(dirRules.prevEnter) < 0 && num(dirRules.prevLeave) > 0
+
+  const cold2 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+  const c2 = await cold2.newPage()
+  await open(c2, '/chat')
+  await ev(c2, `(() => { const b = [...document.querySelectorAll('#tabbar button, #tabbar .ui-tabbar__tab')].find(b => b.textContent.includes('首页')); if (b) b.click() })()`)
+  await sleep(60)
+  const prevCls = await ev(c2, `(() => [...document.querySelectorAll('#viewRoot > *')].map(k => k.className).join(' '))()`)
+  await cold2.close()
+
+  rec('切换方向', '右邻页从右进、左邻页从左进（CSS 规则 + 运行时类名）',
+    rulesOk && /x-next/.test(trans) && /x-prev/.test(prevCls),
+    `rules=${JSON.stringify(dirRules)} | home->chat: ${trans} | chat->home: ${prevCls.slice(0, 60)}`)
+
+  /* 融合条：标题与按钮不重叠 */
+  await open(m, '/components')
+  await ev(m, `(() => { const v = document.getElementById('scrollArea'); v.scrollTop = 400 })()`)
+  await sleep(1800)
+  const head = await ev(m, `(() => {
+    const fuse = document.querySelector('.app-head__fuse.is-visible')
+    const title = fuse?.querySelector('.app-head__mini-title')
+    const sideR = fuse?.querySelector('.app-head__side--r')
+    if (!fuse || !title || !sideR) return { ok: false }
+    const tr = title.getBoundingClientRect(), sr = sideR.getBoundingClientRect()
+    return { titleRight: Math.round(tr.right), actionsLeft: Math.round(sr.left), gap: Math.round(sr.left - tr.right) }
+  })()`)
+  rec('融合条布局', '标题与按钮不重叠', head.ok !== false && head.gap >= 0, JSON.stringify(head))
+
+  /* 活动页：横向 snap 列表 + 容器级展开 */
+  await open(m, '/activity')
+  await sleep(900)
+  const board = await ev(m, `(() => {
+    const b = document.querySelector('.activity-board')
+    const card = document.querySelector('[data-expand="board"]')
+    return { board: !!b, snap: b ? getComputedStyle(b).scrollSnapType : null,
+      expandRoot: card ? card.className : null,
+      cards: document.querySelectorAll('.activity-card').length,
+      days: document.querySelectorAll('.activity-day').length }
+  })()`)
+  rec('活动页(横向容器)', '横向 snap 列表且展开原始对象=容器',
+    board.board && /mandatory/.test(board.snap) && /list-item|card/.test(board.expandRoot || '') && board.cards > 0, JSON.stringify(board))
+
+  /* 融合态：顶栏按钮全为图标 */
+  await ev(m, `(() => { const v = document.getElementById('scrollArea'); v.scrollTop = 400 })()`)
+  await sleep(1700)
+  const fusedBtns = await ev(m, `(() => {
+    const fuse = document.querySelector('.app-head__fuse.is-visible')
+    const btns = [...(fuse?.querySelectorAll('.ui-btn') || [])]
+    return { count: btns.length, withText: btns.filter(b => (b.textContent || '').trim().length > 0).length }
+  })()`)
+  rec('融合态按钮', fusedBtns.count >= 1 ? '全部为图标按钮（无文字）' : '（活动页不足一屏，跳过）',
+    fusedBtns.count === 0 || fusedBtns.withText === 0, JSON.stringify(fusedBtns))
+
+  /* 点击容器任意处 → 以容器为原始对象展开 */
+  await ev(m, `(() => { document.getElementById('scrollArea').scrollTop = 0 })()`)
+  await sleep(700)
+  await ev(m, `(() => { const c = document.querySelector('[data-expand="board"]'); if (c) c.click() })()`)
+  await sleep(1800)
+  const opened = await ev(m, `(() => {
+    const card = document.querySelector('[data-expand="board"].is-expanded')
+    return { path: location.pathname, expanded: !!card, scroller: !!card?.querySelector('.zero-scroll') }
+  })()`)
+  rec('活动页(容器展开)', '点击容器进入展开态', opened.expanded && opened.path.includes('/activity/board'), JSON.stringify(opened))
 
   await mctx.close()
   await browser.close()
