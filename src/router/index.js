@@ -55,14 +55,6 @@ const routes = [
         meta: { sub: '记录一次新的运动' }
       },
       {
-        /* 横向滑动列表容器整体展开：原始对象是「列表容器」这一层，
-           而不是里面的某一张卡片（见 ActivityView 的 .activity-board） */
-        path: 'board',
-        name: 'activity-board',
-        component: EmptyRoute,
-        meta: { expandKey: 'board' }
-      },
-      {
         path: ':recordId',
         name: 'activity-record',
         component: EmptyRoute,

@@ -103,7 +103,7 @@ async function run() {
   rec('巡览聚焦', '孔由整屏收拢到目标', spotB.w > 0 && spotB.w < spotA.w * 0.75, `${spotA.w} -> ${spotB.w}`)
   await d.keyboard.press('Escape')
 
-  await open(d, '/activity/board')
+  await open(d, '/activity/stairs')
   await sleep(1500)
   const ed = await ev(d, `(() => {
     const card = document.querySelector('[data-expand].is-expanded')
@@ -223,7 +223,7 @@ async function run() {
   await sleep(700)
   rec('交互', '半星浮层可选', !!(await ev(m, `!!document.querySelector('.ui-rating__pick')`)))
 
-  await open(m, '/activity/board')
+  await open(m, '/activity/stairs')
   await sleep(1600)
   const ei = await ev(m, `(() => {
     const card = document.querySelector('[data-expand].is-expanded')
@@ -301,41 +301,49 @@ async function run() {
   })()`)
   rec('融合条布局', '标题与按钮不重叠', head.ok !== false && head.gap >= 0, JSON.stringify(head))
 
-  /* 活动页：横向 snap 列表 + 容器级展开 */
+  /* 活动页：SwipeRow 行 = 展开原始对象；滑动只出操作，不触发展开 */
   await open(m, '/activity')
   await sleep(900)
-  const board = await ev(m, `(() => {
-    const b = document.querySelector('.activity-board')
-    const card = document.querySelector('[data-expand="board"]')
-    return { board: !!b, snap: b ? getComputedStyle(b).scrollSnapType : null,
-      expandRoot: card ? card.className : null,
-      cards: document.querySelectorAll('.activity-card').length,
-      days: document.querySelectorAll('.activity-day').length }
+  const rows = await ev(m, `(() => {
+    const row = document.querySelector('.ui-swipe-row')
+    const card = row?.querySelector('[data-expand]')
+    return { row: !!row, expandInsideRow: !!card,
+      key: card?.getAttribute('data-expand'),
+      rails: document.querySelectorAll('.ui-swipe-row__rail').length }
   })()`)
-  rec('活动页(横向容器)', '横向 snap 列表且展开原始对象=容器',
-    board.board && /mandatory/.test(board.snap) && /list-item|card/.test(board.expandRoot || '') && board.cards > 0, JSON.stringify(board))
+  rec('活动页(SwipeRow)', '行内嵌展开对象且带双侧轨道', rows.row && rows.expandInsideRow && rows.rails >= 1, JSON.stringify(rows))
 
-  /* 融合态：顶栏按钮全为图标 */
-  await ev(m, `(() => { const v = document.getElementById('scrollArea'); v.scrollTop = 400 })()`)
+  /* 点击行 → 以该行为原始对象展开（路由到该记录） */
+  await ev(m, `(() => { const c = document.querySelector('.ui-swipe-row [data-expand]'); if (c) c.click() })()`)
   await sleep(1700)
-  const fusedBtns = await ev(m, `(() => {
-    const fuse = document.querySelector('.app-head__fuse.is-visible')
-    const btns = [...(fuse?.querySelectorAll('.ui-btn') || [])]
-    return { count: btns.length, withText: btns.filter(b => (b.textContent || '').trim().length > 0).length }
-  })()`)
-  rec('融合态按钮', fusedBtns.count >= 1 ? '全部为图标按钮（无文字）' : '（活动页不足一屏，跳过）',
-    fusedBtns.count === 0 || fusedBtns.withText === 0, JSON.stringify(fusedBtns))
-
-  /* 点击容器任意处 → 以容器为原始对象展开 */
-  await ev(m, `(() => { document.getElementById('scrollArea').scrollTop = 0 })()`)
-  await sleep(700)
-  await ev(m, `(() => { const c = document.querySelector('[data-expand="board"]'); if (c) c.click() })()`)
-  await sleep(1800)
   const opened = await ev(m, `(() => {
-    const card = document.querySelector('[data-expand="board"].is-expanded')
+    const card = document.querySelector('[data-expand].is-expanded')
     return { path: location.pathname, expanded: !!card, scroller: !!card?.querySelector('.zero-scroll') }
   })()`)
-  rec('活动页(容器展开)', '点击容器进入展开态', opened.expanded && opened.path.includes('/activity/board'), JSON.stringify(opened))
+  rec('活动页(行展开)', '点击行进入该记录展开态', opened.expanded && /\/activity\//.test(opened.path) && opened.path !== '/activity', JSON.stringify(opened))
+  await ev(m, `(() => { const b = document.querySelector('.expand-close'); if (b) b.click() })()`)
+  await sleep(1500)
+
+  /* 拖拽：露出操作按钮，且不触发展开 */
+  await open(m, '/activity')
+  await sleep(900)
+  const box = await ev(m, `(() => { const r = document.querySelector('.ui-swipe-row');
+    const b = r?.getBoundingClientRect(); return b ? { x: b.x, y: b.y, w: b.width, h: b.height } : null })()`)
+  if (box) {
+    await m.mouse.move(box.x + box.w - 40, box.y + box.h / 2)
+    await m.mouse.down()
+    for (let i = 1; i <= 8; i++) { await m.mouse.move(box.x + box.w - 40 - i * 22, box.y + box.h / 2); await m.waitForTimeout(16) }
+    await m.waitForTimeout(500)
+  }
+  await m.mouse.up().catch(() => {})
+  await sleep(700)
+  const swiped = await ev(m, `(() => {
+    const row = document.querySelector('.ui-swipe-row')
+    const surface = row?.querySelector('.ui-swipe-row__surface')
+    const dx = surface ? getComputedStyle(surface).transform : null
+    return { open: row?.classList.contains('is-open'), transform: dx, path: location.pathname }
+  })()`)
+  rec('活动页(滑动)', '左滑露出操作且不触发展开', swiped.open && swiped.path === '/activity', JSON.stringify(swiped))
 
   await mctx.close()
   await browser.close()

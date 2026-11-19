@@ -107,7 +107,9 @@ function handleCapturedClick(clientX, clientY, wasDragged) {
     surface.removeEventListener('click', killer, true)
     event.preventDefault()
     event.stopPropagation()
-    if (wasDragged || props.disabled) return
+    /* 打开状态下的这次点按语义是「收起」；同时转发给行内容会触发展开，
+       两个动作叠在一起就是一次跳动。 */
+    if (wasDragged || props.disabled || open.value) return
     if (typeof document.elementsFromPoint !== 'function') return
     const stack = document.elementsFromPoint(clientX, clientY)
     const rails = [railEl.value, leftRailEl.value].filter(Boolean)

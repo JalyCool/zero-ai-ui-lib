@@ -6,7 +6,7 @@ import RouteExpandCard from '../components/expand/RouteExpandCard.vue'
 import ExpandActivity from '../expand/ExpandActivity.vue'
 import {
   UiAlert, UiBadge, UiButton, UiCheckbox, UiChip, UiEmptyState,
-  UiIcon, UiMenu, UiModal, UiSkeleton
+  UiIcon, UiMenu, UiModal, UiSkeleton, UiSwipeRow
 } from '../lib'
 import { setPageHeadActions } from '../composables/useAppHead'
 import { useHeadFused } from '../composables/useHeadFuse'
@@ -80,36 +80,6 @@ const records = computed(() => {
   else if (sortMode.value === 'duration') list = list.sort((a, b) => b.duration - a.duration)
   else list = list.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))
   return list
-})
-
-/* 横向滑动列表：一列 = 一天。容器整体是展开的原始对象（见模板）。 */
-const days = computed(() => {
-  const groups = new Map()
-  for (const record of records.value) {
-    if (!groups.has(record.date)) groups.set(record.date, [])
-    groups.get(record.date).push(record)
-  }
-  return [...groups.entries()].map(([date, items]) => ({
-    date,
-    items,
-    label: formatDateLabel(date),
-    minutes: items.reduce((sum, r) => sum + r.duration, 0),
-    kcal: items.reduce((sum, r) => sum + r.calories, 0)
-  }))
-})
-
-/* 展开内容取最近一天（容器级汇总），而不是某一张卡片 */
-const boardProps = computed(() => {
-  const day = days.value[0]
-  if (!day) {
-    return { title: '活动记录', meta: '还没有记录', kcal: '+0 kcal', desc: '新增一条记录后，这里会按天汇总。' }
-  }
-  return {
-    title: day.label,
-    meta: `${day.items.length} 条 · ${day.minutes} 分钟 · 累计 ${day.kcal} kcal`,
-    kcal: `+${day.kcal} kcal`,
-    desc: `${day.label}共 ${day.items.length} 次训练，累计 ${day.minutes} 分钟。`
-  }
 })
 
 const initialLoading = computed(() => activityState.loading && !activityState.loaded)
@@ -195,8 +165,9 @@ function expansionProps(record) {
 }
 
 function iconFor(record) { return getActivityType(record.type).icon }
-function onSwipeAction(action, record) {
-  if (action.label === '删除') selected.value = [record.id]
+function onSwipeAction(record, payload) {
+  const action = payload && payload.action ? payload.action : payload
+  if (action && action.label === '删除') selected.value = [record.id]
 }
 </script>
 
@@ -263,44 +234,52 @@ function onSwipeAction(action, record) {
       </template>
     </UiEmptyState>
 
-    <!-- 横向滑动列表：整块容器是展开的原始对象。
-         点任意一天/任意卡片，形变都从**容器**发生（不再是内部某张卡片），
-         展开后看到的是这一天的汇总。 -->
-    <RouteExpandCard
-      v-else
-      class="activity-board-wrap"
-      section="activity"
-      card-key="board"
-      tag="div"
-      variant="card"
-      route-name="activity-board"
-      :content="ExpandActivity"
-      :content-props="boardProps"
-    >
-      <div class="activity-board">
-        <div v-for="day in days" :key="day.date" class="activity-day">
-          <div class="activity-day__head">
-            <b>{{ day.label }}</b>
-            <span>{{ day.items.length }} 条 · {{ day.minutes }} 分钟</span>
-          </div>
-          <div v-for="record in day.items" :key="record.id" class="activity-card">
-            <span class="activity-card__icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="iconFor(record)"></svg>
-            </span>
-            <div class="activity-card__body">
-              <b>{{ record.title }}</b>
-              <span>{{ listMeta(record) }}</span>
-            </div>
-            <em>+{{ record.calories }}</em>
+    <!-- 行列表：每一行是一枚 UiSwipeRow，点按以**这一行**为原始对象展开；
+         左滑 / 右滑露出的操作不触发展开（拖拽与点按在组件内区分）。 -->
+    <div v-else class="list">
+      <UiSwipeRow
+        v-for="record in records"
+        :key="record.id"
+        :actions="swipeActions"
+        :left-actions="swipeLeftActions"
+        @action="swipeAction(record, $event)"
+        @commit="swipeAction(record, $event)"
+      >
+        <RouteExpandCard
+          section="activity"
+          :card-key="record.id"
+          tag="div"
+          variant="list-item"
+          route-name="activity-record"
+          :params="{ recordId: record.id }"
+          :content="ExpandActivity"
+          :content-props="expansionProps(record)"
+        >
+          <div class="list-item__row">
             <UiCheckbox
               v-if="selectionMode"
               :model-value="selected.includes(record.id)"
               @update:model-value="toggleOne(record.id)"
             />
+            <div class="list-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="iconFor(record)"></svg>
+            </div>
+            <div class="list-body">
+              <b>{{ record.title }}</b>
+              <span>{{ listMeta(record) }}</span>
+            </div>
+            <UiBadge tone="primary">+{{ record.calories }}</UiBadge>
+            <UiMenu variant="floating"
+              :model-value="''"
+              label="⋯"
+              size="sm"
+              :items="rowMenuItems"
+              @select="item => item.value === 'delete' && (selected = [record.id])"
+            />
           </div>
-        </div>
-      </div>
-    </RouteExpandCard>
+        </RouteExpandCard>
+      </UiSwipeRow>
+    </div>
 
     <!-- 批量删除确认：统一走 confirmDialog，不用 window.confirm -->
     <UiModal v-model="confirmOpen" title="删除所选记录">
@@ -320,51 +299,7 @@ function onSwipeAction(action, record) {
 </template>
 
 <style scoped>
-/* 横向滑动列表：scroll-snap 让每次停在一「天」上；隐藏滚动条保持安静。 */
-.activity-board-wrap { display: block; }
-.activity-board {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 2px 2px 12px;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.activity-board::-webkit-scrollbar { display: none; }
-.activity-day {
-  flex: 0 0 86%;
-  scroll-snap-align: start;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: calc(var(--r-14) * var(--radius-scale));
-  background: var(--surface-container-low);
-}
-.activity-day__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.activity-day__head b { font-size: 1.05rem; font-weight: var(--w-heading); }
-.activity-day__head span { font-size: var(--fs-micro); color: var(--on-surface-variant); }
-.activity-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: calc(var(--r-12) * var(--radius-scale));
-  background: var(--surface-container);
-  color: var(--on-surface);
-  text-align: left;
-  cursor: pointer;
-  transition: transform var(--t-feedback), background var(--t-fade);
-}
-.activity-card:active { transform: scale(var(--press-scale)); }
-.activity-card__icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--surface-container-high); color: var(--primary); }
-.activity-card__icon svg { width: 20px; height: 20px; }
-.activity-card__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.activity-card__body b { font-size: var(--fs-small); }
-.activity-card__body span { font-size: var(--fs-micro); color: var(--on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.activity-card em { font-style: normal; font-weight: 600; font-size: var(--fs-micro); color: var(--primary); }
+
 
 .activity-filters {
   display: flex;
