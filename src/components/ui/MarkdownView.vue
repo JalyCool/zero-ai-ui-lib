@@ -329,7 +329,12 @@ const Root = () => {
   seq = 0
   const doc = new DOMParser().parseFromString(marked.parse(props.content), 'text/html')
   const children = withStreaming(renderChildren(doc.body))
-  const style = props.streaming && reserveHeight.value ? { minHeight: reserveHeight.value + 'px' } : undefined
+  /* 流式期间锁定可用宽度：边收边排会让换行点一直变，文字看起来
+     一闪一闪地重排；流结束后去掉，容器恢复自适应。 */
+  const style = {
+    ...(props.streaming ? { width: '100%' } : {}),
+    ...(props.streaming && reserveHeight.value ? { minHeight: reserveHeight.value + 'px' } : {})
+  }
   return h('div', { class: 'ui-md', ref: rootEl, style }, children)
 }
 </script>
@@ -376,7 +381,7 @@ const Root = () => {
 }
 .ui-md-pre .ui-md-code { background: none; padding: 0; border-radius: 0; }
 /* 提及药丸：与正文同一视觉中轴（inline-flex + 基线对齐，不用负 margin 硬拉） */
-.ui-md-mention { display: inline-flex; align-items: center; vertical-align: middle; margin: 0 1px; }
+.ui-md-mention { display: inline-flex; align-items: center; vertical-align: middle; transition: opacity var(--t-fade), transform var(--t-pop), filter var(--t-fade); margin: 0 1px; }
 .ui-md-a { color: var(--primary); }
 
 /* 代码块：语言图标 + 名称的头部条 */
