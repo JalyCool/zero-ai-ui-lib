@@ -123,6 +123,14 @@ watch(() => props.modelValue, value => {
 <template>
   <div class="ui-range-time">
     <div class="ui-range-time__row">
+      <!-- 时钟图标前置：两个时间选择器内部不再各画一个，
+           范围控件共用行首这一枚。 -->
+      <span class="ui-range-time__clock" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3.5 2" />
+        </svg>
+      </span>
       <TimePickerImpl
         class="ui-range-time__picker"
         :model-value="startValue"
@@ -216,6 +224,18 @@ watch(() => props.modelValue, value => {
   line-height: 1.1;
 }
 /* 较浅的箭头：比正文浅一档的描边色，垂直钉在两端字段的中线上。 */
+.ui-range-time__clock {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-self: center;
+  border-radius: 10px;
+  background: var(--surface-container-high);
+  color: var(--primary);
+}
+.ui-range-time__clock svg { width: 18px; height: 18px; }
 .ui-range-time__arrow {
   position: absolute;
   left: 0;

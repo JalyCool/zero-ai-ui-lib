@@ -128,7 +128,13 @@ function clampColumnScroll(index) {
   const hi = centerOf(allowed[allowed.length - 1])
   const top = column.scrollTop
   if (top < lo - 1 || top > hi + 1) {
-    column.scrollTo({ top: Math.min(hi, Math.max(lo, top)), behavior: 'auto' })
+    /* 橡皮筋：越界时先按 1/4 阻尼跟一点，再弹回边界 —— 两端始终
+       固定在**可选择的起止项**上，不再硬钳（硬钳看起来就是「抽出」一跳）。 */
+    const over = top < lo ? top - lo : top - hi
+    column.scrollTo({ top: top + over * 0.25, behavior: 'auto' })
+    requestAnimationFrame(() => {
+      column.scrollTo({ top: Math.min(hi, Math.max(lo, top)), behavior: 'smooth' })
+    })
     return true
   }
   return false

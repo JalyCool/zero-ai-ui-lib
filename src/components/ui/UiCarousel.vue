@@ -75,9 +75,17 @@ function go(next, user = true) {
   if (value === index.value) return
   index.value = value
   /* infinite：轨道索引 = 真实索引 + 1（前面多一张克隆）。
-     走到克隆位要等**过渡播完**再无动画瞬移归位 —— 提前跳会把动画打断。
-     cycle：slot = 真实索引，最后一张点下一张直接倒回第一张的位置。 */
-  slot.value = isInfinite.value ? value + 1 : value
+     跨首尾时必须滑**一格到克隆位**（第一项从右侧飞入 / 最后一项从左侧
+     飞入），过渡结束后再无动画瞬移归位；直接落回真实位会变成「整条列表
+     滑回第一张」，方向感全丢。cycle 则直接倒回第一张的位置。 */
+  if (isInfinite.value) {
+    const total = props.items.length
+    if (index.value === total - 1 && value === 0) slot.value = total + 1
+    else if (index.value === 0 && value === total - 1) slot.value = 0
+    else slot.value = value + 1
+  } else {
+    slot.value = value
+  }
   if (user) { emit('update:modelValue', value); emit('change', value) }
 }
 
