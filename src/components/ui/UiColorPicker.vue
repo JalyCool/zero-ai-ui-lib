@@ -3,6 +3,9 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '#3f5f90' },
+  /* 下方「颜色预览 + 色号输入」是否显示（嵌入式取色条可以只要面板） */
+  showPreview: { type: Boolean, default: true },
+  showHex: { type: Boolean, default: true },
   label: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
   /* 预设色板 */
@@ -114,6 +117,8 @@ function setHue(event, track) {
 
 const canvasEl = ref(null)
 const trackEl = ref(null)
+/* 触摸拖动时把手放大（手指遮挡问题）；桌面指针不变 */
+const touchDrag = ref(false)
 let dragMode = ''
 let dragTarget = null
 
@@ -125,6 +130,7 @@ function onWindowMove(event) {
 function stopDrag() {
   dragMode = ''
   dragTarget = null
+  touchDrag.value = false
   window.removeEventListener('pointermove', onWindowMove)
   window.removeEventListener('pointerup', stopDrag)
   window.removeEventListener('pointercancel', stopDrag)
@@ -136,6 +142,7 @@ function startDrag(mode, event) {
   event.preventDefault()
   dragMode = mode
   dragTarget = target
+  touchDrag.value = event.pointerType === 'touch'
   if (mode === 'canvas') setSaturationBrightness(event, target)
   else setHue(event, target)
   window.addEventListener('pointermove', onWindowMove)
@@ -207,7 +214,7 @@ onBeforeUnmount(stopDrag)
       >
         <span class="ui-color__shade ui-color__shade--white" aria-hidden="true"></span>
         <span class="ui-color__shade ui-color__shade--black" aria-hidden="true"></span>
-        <span class="ui-color__thumb" :style="thumbStyle" aria-hidden="true"></span>
+        <span class="ui-color__thumb" :class="{ 'is-touch': touchDrag }" :style="thumbStyle" aria-hidden="true"></span>
       </div>
 
       <div
@@ -221,13 +228,14 @@ onBeforeUnmount(stopDrag)
         @pointerdown="startDrag('track', $event)"
         @keydown="onTrackKey"
       >
-        <span class="ui-color__track-thumb" :style="hueThumbStyle" aria-hidden="true"></span>
+        <span class="ui-color__track-thumb" :class="{ 'is-touch': touchDrag }" :style="hueThumbStyle" aria-hidden="true"></span>
       </div>
     </div>
 
-    <div class="ui-color__row">
-      <span class="ui-color__current" :style="{ background: hex }" aria-hidden="true"></span>
+    <div v-if="showPreview || showHex" class="ui-color__row">
+      <span v-if="showPreview" class="ui-color__current" :style="{ background: hex }" aria-hidden="true"></span>
       <input
+        v-if="showHex"
         class="ui-color__hex"
         :value="hex"
         inputmode="text"
@@ -290,6 +298,10 @@ onBeforeUnmount(stopDrag)
   transition: transform var(--t-feedback);
 }
 .ui-color__canvas:active .ui-color__thumb { transform: scale(1.15); }
+/* 触摸：把手放大到 2.1 倍（≈34px），足以完全盖住手指；
+   桌面指针（鼠标 / 触控笔）保持原有尺寸与反馈。 */
+.ui-color__thumb.is-touch { transform: scale(2.1); }
+.ui-color__track-thumb.is-touch { transform: scale(2.1); }
 
 .ui-color__track {
   position: relative;

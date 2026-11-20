@@ -3,7 +3,9 @@ import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   /* 当前月份：YYYY-MM */
-  modelValue: { type: String, default: '' },
+  modelValue: { type: [String, Array], default: '' },
+  /* 多选：modelValue 为 ISO 日期数组，点选切换 */
+  multiple: { type: Boolean, default: false },
   /* 事件：{ [YYYY-MM-DD]: [{ title, tone? }] } */
   events: { type: Object, default: () => ({}) },
   /* 视图类型：
@@ -30,6 +32,12 @@ function pad(n) { return String(n).padStart(2, '0') }
 function toISO(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) }
 
 const today = toISO(new Date())
+/* 选中的日期集合（单选时也只有 0/1 个） */
+const selectedSet = computed(() => {
+  const v = props.modelValue
+  if (Array.isArray(v)) return new Set(v)
+  return v ? new Set([v]) : new Set()
+})
 /* 内部视图：switchable 时由内部状态驱动，否则跟随 prop */
 const innerView = ref(props.view)
 watch(() => props.view, value => { innerView.value = value })
@@ -127,6 +135,17 @@ function shift(delta) {
 }
 
 function pickCell(item) {
+  if (props.multiple) {
+    const next = new Set(selectedSet.value)
+    if (next.has(item.iso)) next.delete(item.iso)
+    else next.add(item.iso)
+    const list = [...next].sort()
+    emit('update:modelValue', list)
+    emit('change', list)
+  } else {
+    emit('update:modelValue', item.iso)
+    emit('change', item.iso)
+  }
   emit('select', { date: item.iso, events: item.events })
 }
 
@@ -201,7 +220,7 @@ function pickAgenda(row) {
         <div class="ui-calendar__week"><span v-for="w in WEEK" :key="w">{{ w }}</span></div>
         <div class="ui-calendar__grid" :class="'is-' + activeView">
           <button v-for="item in days" :key="item.iso" type="button" class="ui-calendar__day"
-            :class="{ 'is-out': !item.inMonth, 'is-today': item.isToday, 'has-events': item.events.length }"
+            :class="{ 'is-out': !item.inMonth, 'is-today': item.isToday, 'is-selected': selectedSet.has(item.iso), 'has-events': item.events.length }"
             @click="pickCell(item)">
             <span class="ui-calendar__num">{{ item.day }}</span>
             <span v-if="item.events.length" class="ui-calendar__dots">
@@ -247,7 +266,16 @@ function pickAgenda(row) {
 .ui-calendar__day:hover { background: var(--surface-container); }
 .ui-calendar__day:active { transform: scale(var(--press-scale)); }
 .ui-calendar__day.is-out { color: var(--on-surface-variant); opacity: .42; }
-.ui-calendar__day.is-today .ui-calendar__num { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: var(--on-primary); }
+/* 选中：整格浅强调底（主色容器），文字转主色 */
+.ui-calendar__day.is-selected { background: var(--primary-container); color: var(--on-primary-container); }
+/* 今日：未被选中时只给强调色描边；被选中时才是实心 */
+.ui-calendar__day.is-today .ui-calendar__num {
+  display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid var(--primary); color: var(--primary); background: transparent;
+}
+.ui-calendar__day.is-today.is-selected .ui-calendar__num {
+  background: var(--primary); border-color: var(--primary); color: var(--on-primary);
+}
 .ui-calendar__dots { display: flex; gap: 2px; }
 .ui-calendar__dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
 .ui-calendar__dots i.is-success { background: var(--ui-success, #15803d); }
