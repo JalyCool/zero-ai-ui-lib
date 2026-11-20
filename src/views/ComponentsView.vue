@@ -144,6 +144,7 @@ const panelRange = ref([18, 30])
 /* ---------- 表单 ---------- */
 const nickname = ref('Alex')
 const email = ref('alex@')
+const passwordDraft = ref('')
 const dpPrecision = ref('day')
 const dpPrecisionOptions = [
   { label: '日', value: 'day' },
@@ -938,7 +939,18 @@ watch(activeSection, id => {
           <span class="lib-cell__label">输入三段式 <small>label + 控件 + hint/error</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiInput v-model="nickname" label="昵称" hint="展示在个人主页" />
-            <UiInput v-model="email" label="邮箱" type="email" :error="email.includes('@') ? '' : '缺少 @ 符号'" />
+            <!-- 原生 type="email" 已删除：邮箱校验并入格式正则规则，与下面的
+                 手机号 / 色值同一套状态机（输入中不报错、首次匹配绿勾、
+                 失焦仍不匹配才红叉）。 -->
+            <UiInput v-model="email" label="邮箱（格式正则）" pattern="^[^@\s]+@[^@\s]+\.[^@\s]+$" pattern-message="邮箱格式不正确" />
+            <!-- 规则组（headless）：两个子规则用 and 组合 -->
+            <UiFormField label="密码（规则组）" :value="passwordDraft"
+              :rules="[{ group: true, op: 'and', label: '至少 8 位且含数字', message: '至少 8 位且含数字', rules: [
+                { test: v => String(v || '').length >= 8, message: '至少 8 位' },
+                { test: v => /\d/.test(String(v || '')), message: '至少包含一个数字' }
+              ] }]">
+              <UiInput v-model="passwordDraft" placeholder="聚焦查看规则清单" />
+            </UiFormField>
             <UiInput v-model="phone" label="手机号（格式正则）" pattern="^1[3-9]\d{9}$" pattern-message="需要 11 位大陆手机号" hint="输入中不报错；首次匹配即绿勾，失焦仍不匹配才红叉" />
             <UiInput v-model="hexColor" label="十六进制色值" pattern="^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$" pattern-message="格式是 #RGB 或 #RRGGBB" />
             <UiTextarea v-model="note" label="备注" placeholder="今天的感觉…" :rows="3" />
