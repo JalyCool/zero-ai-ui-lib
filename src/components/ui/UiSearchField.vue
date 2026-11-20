@@ -7,6 +7,10 @@ const props = defineProps({
   placeholder: { type: String, default: '搜索' },
   /* 收起时是否保留已输入的值（false = 收起即清空） */
   keepValue: { type: Boolean, default: true },
+  /* 折叠方式：
+     · 'close'（默认）—— 只由关闭按钮 / Esc / 点外部收起，失焦不收
+     · 'blur' —— 输入框失焦即收起（外部点击、切换焦点都会收） */
+  collapseOn: { type: String, default: 'close', validator: v => v === 'close' || v === 'blur' },
   disabled: { type: Boolean, default: false }
 })
 
@@ -61,6 +65,13 @@ function onTriggerClick() {
 
 function onInput(event) { emit('update:modelValue', event.target.value) }
 
+/* 失焦即折叠：仅在 collapseOn==='blur' 时生效。
+   用 setTimeout(0) 让「先点关闭按钮 / 先点外部」的路径优先。 */
+function onBlur() {
+  if (!props.collapseOn || props.collapseOn !== 'blur') return
+  setTimeout(() => { if (document.activeElement !== inputEl.value) collapse() }, 0)
+}
+
 function onKeydown(event) {
   if (event.key === 'Enter') { emit('search', props.modelValue); return }
   if (event.key === 'Escape') {
@@ -100,8 +111,20 @@ watch(() => props.modelValue, value => { if (value && !open.value) expand() })
         :aria-label="placeholder"
         :tabindex="open ? 0 : -1"
         @input="onInput"
+        @blur="onBlur"
         @keydown="onKeydown"
       >
+      <!-- 关闭按钮：只在「关闭按钮折叠」模式下出现（blur 模式靠失焦收起） -->
+      <button
+        v-if="collapseOn === 'close'"
+        type="button"
+        class="ui-search__close"
+        aria-label="收起搜索"
+        :tabindex="open ? 0 : -1"
+        @click.stop="collapse"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
       <button
         v-if="modelValue"
         type="button"
@@ -164,11 +187,12 @@ watch(() => props.modelValue, value => { if (value && !open.value) expand() })
 .ui-search__icon::before {
   content: '';
   position: absolute;
-  /* 36×36 居中于 40×40 按钮：四周各留 2px，与图标同轴 */
-  left: 2px;
-  top: 2px;
-  width: 36px;
-  height: 36px;
+  /* 32×32 居中于 40×40 按钮：四周各留 4px —— 背景区域比图标
+     外沿小一圈，悬停/按下时的色块不再顶到按钮边缘。 */
+  left: 4px;
+  top: 4px;
+  width: 32px;
+  height: 32px;
   border-radius: calc(var(--r-11) * var(--radius-scale));
   background: transparent;
   transition: background var(--t-fade), transform var(--t-feedback);
@@ -214,6 +238,22 @@ watch(() => props.modelValue, value => { if (value && !open.value) expand() })
   font-size: var(--fs-small);
 }
 .ui-search__input::placeholder { color: var(--on-surface-variant); }
+.ui-search__close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: background var(--t-fade), transform var(--t-feedback);
+}
+.ui-search__close:hover { background: var(--surface-container-high); }
+.ui-search__close:active { transform: scale(var(--press-scale)); }
+.ui-search__close svg { width: 13px; height: 13px; }
 .ui-search__clear {
   display: grid;
   place-items: center;

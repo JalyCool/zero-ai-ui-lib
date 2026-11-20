@@ -1250,7 +1250,7 @@ watch(activeSection, id => {
               <span>{{ item.label }}</span>
             </template>
           </UiVirtualList>
-          <span class="lib-muted">600 行只渲染窗口内十几行；单击切换选中，长按某行后竖向拖动可连续勾选，拖到边缘自动滚动。</span>
+          <span class="lib-muted">600 行只渲染窗口内十几行；单击切换选中（多选模式下逐个勾选）。</span>
         </div>
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">Schema 表单生成器 <small>UiSchemaForm</small></span>

@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch , computed} from 'vue'
 import { getSpringConfig, motion } from '../../composables/useMotion'
 
 /* ============================================================
@@ -21,10 +21,29 @@ const props = defineProps({
   title: { type: String, default: '' },
   maxWidth: { type: String, default: '420px' },
   /* Esc 关闭：普通对话框默认开启；confirmDialog 显式关掉 */
-  closeOnEsc: { type: Boolean, default: true }
+  closeOnEsc: { type: Boolean, default: true },
+  /* 是否压暗背景：false 时只有面板本身（由按钮形变而来的模态用这个） */
+  scrim: { type: Boolean, default: true },
+  /* 全屏模态：铺满视口、无圆角、无最大宽 */
+  fullscreen: { type: Boolean, default: false },
+  /* 形变来源（DOM 元素）：面板从它的位置 / 尺寸弹出 */
+  anchor: { type: Object, default: null }
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
+
+/* 面板样式：最大宽 + 形变来源（从触发按钮的矩形弹出） */
+const panelStyle = computed(() => {
+  const style = { maxWidth: props.fullscreen ? 'none' : props.maxWidth }
+  if (!props.scrim && props.anchor) {
+    const r = props.anchor.getBoundingClientRect()
+    const panelRect = panel.value?.getBoundingClientRect()
+    if (panelRect) {
+      style['--morph-origin'] = `${r.left + r.width / 2 - panelRect.left}px ${r.top + r.height / 2 - panelRect.top}px`
+    }
+  }
+  return style
+})
 
 const CLOSE_BUFFER = 80
 
@@ -32,8 +51,11 @@ const CLOSE_BUFFER = 80
 const HIDDEN = { opacity: 0, y: 14, scale: 0.97 }
 const SHOWN = { opacity: 1, y: 0, scale: 1 }
 const EXIT = { opacity: 0, y: 12, scale: 0.98 }
+/* 形变模态（不压暗）：从触发按钮的位置弹出 —— origin 落在按钮中心 */
+const MORPH_HIDDEN = { opacity: 0, y: 0, scale: 0.6 }
 
 const panel = ref(null)
+const isMorph = computed(() => !props.scrim && !!props.anchor)
 const rendered = ref(false)
 const open = ref(false)
 
@@ -123,13 +145,14 @@ defineExpose({ close })
 <template>
   <Teleport to="body">
     <div v-if="rendered" class="ui-modal">
-      <div class="ui-scrim" :class="{ 'is-open': open }" aria-hidden="true" @click="close"></div>
+      <div v-if="scrim" class="ui-scrim" :class="{ 'is-open': open }" aria-hidden="true" @click="close"></div>
 
       <motion.div
         ref="panel"
         class="ui-modal__panel"
-        :style="{ maxWidth }"
-        :initial="HIDDEN"
+        :class="{ 'is-fullscreen': fullscreen, 'is-morph': !scrim }"
+        :style="panelStyle"
+        :initial="isMorph ? MORPH_HIDDEN : HIDDEN"
         :animate="open ? SHOWN : EXIT"
         :transition="getSpringConfig(open ? 'view' : 'exit')"
         role="dialog"

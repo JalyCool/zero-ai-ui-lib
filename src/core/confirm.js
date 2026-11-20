@@ -35,11 +35,16 @@ function ensureHost() {
       onMounted(() => document.addEventListener('keydown', onKeyCapture, true))
       onBeforeUnmount(() => document.removeEventListener('keydown', onKeyCapture, true))
 
+      const variant = state.options.value.variant || 'default'
       return () => h(UiModal, {
         modelValue: state.open.value,
         'onUpdate:modelValue': value => { if (!value) settle(false) },
         title: state.options.value.title || '确认操作',
-        closeOnEsc: false
+        closeOnEsc: false,
+        /* morph：由触发按钮形变、不压暗背景；fullscreen：铺满视口 */
+        scrim: variant !== 'morph',
+        fullscreen: variant === 'fullscreen',
+        anchor: state.options.value.anchor || null
       }, {
         default: () => [
           h('p', { class: 'ui-confirm__message' }, state.options.value.message || ''),
