@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { highlightToHtml } from '../../core/highlight'
+import { highlightToHtml, keywordsOf } from '../../core/highlight'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -50,10 +50,58 @@ function syncScroll() {
 
 function onInput(event) {
   emit('update:modelValue', event.target.value)
+  completionIndex.value = 0
+  completionOpen.value = completions.value.length > 0
+}
+
+/* ---------- 轻量补全：语言关键字 + 本文档出现过的标识符 ---------- */
+const completionOpen = ref(false)
+const completionIndex = ref(0)
+
+const completions = computed(() => {
+  const el = areaEl.value
+  if (!el) return []
+  const pos = el.selectionStart
+  const before = props.modelValue.slice(0, pos)
+  const match = /[A-Za-z_$][\w$]*$/.exec(before)
+  if (!match || match[0].length < 2) return []
+  const prefix = match[0].toLowerCase()
+  const pool = new Set(keywordsOf(props.language))
+  for (const word of props.modelValue.match(/[A-Za-z_$][\w$]{2,}/g) || []) pool.add(word)
+  return [...pool]
+    .filter(word => word.toLowerCase().startsWith(prefix) && word !== match[0])
+    .slice(0, 6)
+})
+
+function applyCompletion(word) {
+  const el = areaEl.value
+  if (!el) return
+  const pos = el.selectionStart
+  const before = props.modelValue.slice(0, pos)
+  const match = /[A-Za-z_$][\w$]*$/.exec(before)
+  if (!match) return
+  const next = props.modelValue.slice(0, pos - match[0].length) + word + props.modelValue.slice(pos)
+  emit('update:modelValue', next)
+  completionOpen.value = false
+  requestAnimationFrame(() => {
+    el.selectionStart = el.selectionEnd = pos - match[0].length + word.length
+    el.focus()
+  })
 }
 
 function onKeydown(event) {
+  if (completionOpen.value && completions.value.length) {
+    if (event.key === 'ArrowDown') { event.preventDefault(); completionIndex.value = (completionIndex.value + 1) % completions.value.length; return }
+    if (event.key === 'ArrowUp') { event.preventDefault(); completionIndex.value = (completionIndex.value - 1 + completions.value.length) % completions.value.length; return }
+    if (event.key === 'Enter') { event.preventDefault(); applyCompletion(completions.value[completionIndex.value]); return }
+    if (event.key === 'Escape') { completionOpen.value = false; return }
+  }
   if (event.key !== 'Tab' || props.readonly || props.disabled) return
+  if (completionOpen.value && completions.value.length) {
+    event.preventDefault()
+    applyCompletion(completions.value[completionIndex.value])
+    return
+  }
   event.preventDefault()
   const el = event.target
   const pad = ' '.repeat(props.tabSize)
@@ -85,6 +133,12 @@ watch(() => props.modelValue, syncScroll)
       </span>
       <span class="ui-code__stage">
         <pre ref="preEl" class="ui-code__hl" aria-hidden="true"><code v-html="highlighted"></code></pre>
+        <ul v-if="completionOpen && completions.length" class="ui-code__completions" role="listbox" aria-label="补全候选">
+          <li v-for="(word, i) in completions" :key="word" role="option"
+              :class="{ 'is-active': i === completionIndex }"
+              :aria-selected="i === completionIndex"
+              @mousedown.prevent="applyCompletion(word)">{{ word }}</li>
+        </ul>
         <textarea
           ref="areaEl"
           class="ui-code__area"
@@ -144,6 +198,31 @@ watch(() => props.modelValue, syncScroll)
   font-variant-numeric: tabular-nums;
   font-feature-settings: var(--font-feat-tnum);
 }
+.ui-code__completions {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border-radius: calc(var(--r-10) * var(--radius-scale));
+  background: var(--surface-container-highest, var(--surface-container-high));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+}
+.ui-code__completions li {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  cursor: pointer;
+  color: var(--on-surface-variant);
+}
+.ui-code__completions li.is-active { background: var(--primary); color: var(--on-primary); }
 .ui-code__stage { position: relative; flex: 1; min-width: 0; }
 .ui-code__hl,
 .ui-code__area {

@@ -37,12 +37,78 @@ const RULES = {
     ['key', /^[-\w]+(?==)/],
     ['punct', /^[=<>]+/]
   ],
+  ts: [
+    ['comment', /^\/\/[^\n]*/],
+    ['comment', /^\/\*[\s\S]*?\*\//],
+    ['string', /^'(?:\\.|[^'\\\n])*'|^"(?:\\.|[^"\\\n])*"|^`[^`\\]*(?:\\.[^`\\]*)*`/],
+    ['keyword', /^(?:const|let|var|function|return|if|else|for|while|do|switch|case|default|break|continue|new|delete|typeof|instanceof|in|of|class|extends|super|import|from|export|async|await|yield|try|catch|finally|throw|interface|type|enum|namespace|implements|readonly|public|private|protected|abstract|as|satisfies|keyof|infer|never|unknown|any|string|number|boolean|void|null|undefined|true|false|this)\b/],
+    ['number', /^(?:0x[\da-f]+|\d+(?:\.\d+)?(?:e-?\d+)?)/i],
+    ['fn', /^[A-Za-z_$][\w$]*(?=\s*[<(])/],
+    ['prop', /^[A-Za-z_$][\w$]*(?=:)/],
+    ['punct', /^[(){}\[\],;:.=<>+\-*/%!&|?~^@#]+/]
+  ],
+  python: [
+    ['comment', /^#[^\n]*/],
+    ['string', /^(?:f|rf|fr)?'(?:\\.|[^'\\\n])*'|^(?:f|rf|fr)?"(?:\\.|[^"\\\n])*"/],
+    ['keyword', /^(?:def|class|return|if|elif|else|for|while|try|except|finally|with|as|import|from|raise|pass|break|continue|lambda|yield|global|nonlocal|assert|del|in|is|not|and|or|None|True|False|self|match|case|async|await)\b/],
+    ['number', /^\d+(?:\.\d+)?(?:e-?\d+)?/i],
+    ['fn', /^[A-Za-z_]\w*(?=\s*\()/],
+    ['punct', /^[(){}\[\],;:.=<>+\-*/%!&|?~^@]+/]
+  ],
+  go: [
+    ['comment', /^\/\/[^\n]*/],
+    ['comment', /^\/\*[\s\S]*?\*\//],
+    ['string', /^'(?:\\.|[^'\\])|^"(?:\\.|[^"\\])*"|^`[^`]*`/],
+    ['keyword', /^(?:package|import|func|return|if|else|for|range|switch|case|default|break|continue|go|defer|select|struct|interface|map|chan|type|var|const|nil|true|false|string|int|int64|float64|bool|byte|rune|error|any)\b/],
+    ['number', /^(?:0x[\da-f]+|\d+(?:\.\d+)?)/i],
+    ['fn', /^[A-Za-z_]\w*(?=\s*\()/],
+    ['punct', /^[(){}\[\],;:.=<>+\-*/%!&|?~^]+/]
+  ],
+  sql: [
+    ['comment', /^--[^\n]*/],
+    ['string', /^'(?:''|[^'])*'/],
+    ['keyword', /^(?:SELECT|FROM|WHERE|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|ALTER|DROP|JOIN|LEFT|RIGHT|INNER|OUTER|ON|GROUP|BY|ORDER|HAVING|LIMIT|OFFSET|AS|AND|OR|NOT|NULL|PRIMARY|KEY|FOREIGN|REFERENCES|INDEX|DISTINCT|COUNT|SUM|AVG|MIN|MAX|UNION|ALL|CASE|WHEN|THEN|ELSE|END|BEGIN|COMMIT|ROLLBACK|WITH|RECURSIVE)\b/i],
+    ['number', /^\d+(?:\.\d+)?/],
+    ['fn', /^[A-Za-z_]\w*(?=\s*\()/i],
+    ['punct', /^[(),;.*=<>+\-/%]+/]
+  ],
+  yaml: [
+    ['comment', /^#[^\n]*/],
+    ['key', /^[\w.-]+(?=\s*:)/],
+    ['string', /^'[^']*'|^"[^"]*"/],
+    ['keyword', /^(?:true|false|null|yes|no|on|off)\b/i],
+    ['number', /^-?\d+(?:\.\d+)?/],
+    ['punct', /^[-:\[\]{},&*#?|>!%@]+/]
+  ],
+  bash: [
+    ['comment', /^#[^\n]*/],
+    ['string', /^'[^']*'|^"[^"]*"/],
+    ['keyword', /^(?:if|then|else|elif|fi|for|while|do|done|case|esac|function|return|export|local|echo|cd|ls|grep|awk|sed|cat|rm|cp|mv|mkdir|chmod|curl|git|npm|pnpm|node)\b/],
+    ['number', /^\d+(?:\.\d+)?/],
+    ['fn', /^[A-Za-z_][\w-]*(?=\s*\(\))/],
+    ['punct', /^[{}()\[\];,|&<>=+\-*/%!~^]+/]
+  ],
   md: [
     ['heading', /^#{1,6}[^\n]*/],
     ['key', /^[-*+]\s|^\d+\.\s|^> /],
     ['string', /^\*\*[^*]+\*\*|^_[^_]+_/],
     ['fn', /^\[[^\]]*\](\([^)]*\))?/]
   ]
+}
+
+/* 每门语言的关键字（代码补全候选）。 */
+const KEYWORDS = {
+  js: 'const let var function return if else for while do switch case default break continue new delete typeof instanceof in of class extends super import from export async await yield try catch finally throw null undefined true false this'.split(' '),
+  ts: 'const let var function return if else for while do switch case default break continue new delete typeof instanceof in of class extends super import from export async await yield try catch finally throw interface type enum namespace implements readonly public private protected abstract as satisfies keyof infer never unknown any string number boolean void null undefined true false this'.split(' '),
+  python: 'def class return if elif else for while try except finally with as import from raise pass break continue lambda yield global nonlocal assert del in is not and or None True False self match case async await'.split(' '),
+  go: 'package import func return if else for range switch case default break continue go defer select struct interface map chan type var const nil true false string int int64 float64 bool byte rune error any'.split(' '),
+  sql: 'SELECT FROM WHERE INSERT INTO VALUES UPDATE SET DELETE CREATE TABLE ALTER DROP JOIN LEFT RIGHT INNER OUTER ON GROUP BY ORDER HAVING LIMIT OFFSET AS AND OR NOT NULL PRIMARY KEY FOREIGN REFERENCES INDEX DISTINCT COUNT SUM AVG MIN MAX UNION ALL CASE WHEN THEN ELSE END BEGIN COMMIT ROLLBACK WITH RECURSIVE'.split(' '),
+  yaml: 'true false null yes no on off'.split(' '),
+  bash: 'if then else elif fi for while do done case esac function return export local echo cd ls grep awk sed cat rm cp mv mkdir chmod curl git npm pnpm node'.split(' ')
+}
+
+export function keywordsOf(language) {
+  return KEYWORDS[language] || []
 }
 
 export function escapeHtml(text) {

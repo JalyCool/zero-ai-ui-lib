@@ -1,6 +1,16 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
-import { ansiToHtml } from '../../core/ansi'
+/* ============================================================
+   UiTerminalOutput —— 基于 xterm.js（成熟开源终端）
+   ------------------------------------------------------------
+   · 渲染 / ANSI 解析 / 换行 / 滚动全部交给 xterm，不再自绘；
+   · 只读模式：text 增量写入 + 自动跟随（上滑暂停、回底恢复）；
+   · interactive：开放键盘输入，逐字符回传 @data，并暴露 write()，
+     应用可以把命令结果写回同一个终端（交互式终端的完整循环）。
+   ============================================================ */
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Terminal } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import '@xterm/xterm/css/xterm.css'
 
 const props = defineProps({
   /* 原始日志文本（可含 ANSI 转义） */
@@ -8,41 +18,36 @@ const props = defineProps({
   label: { type: String, default: '' },
   height: { type: Number, default: 220 },
   /* 自动跟随到底（流式日志开着，回看历史关掉） */
-  follow: { type: Boolean, default: true }
+  follow: { type: Boolean, default: true },
+  /* 交互式终端：开放输入，按键回传 */
+  interactive: { type: Boolean, default: false },
+  /* 交互模式下的提示符 */
+  prompt: { type: String, default: '$ ' }
 })
 
-/* ============================================================
-   终端输出视图：ANSI 颜色解析 + 等宽字体 + 自动跟随底部
-   + 复制全部（剪贴板不可用时降级为选中文本复制）。
-   ============================================================ */
+const emit = defineEmits(['data'])
 
 const bodyEl = ref(null)
 const copied = ref(false)
 const following = ref(props.follow)
+let term = null
+let fit = null
 let copyTimer = 0
 
-const html = computed(() => ansiToHtml(props.text))
-
-async function scrollBottom() {
-  await nextTick()
-  const el = bodyEl.value
-  if (el && following.value) el.scrollTop = el.scrollHeight
+function scrollBottom() {
+  if (term && following.value) term.scrollToBottom()
 }
 
-watch(() => props.text, scrollBottom, { flush: 'post' })
-watch(() => props.follow, value => { following.value = value; if (value) scrollBottom() })
-
 function onScroll() {
-  const el = bodyEl.value
-  if (!el) return
-  /* 用户向上翻看时暂停跟随；翻回底部自动恢复。 */
-  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+  if (!term) return
+  const atBottom = term.buffer.active.baseY + term.buffer.active.cursorY
+    >= term.buffer.active.length - 2
   if (props.follow) following.value = atBottom
 }
 
 async function copyAll() {
   try {
-    await navigator.clipboard.writeText(props.text)
+    await navigator.clipboard.writeText(term ? term.buffer.active.toString() : props.text)
   } catch {
     const range = document.createRange()
     range.selectNodeContents(bodyEl.value)
@@ -56,6 +61,60 @@ async function copyAll() {
   clearTimeout(copyTimer)
   copyTimer = setTimeout(() => { copied.value = false }, 1600)
 }
+
+/* 暴露给父组件：向终端写入内容（交互式回显命令结果） */
+function write(chunk) {
+  if (term) term.write(String(chunk))
+}
+function clear() {
+  if (term) term.clear()
+}
+defineExpose({ write, clear })
+
+onMounted(async () => {
+  term = new Terminal({
+    fontFamily: 'var(--font-mono), ui-monospace, monospace',
+    fontSize: 12,
+    lineHeight: 1.35,
+    convertEol: true,
+    cursorBlink: true,
+    disableStdin: !props.interactive,
+    theme: {
+      background: 'transparent',
+      foreground: 'var(--on-surface)',
+      cursor: 'var(--primary)',
+      selectionBackground: 'color-mix(in oklab, var(--primary) 30%, transparent)'
+    }
+  })
+  fit = new FitAddon()
+  term.loadAddon(fit)
+  term.open(bodyEl.value)
+  await nextTick()
+  try { fit.fit() } catch { /* 尺寸未就绪时忽略 */ }
+  if (props.interactive) {
+    term.write(props.prompt)
+    term.onData(data => emit('data', data))
+  }
+  if (props.text) term.write(props.text)
+  scrollBottom()
+})
+
+/* 增量写入：只补新增的一段，避免整屏重刷 */
+watch(() => props.text, (value, oldValue) => {
+  if (!term || !value) return
+  if (value.length > oldValue.length && value.startsWith(oldValue)) {
+    term.write(value.slice(oldValue.length))
+  } else if (value !== oldValue) {
+    term.write('\r\x1b[K' + value)
+  }
+  scrollBottom()
+})
+watch(() => props.follow, value => { following.value = value; if (value) scrollBottom() })
+
+onBeforeUnmount(() => {
+  clearTimeout(copyTimer)
+  if (term) { term.dispose(); term = null }
+})
 </script>
 
 <template>
@@ -64,17 +123,8 @@ async function copyAll() {
       <span v-if="label" class="ui-term__label">{{ label }}</span>
       <button type="button" class="ui-term__copy" @click="copyAll">{{ copied ? '已复制' : '复制全部' }}</button>
     </div>
-    <div
-      ref="bodyEl"
-      class="ui-term__body"
-      role="log"
-      aria-live="polite"
-      :style="{ height: height + 'px' }"
-      @scroll="onScroll"
-    >
-      <pre v-if="text" v-html="html"></pre>
-      <span v-else class="ui-term__empty">暂无输出</span>
-    </div>
+    <!-- xterm 挂载点：高度固定，内部滚动由终端自己管理 -->
+    <div ref="bodyEl" class="ui-term__body" role="log" aria-live="polite" :style="{ height: height + 'px' }"></div>
   </div>
 </template>
 
@@ -96,21 +146,9 @@ async function copyAll() {
 .ui-term__copy:hover { background: var(--surface-container); color: var(--on-surface); }
 .ui-term__copy:active { transform: scale(var(--press-scale)); }
 .ui-term__body {
-  overflow: auto;
+  overflow: hidden;
   padding: 10px 12px;
   border-radius: calc(var(--r-13) * var(--radius-scale));
   background: var(--surface-container-low);
-  scrollbar-width: thin;
 }
-.ui-term__body pre {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: .7rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-all;
-  color: var(--on-surface);
-}
-.ui-term__body pre :deep(i) { font-style: normal; }
-.ui-term__empty { color: var(--on-surface-variant); font-size: var(--fs-tiny); }
 </style>
