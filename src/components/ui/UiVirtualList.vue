@@ -15,9 +15,7 @@ const props = defineProps({
   modelValue: { type: [Number, Array], default: null },
   itemKey: { type: String, default: '' },
   /* 长按行后竖向拖动连续勾选（swipe-select）。 */
-  dragSelect: { type: Boolean, default: true },
   /* 长按判定门槛（ms） */
-  holdMs: { type: Number, default: 260 },
   /* 长按后需要移动多少行才开始连选 */
   holdRows: { type: Number, default: 1 }
 })
@@ -29,7 +27,6 @@ const emit = defineEmits(['update:modelValue', 'select'])
    · 定高窗口渲染：几百上千行只画视口内十几行。
    · 单击选中：单选模式点一行换一行；多选模式点一行切换一行。
    · 长按 + 竖向拖动连选（swipe-select 语义）：按住某行超过
-     holdMs 进入连选，之后手指 / 光标经过的每一行都被勾选；
      拖到可视区边缘时列表自动滚动，选中随滚动继续延伸，
      松手结束。连选只增不减（与系统列表习惯一致）。
    · 勾选标记在行首（左侧），不在末尾。
@@ -77,14 +74,12 @@ function toggle(index) {
 }
 
 /* ---------- 长按竖向连选 ----------
-   · 进入连选后整段手势被列表接管：touch-action 切成 none，
      并阻止默认行为，浏览器原生滚动不会再抢走这一下拖动。
    · 锚点行的初始状态决定这次是「全选」还是「取消」：
      锚点原本未选中 -> 经过的行都选中；锚点原本已选中 -> 经过的行都取消。
    · 结束位置可以来回改：往回拖会把中间段恢复成锚点的初始状态。
    · 拖到可视区边缘自动滚动，速度按超出深度线性缓入，最高约 12px/帧。 */
 const dragState = ref(null)
-let holdTimer = 0
 let pointerId = null
 let startY = 0
 let lastRowIndex = -1
@@ -128,18 +123,8 @@ function onRowPointerDown(event, index) {
   pointerY = event.clientY
   lastRowIndex = index
   moved = false
-  if (!props.dragSelect || props.selection !== 'multiple') return
-  clearTimeout(holdTimer)
-  holdTimer = setTimeout(() => {
-    baseSet = new Set(props.modelValue || [])
-    anchorWasSelected = baseSet.has(index)
-    dragState.value = { from: index }
-    moved = true
-    /* 接管手势：容器禁止原生滚动，指针捕获到列表上。 */
-    try { scrollEl.value?.setPointerCapture?.(event.pointerId) } catch (error) { /* 指针已失效，忽略 */ }
-    /* 锚点自身先切换一次，作为整段的起点。 */
-    applyRange(index, !anchorWasSelected)
-  }, props.holdMs)
+  /* 滑动多选（长按连选）已移除：只保留指针记录，点击 / 多选仍由 pointerup 处理。 */
+  return
 }
 
 function onPointerMove(event) {
@@ -160,8 +145,6 @@ function onPointerMove(event) {
   if (pointerId === null) return
   if (Math.abs(event.clientY - startY) > 8) {
     /* 长按还没到就已经明显在滚：这是普通滚动，取消连选与点击。 */
-    clearTimeout(holdTimer)
-    holdTimer = 0
     moved = true
   }
 }
@@ -199,8 +182,6 @@ function stopAutoScroll() {
 }
 
 function onPointerUp() {
-  clearTimeout(holdTimer)
-  holdTimer = 0
   if (dragState.value) {
     /* 连选结束：交还滚动能力。 */
     dragState.value = null
@@ -231,7 +212,6 @@ watch(() => props.items.length, length => {
 })
 
 onBeforeUnmount(() => {
-  clearTimeout(holdTimer)
   if (autoScrollRaf) cancelAnimationFrame(autoScrollRaf)
 })
 

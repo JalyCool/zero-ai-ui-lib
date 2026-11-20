@@ -79,15 +79,16 @@ button {
               box-shadow var(--t-fade);
 }
 .ui-chip:active { transform: scale(var(--press-scale)); }
-.ui-chip--filled { background: var(--primary); color: var(--on-primary); }
-.ui-chip--tonal { background: var(--primary-container); color: var(--on-primary-container); }
-.ui-chip--outline { background: transparent; border-color: var(--outline-variant); color: var(--on-surface-variant); }
+/* 变体只描述**选中态**的强调方式；未选中一律中性（否则未选中比选中更显眼）。 */
+.ui-chip--outline { border-color: var(--outline-variant); }
 .ui-chip.is-selected {
   background: var(--primary-container);
   border-color: var(--primary);
   color: var(--on-primary-container);
-  box-shadow: inset 0 0 0 1px var(--primary);
 }
+.ui-chip--filled.is-selected { background: var(--primary); border-color: transparent; color: var(--on-primary); }
+.ui-chip--tonal.is-selected { background: var(--primary-container); border-color: var(--primary); color: var(--on-primary-container); }
+.ui-chip--outline.is-selected { background: transparent; border-color: var(--primary); color: var(--primary); }
 .ui-chip__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .ui-chip__close {
   display: grid;
@@ -237,9 +238,28 @@ button {
   background: var(--surface-container-low);
   transition: background var(--t-fade), border-color var(--t-fade);
 }
-.ui-check__box svg { width: 13px; height: 13px; color: var(--on-primary); opacity: 0; transform: scale(.55); transition: opacity var(--t-fade), transform var(--t-feedback); }
-.ui-check input:checked + .ui-check__box { background: var(--primary); border-color: var(--primary); }
-.ui-check input:checked + .ui-check__box svg { opacity: 1; transform: scale(1); }
+/* 三态：盒子底色 / 描边走 fade，勾走描边生长，横线走缩放 ——
+   三种状态互切都有连续动画，不硬跳。 */
+.ui-check__box svg { width: 13px; height: 13px; color: var(--on-primary); }
+.ui-check__box .ui-check__tick {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  opacity: 0;
+  transform: scale(.7);
+  transform-origin: center;
+  transition: stroke-dashoffset var(--t-pop), opacity var(--t-fade), transform var(--t-pop);
+}
+.ui-check__box .ui-check__dash {
+  opacity: 0;
+  transform: scaleX(.35);
+  transform-origin: center;
+  transition: opacity var(--t-fade), transform var(--t-pop);
+}
+.ui-check input:checked + .ui-check__box,
+.ui-check.is-mixed .ui-check__box { background: var(--primary); border-color: var(--primary); }
+.ui-check.is-on .ui-check__box .ui-check__tick,
+.ui-check input:checked + .ui-check__box .ui-check__tick { stroke-dashoffset: 0; opacity: 1; transform: scale(1); }
+.ui-check.is-mixed .ui-check__box .ui-check__dash { opacity: 1; transform: scaleX(1); }
 .ui-check input:focus-visible + .ui-check__box { outline: var(--focus-w) solid var(--primary); outline-offset: 2px; }
 .ui-check__text { display: flex; flex-direction: column; gap: 1px; }
 .ui-check__desc { font-size: var(--fs-micro); color: var(--on-surface-variant); }

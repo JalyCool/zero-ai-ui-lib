@@ -5,6 +5,8 @@ defineProps({
   description: { type: String, default: '' },
   /* 删除线变体：勾选后一条线从左往右划过文字 */
   strike: { type: Boolean, default: false },
+  /* 部分选中：父级全选框在子项部分勾选时的状态 */
+  indeterminate: { type: Boolean, default: false },
   /* 单个禁用 */
   disabled: { type: Boolean, default: false }
 })
@@ -13,7 +15,7 @@ const emit = defineEmits(['update:modelValue'])
 </script>
 
 <template>
-  <label class="ui-check" :class="{ 'is-strike': strike, 'is-on': modelValue, 'is-disabled': disabled }">
+  <label class="ui-check" :class="{ 'is-strike': strike, 'is-on': modelValue, 'is-mixed': indeterminate && !modelValue, 'is-disabled': disabled }">
     <input
       type="checkbox"
       :checked="modelValue"
@@ -21,7 +23,10 @@ const emit = defineEmits(['update:modelValue'])
       @change="!disabled && emit('update:modelValue', $event.target.checked)"
     >
     <span class="ui-check__box" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path class="ui-check__dash" d="M6 12h12" />
+        <path class="ui-check__tick" d="M5 12.5l4.5 4.5L19 7" />
+      </svg>
     </span>
     <span class="ui-check__text">
       <span class="ui-check__label">{{ label }}</span>

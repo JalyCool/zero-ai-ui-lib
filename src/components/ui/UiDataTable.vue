@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import UiCheckbox from './UiCheckbox.vue'
 import UiSelect from './UiSelect.vue'
 
 const props = defineProps({
@@ -132,18 +133,18 @@ function commitSelection(next) {
   emit('select-change', next)
 }
 
-function toggleRow(row, event) {
+/* 行首用的是 UiCheckbox：第二参直接是勾选状态（不再是原生 event） */
+function toggleRow(row, checked) {
   if (props.selection === 'none') return
   const key = keyOf(row)
   if (props.selection === 'single') {
-    commitSelection(selectedSet.value.has(key) ? [] : [key])
+    commitSelection(checked ? [key] : [])
     return
   }
   const next = new Set(localSelected.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
+  if (checked) next.add(key)
+  else next.delete(key)
   commitSelection([...next])
-  if (event) event.stopPropagation()
 }
 
 function toggleAll() {
@@ -228,13 +229,11 @@ const showPager = computed(() => props.server || props.total > props.pageSize)
             @click="clickable && emit('row-click', entry.row, entry.index)"
           >
             <td v-if="hasSelection" class="ui-table__check" @click.stop>
-              <input
-                :type="selection === 'single' ? 'radio' : 'checkbox'"
-                :checked="selectedSet.has(keyOf(entry.row))"
-                :name="selection === 'single' ? 'ui-table-radio' : undefined"
-                :aria-label="'选择这一行'"
-                @change="toggleRow(entry.row, $event)"
-              />
+              <UiCheckbox
+                  size="sm"
+                  :model-value="selectedSet.has(keyOf(entry.row))"
+                  @update:model-value="toggleRow(entry.row, $event)"
+                />
             </td>
             <td v-for="column in shownColumns" :key="column.key" :style="{ textAlign: alignOf(column) }">
               <slot :name="'cell-' + column.key" :row="entry.row" :index="entry.index">{{ entry.row[column.key] }}</slot>
@@ -252,13 +251,11 @@ const showPager = computed(() => props.server || props.total > props.pageSize)
             @click="clickable && emit('row-click', row, index)"
           >
             <td v-if="hasSelection" class="ui-table__check" @click.stop>
-              <input
-                :type="selection === 'single' ? 'radio' : 'checkbox'"
-                :checked="selectedSet.has(keyOf(row))"
-                :name="selection === 'single' ? 'ui-table-radio' : undefined"
-                :aria-label="'选择这一行'"
-                @change="toggleRow(row, $event)"
-              />
+              <UiCheckbox
+                  size="sm"
+                  :model-value="selectedSet.has(keyOf(entry.row))"
+                  @update:model-value="toggleRow(entry.row, $event)"
+                />
             </td>
             <td v-for="column in shownColumns" :key="column.key" :style="{ textAlign: alignOf(column) }">
               <slot :name="'cell-' + column.key" :row="row" :index="index">{{ row[column.key] }}</slot>

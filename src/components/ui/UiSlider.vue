@@ -99,6 +99,15 @@ const snapPoints = computed(() => {
   return null
 })
 
+/* 读数容器固定占位：数字最大位数（含小数）+ 单位，
+     这样数值变化不会让 "a-b 单位" 整体宽度跳变。 */
+const valueMinCh = computed(() => {
+  const decimals = Math.max(0, Number(props.decimals) || 0)
+  const intDigits = String(Math.abs(Number(props.max) || 0)).replace(/\.0$/, '').length
+  const digits = intDigits + (decimals ? 1 + decimals : 0)
+  return digits + (props.unit ? 1.4 : 0)
+})
+
 const hasStops = computed(() => Array.isArray(snapPoints.value) && snapPoints.value.length > 0)
 const range = computed(() => props.max - props.min || 1)
 
@@ -377,7 +386,7 @@ onBeforeUnmount(() => {
   <div class="ui-slider" :class="{ 'is-dragging': dragging, 'is-stepped': hasStops }">
     <div class="ui-slider__head">
       <span v-if="label" class="ui-slider__label">{{ label }}</span>
-      <span v-if="showValue" class="ui-slider__value">
+      <span v-if="showValue" class="ui-slider__value" :style="{ '--slider-value-min': valueMinCh + 'ch' }">
         <UiRollNumber class="ui-slider__num" :value="displayValue" :direction-key="quantize(shown)" :step="step" :instant="dragging" /><template v-if="unit">{{ unit }}</template>
       </span>
     </div>

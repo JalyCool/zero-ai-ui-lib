@@ -858,15 +858,6 @@ watch(activeSection, id => {
           <span class="lib-cell__note">图标可放在文字前端（布局不变）或上方（卡片网格）；单行装不下时自动切成多行。</span>
         </div>
         <div class="lib-cell">
-          <span class="lib-cell__label">形变菜单 <small>Floating / Tool</small></span>
-          <div class="lib-cell__stage lib-cell__stage--col">
-            <UiMenu variant="floating" v-model="floatChoice" :items="floatItems" />
-            <UiMenu variant="tool" :items="toolItems" label="更多操作" @select="onToolSelect" />
-            <span class="lib-muted">当前工具项：{{ toolChoice || '未选择' }}</span>
-          </div>
-          <span class="lib-cell__note">按钮原地长成面板；收起途中可打断。</span>
-        </div>
-        <div class="lib-cell">
           <span class="lib-cell__label">开关文案位置 <small>labelPlacement / alignEnd</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
             <UiSwitch v-model="swLeft" label="文案在左（默认）" />

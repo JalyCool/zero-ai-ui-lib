@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = defineProps({
   text: { type: String, default: '提示' },
@@ -18,14 +18,38 @@ const props = defineProps({
    ============================================================ */
 
 const visible = ref(false)
+const triggerEl = ref(null)
+const bubbleEl = ref(null)
+const bubbleStyle = ref({})
 let showTimer = 0
 let hideTimer = 0
+
+/* 气泡用 fixed 定位：既不会被 overflow 裁掉，也能随页面滚动同步。
+   每次显示 / 滚动 / 缩放都按触发元素重算位置。 */
+function place() {
+  const trigger = triggerEl.value
+  const bubble = bubbleEl.value
+  if (!trigger || !bubble) return
+  const rect = trigger.getBoundingClientRect()
+  const bw = bubble.offsetWidth
+  const bh = bubble.offsetHeight
+  let left = rect.left + rect.width / 2 - bw / 2
+  let top = rect.top - bh - 8
+  if (props.placement === 'bottom') top = rect.bottom + 8
+  else if (props.placement === 'left') { left = rect.left - bw - 8; top = rect.top + rect.height / 2 - bh / 2 }
+  else if (props.placement === 'right') { left = rect.right + 8; top = rect.top + rect.height / 2 - bh / 2 }
+  bubbleStyle.value = { left: Math.max(6, Math.min(left, window.innerWidth - bw - 6)) + 'px', top: Math.max(6, top) + 'px' }
+}
+
+function onViewportChange() {
+  if (visible.value) place()
+}
 
 function show() {
   if (props.disabled) return
   clearTimeout(hideTimer)
   clearTimeout(showTimer)
-  showTimer = window.setTimeout(() => { visible.value = true }, props.wait)
+  showTimer = window.setTimeout(() => { visible.value = true; place() }, props.wait)
 }
 
 function hide() {
@@ -43,14 +67,21 @@ function onTouchStart(event) {
   hideTimer = window.setTimeout(() => { visible.value = false }, 1800)
 }
 
+onMounted(() => {
+  window.addEventListener('scroll', onViewportChange, true)
+  window.addEventListener('resize', onViewportChange)
+})
 onBeforeUnmount(() => {
   clearTimeout(showTimer)
   clearTimeout(hideTimer)
+  window.removeEventListener('scroll', onViewportChange, true)
+  window.removeEventListener('resize', onViewportChange)
 })
 </script>
 
 <template>
   <span
+    ref="triggerEl"
     class="ui-tooltip"
     :class="['ui-tooltip--' + placement, { 'is-visible': visible }]"
     tabindex="0"
@@ -61,7 +92,7 @@ onBeforeUnmount(() => {
     @touchstart.passive="onTouchStart"
   >
     <slot />
-    <span class="ui-tooltip__bubble" role="tooltip" :aria-hidden="visible ? 'false' : 'true'">{{ text }}</span>
+    <span ref="bubbleEl" class="ui-tooltip__bubble" role="tooltip" :style="bubbleStyle" :aria-hidden="visible ? 'false' : 'true'">{{ text }}</span>
   </span>
 </template>
 
@@ -73,7 +104,7 @@ onBeforeUnmount(() => {
   outline: none;
 }
 .ui-tooltip__bubble {
-  position: absolute;
+  position: fixed;
   z-index: 340;
   max-width: 240px;
   padding: 6px 10px;
@@ -89,19 +120,32 @@ onBeforeUnmount(() => {
   transform: translate(-50%, 4px) scale(.94);
   transition: opacity var(--t-fade), filter var(--t-fade), transform var(--t-pop);
 }
+/* 指向触发元素的小三角 */
+.ui-tooltip__bubble::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+.ui-tooltip--top .ui-tooltip__bubble::after { left: 50%; bottom: -3px; margin-left: -4px; }
+.ui-tooltip--bottom .ui-tooltip__bubble::after { left: 50%; top: -3px; margin-left: -4px; }
+.ui-tooltip--left .ui-tooltip__bubble::after { right: -3px; top: 50%; margin-top: -4px; }
+.ui-tooltip--right .ui-tooltip__bubble::after { left: -3px; top: 50%; margin-top: -4px; }
 .ui-tooltip.is-visible .ui-tooltip__bubble {
   opacity: 1;
   filter: blur(0);
   transform: translate(-50%, 0) scale(1);
 }
 /* 四个方向：默认在上，位移方向随位置翻转 */
-.ui-tooltip--top .ui-tooltip__bubble { left: 50%; bottom: calc(100% + 7px); }
-.ui-tooltip--bottom .ui-tooltip__bubble { left: 50%; top: calc(100% + 7px); transform: translate(-50%, -4px) scale(.94); }
-.ui-tooltip--bottom.is-visible .ui-tooltip__bubble { transform: translate(-50%, 0) scale(1); }
-.ui-tooltip--left .ui-tooltip__bubble { right: calc(100% + 7px); top: 50%; transform: translate(4px, -50%) scale(.94); }
-.ui-tooltip--left.is-visible .ui-tooltip__bubble { transform: translate(0, -50%) scale(1); }
-.ui-tooltip--right .ui-tooltip__bubble { left: calc(100% + 7px); top: 50%; transform: translate(-4px, -50%) scale(.94); }
-.ui-tooltip--right.is-visible .ui-tooltip__bubble { transform: translate(0, -50%) scale(1); }
+
+
+
+
+
+
+
 
 @media (prefers-reduced-motion: reduce) {
   .ui-tooltip__bubble { transition-duration: .01ms; filter: none; }

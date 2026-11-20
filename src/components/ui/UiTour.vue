@@ -45,7 +45,15 @@ function measure() {
   if (!step.value) return
   const el = document.querySelector(step.value.target)
   if (!el) return
-  const rect = el.getBoundingClientRect()
+  let rect = el.getBoundingClientRect()
+  /* 自动滚动：控件不在画面里时先把它移到可视区中央，
+     否则高亮孔会落在错误位置（甚至屏幕外）。 */
+  const vh = window.innerHeight
+  if (rect.bottom < 40 || rect.top > vh - 40) {
+    el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' })
+    requestAnimationFrame(measure)
+    return
+  }
   const pad = 6
   spot.value = {
     left: rect.left - pad,

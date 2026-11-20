@@ -162,7 +162,8 @@ onMounted(() => {
   transition: opacity var(--t-fade), visibility 0s linear var(--t-fade);
 }
 /* 第二行：给分区切换这类横向操作；与第一行一起被融合带包住 */
-.app-head__after { width: 100%; margin-top: 4px; }
+/* 第二行（分区芯片等）：flex + gap，芯片之间不再贴着 */
+.app-head__after { width: 100%; margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .app-head__default .app-head__after { padding-left: 2px; }
 .app-head__fuse.is-visible {
   opacity: 1;

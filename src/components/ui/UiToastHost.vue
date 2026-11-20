@@ -23,12 +23,23 @@ function dismiss(id) {
     clearTimeout(timer)
     timers.delete(id)
   }
+  if (!items.value.some(item => item.id === id)) return
   items.value = items.value.filter(item => item.id !== id)
-  /* 队列放行 */
-  if (queue.length && items.value.length < props.max) {
-    const next = queue.shift()
-    show(...next)
-  }
+  /* 队列放行必须等**退场动画结束之后**：立刻插入队首项会让退场元素
+     还没走就被顶位，看起来就是退场动画「卡住 / 跳一下」。 */
+  releaseQueueSoon()
+}
+
+let releaseTimer = 0
+function releaseQueueSoon() {
+  clearTimeout(releaseTimer)
+  releaseTimer = setTimeout(() => {
+    releaseTimer = 0
+    while (queue.length && items.value.length < props.max) {
+      const next = queue.shift()
+      show(...next)
+    }
+  }, 240)
 }
 
 function show(message, tone = 'info', duration = 2600) {

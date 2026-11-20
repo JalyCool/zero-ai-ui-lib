@@ -201,6 +201,8 @@ function finishClose() {
   closeTimer = 0
   closing.value = false
   open.value = false
+  /* 收起后焦点不能留在已脱离 DOM 的面板输入框上 */
+  if (panelInput.value) panelInput.value.blur()
   floating.value = false
   surface.value = {}
   closedBox = null

@@ -1,6 +1,8 @@
 <script setup>
 defineProps({
-  variant: { type: String, default: 'filled' },
+  /* 默认不带变体：未选中必须是中性色，选中才由 variant 决定强调方式。
+     曾经默认 'filled' —— 未选中就刷成实心主色，选中反而变浅底，观感颠倒。 */
+  variant: { type: String, default: '' },
   selected: { type: Boolean, default: false },
   removable: { type: Boolean, default: false },
   dot: { type: Boolean, default: false }
