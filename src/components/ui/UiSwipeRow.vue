@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, onBeforeUnmount, ref } from 'vue'
 
 const props = defineProps({
@@ -213,12 +213,17 @@ function commit(action, viaFull, velocity = 0) {
     phase.value = 'collapsing'
     const root = rootEl.value
     if (root) {
-      root.style.transition = 'height 220ms cubic-bezier(.23,1,.32,1) 120ms, margin 220ms cubic-bezier(.23,1,.32,1) 120ms, opacity 180ms ease 120ms'
-      root.style.height = root.offsetHeight + 'px'
+      /* 先提交当前高度再动画：直接写 0 会被浏览器当成「本来就没高度」，
+         折叠就变成瞬没 —— 行在列表底部时尤其明显。 */
+      const fromHeight = root.offsetHeight
+      root.style.transition = 'none'
+      root.style.height = fromHeight + 'px'
+      root.style.opacity = '1'
+      void root.offsetWidth
       requestAnimationFrame(() => {
+        root.style.transition = 'height 240ms cubic-bezier(.23,1,.32,1) 60ms, opacity 180ms ease 60ms'
         root.style.height = '0px'
         root.style.opacity = '0'
-        root.style.marginTop = '-10px'
       })
     }
   } else {

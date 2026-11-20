@@ -388,6 +388,14 @@ const tooltipItems = [
   { label: '设置', tip: '训练目标与提醒', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 3l1.4 2.5 2.8-.7 1.1 2.7 2.7 1.1-.7 2.8L21 12l-1.7 2.6.7 2.8-2.7 1.1-1.1 2.7-2.8-.7L12 21l-1.4-2.5-2.8.7-1.1-2.7-2.7-1.1.7-2.8L3 12l1.7-2.6-.7-2.8 2.7-1.1 1.1-2.7 2.8.7z"/>' }
 ]
 const swipeLog = ref('尚未操作')
+/* 示例行：用 key 强制重挂载即可「重置」（滑动 / 折叠状态全部归零） */
+const swipeDemoKey = ref(0)
+const swipeDemoRows = [
+  { title: '晨跑 5.2 公里', meta: '32 分钟 · 268 kcal', full: true, collapse: true },
+  { title: '力量训练', meta: '上肢 · 4 组（不开划到底）', full: false, collapse: false },
+  { title: '游泳 1000 米', meta: '28 分钟 · 320 kcal', full: false, collapse: true },
+  { title: '骑行 18 公里', meta: '52 分钟 · 410 kcal', full: true, collapse: false }
+]
 /* 向左划露出右侧操作；向右划露出左侧操作 */
 const swipeActions = [
   { label: '置顶', tone: 'neutral', icon: '<path d="M12 4v16M6 10l6-6 6 6"/>' },
@@ -1524,19 +1532,24 @@ watch(activeSection, id => {
         <div class="lib-cell lib-cell--span">
           <span class="lib-cell__label">划开式列表行 <small>SwipeRow</small></span>
           <div class="lib-cell__stage lib-cell__stage--col">
-            <UiSwipeRow :actions="swipeActions" :left-actions="swipeLeftActions" full-swipe collapse-on-action @commit="onSwipeCommit">
-              <div class="lib-row">
-                <b>晨跑 5.2 公里</b>
-                <span>32 分钟 · 268 kcal</span>
-              </div>
-            </UiSwipeRow>
-            <UiSwipeRow :actions="swipeActions" :left-actions="swipeLeftActions" @commit="onSwipeCommit">
-              <div class="lib-row">
-                <b>力量训练</b>
-                <span>上肢 · 4 组（不开划到底）</span>
-              </div>
-            </UiSwipeRow>
-            <span class="lib-muted">{{ swipeLog }}（向左划 = 右侧操作，向右划 = 左侧操作；第一行开了划到底，执行后整行折叠消失）</span>
+            <div v-for="(row, i) in swipeDemoRows" :key="swipeDemoKey + '-' + i" class="lib-cell__stage lib-cell__stage--col">
+              <UiSwipeRow
+                :actions="swipeActions"
+                :left-actions="swipeLeftActions"
+                :full-swipe="row.full"
+                :collapse-on-action="row.collapse"
+                @commit="onSwipeCommit"
+              >
+                <div class="lib-row">
+                  <b>{{ row.title }}</b>
+                  <span>{{ row.meta }}</span>
+                </div>
+              </UiSwipeRow>
+            </div>
+            <div class="lib-demo-row" style="justify-content: space-between">
+              <span class="lib-muted">{{ swipeLog }}（向左划 = 右侧操作，向右划 = 左侧操作）</span>
+              <UiButton size="sm" variant="text" @click="swipeDemoKey++">重置示例</UiButton>
+            </div>
           </div>
         </div>
         <div class="lib-cell lib-cell--span">

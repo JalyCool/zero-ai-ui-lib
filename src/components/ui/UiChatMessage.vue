@@ -26,6 +26,9 @@ const props = defineProps({
   color: { type: String, default: '' },
   /* agent 名字（气泡上方一行小字，可省） */
   name: { type: String, default: '' },
+  /* 头像与昵称的显示开关：列表里可以只保留气泡，或只去掉头像 */
+  showAvatar: { type: Boolean, default: true },
+  showName: { type: Boolean, default: true },
   /* agent 头像配置：直接透传给标准头像组件 */
   avatarShape: { type: String, default: 'circle' },
   avatarState: { type: String, default: 'idle' },
@@ -110,7 +113,7 @@ const tagSize = computed(() => (props.size === 'lg' ? 'md' : 'sm'))
   <div class="ui-chat-msg" :class="['is-' + role, { 'has-bubble': hasBubble }]" :style="rootStyle">
     <!-- agent：头像固定在左侧，气泡左上收窄指向它。
          头像就是标准头像本体，没有底、没有裁切。 -->
-    <span v-if="role === 'agent'" class="ui-chat-msg__avatar">
+    <span v-if="role === 'agent' && showAvatar" class="ui-chat-msg__avatar">
       <slot name="avatar">
         <UiAgentAvatar
           v-if="!avatarSrc"
@@ -126,7 +129,7 @@ const tagSize = computed(() => (props.size === 'lg' ? 'md' : 'sm'))
     </span>
 
     <div class="ui-chat-msg__stack">
-      <span v-if="name" class="ui-chat-msg__name">{{ name }}</span>
+      <span v-if="name && showName" class="ui-chat-msg__name">{{ name }}</span>
 
       <div class="ui-chat-msg__bubble">
         <MarkdownView
